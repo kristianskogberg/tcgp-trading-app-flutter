@@ -11,6 +11,10 @@ class CardScreen extends StatefulWidget {
 }
 
 class _CardScreenState extends State<CardScreen> {
+  final List<Tab> cardTabs = const [
+    Tab(text: 'Offers'),
+    Tab(text: 'Wants'),
+  ];
   Color? dominantColor;
 
   final rarityImages = {
@@ -61,60 +65,77 @@ class _CardScreenState extends State<CardScreen> {
     final setImageUrl = setName.isNotEmpty
         ? 'https://kreowlhmtwomwmzkegzf.supabase.co/storage/v1/object/public/tcgp-icons/$setName.png'
         : null;
-    if (setImageUrl != null) {
-      debugPrint('Set image URL: $setImageUrl');
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(card['name'] ?? 'Card Details'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (card['image_url'] != null &&
-                card['image_url'].toString().isNotEmpty)
-              Image.network(
-                card['image_url'],
-                height: cardHeight,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.broken_image, size: 100),
-              ),
-            const SizedBox(width: 24),
-            Expanded(
-              child: SizedBox(
-                height: cardHeight,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      formatCardName(card['name']),
-                      style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.left,
+    return DefaultTabController(
+      length: cardTabs.length,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(card['name'] ?? 'Card Details'),
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (card['image_url'] != null &&
+                      card['image_url'].toString().isNotEmpty)
+                    Image.network(
+                      card['image_url'],
+                      height: cardHeight,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.broken_image, size: 100),
                     ),
-                    Image.asset(rarityImage ?? 'assets/rarities/1-diamond.png',
-                        height: 32),
-                    if (setImageUrl != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8.0),
-                        child: Image.network(
-                          setImageUrl,
-                          height: 32,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.broken_image, size: 32),
-                        ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: SizedBox(
+                      height: cardHeight,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            formatCardName(card['name']),
+                            style: const TextStyle(
+                                fontSize: 24, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.left,
+                          ),
+                          Image.asset(
+                              rarityImage ?? 'assets/rarities/1-diamond.png',
+                              height: 24),
+                          if (setImageUrl != null)
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Image.network(
+                                setImageUrl,
+                                height: 32,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.broken_image, size: 32),
+                              ),
+                            ),
+                        ],
                       ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              TabBar(tabs: cardTabs),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    Center(
+                        child: Text(
+                            'Players are offering to trade ${formatCardName(card['name'])} for any of these cards')),
+                    Center(child: Text('Players who want this card')),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
