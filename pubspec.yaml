@@ -37,6 +37,7 @@ dependencies:
   supabase_flutter: ^2.9.1
   flutter_dotenv: ^5.2.1
   palette_generator: ^0.3.3+7
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:
