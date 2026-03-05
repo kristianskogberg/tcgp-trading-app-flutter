@@ -26,13 +26,43 @@ class MyApp extends StatelessWidget {
         overscroll: false,
       ),
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
         useMaterial3: true,
-        scaffoldBackgroundColor: const Color.fromARGB(255, 255, 255, 255),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.black),
-          bodyMedium: TextStyle(color: Colors.black),
-          bodySmall: TextStyle(color: Colors.black54),
+        scaffoldBackgroundColor: const Color(0xFF0D0D0F),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF0D0D0F),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Color(0xFF141418),
+          selectedItemColor: Colors.deepPurpleAccent,
+          unselectedItemColor: Colors.white38,
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.deepPurpleAccent,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.deepPurpleAccent,
+            side: const BorderSide(color: Colors.deepPurpleAccent),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+        snackBarTheme: const SnackBarThemeData(
+          backgroundColor: Color(0xFF1E1E24),
+          contentTextStyle: TextStyle(color: Colors.white70),
         ),
       ),
       home: AuthGate(),

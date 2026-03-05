@@ -1,7 +1,44 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:palette_generator/palette_generator.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/screens/card_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
+
+/// Global cache so colors survive rebuilds and scrolling.
+final Map<String, Color> _dominantColorCache = {};
+
+/// Completer map to avoid duplicate extractions for the same card.
+final Map<String, Completer<Color>> _pendingExtractions = {};
+
+Future<Color> _extractColor(String id, String imageUrl) {
+  final cached = _dominantColorCache[id];
+  if (cached != null) return Future.value(cached);
+
+  // Return existing future if already in flight.
+  if (_pendingExtractions.containsKey(id)) {
+    return _pendingExtractions[id]!.future;
+  }
+
+  final completer = Completer<Color>();
+  _pendingExtractions[id] = completer;
+
+  PaletteGenerator.fromImageProvider(
+    NetworkImage(imageUrl),
+    size: const Size(40, 56),
+    maximumColorCount: 3,
+  ).then((palette) {
+    final color = palette.dominantColor?.color ?? Colors.deepPurpleAccent;
+    _dominantColorCache[id] = color;
+    completer.complete(color);
+  }).catchError((_) {
+    completer.complete(Colors.deepPurpleAccent);
+  }).whenComplete(() {
+    _pendingExtractions.remove(id);
+  });
+
+  return completer.future;
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -51,35 +88,80 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.all(10),
                 itemCount: cards.length,
                 itemBuilder: (context, index) {
-                  final card = cards[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => CardScreen(card: card),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.all(1.0),
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: Image.network(
-                          card.imageUrl,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(Icons.broken_image);
-                          },
-                        ),
-                      ),
-                    ),
-                  );
+                  return _CardTile(card: cards[index]);
                 },
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _CardTile extends StatefulWidget {
+  final PocketCard card;
+  const _CardTile({required this.card});
+
+  @override
+  State<_CardTile> createState() => _CardTileState();
+}
+
+class _CardTileState extends State<_CardTile> {
+  Color? _glowColor;
+
+  @override
+  void initState() {
+    super.initState();
+    final cached = _dominantColorCache[widget.card.id];
+    if (cached != null) {
+      _glowColor = cached;
+    } else {
+      _extractColor(widget.card.id, widget.card.imageUrl).then((color) {
+        if (mounted) setState(() => _glowColor = color);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasGlow = _glowColor != null;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => CardScreen(card: widget.card),
+          ),
+        );
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOut,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: hasGlow
+              ? [
+                  BoxShadow(
+                    // ignore: deprecated_member_use
+                    color: _glowColor!.withOpacity(0.45),
+                    blurRadius: 16,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : [],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.network(
+            widget.card.imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(Icons.broken_image, color: Colors.white24);
+            },
+          ),
+        ),
       ),
     );
   }
