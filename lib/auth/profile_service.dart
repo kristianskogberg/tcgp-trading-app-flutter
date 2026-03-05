@@ -3,6 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileService {
+  static final ProfileService _instance = ProfileService._internal();
+  factory ProfileService() => _instance;
+  ProfileService._internal();
+
   final SupabaseClient _client = Supabase.instance.client;
 
   Map<String, dynamic>? _cachedProfile;
@@ -37,7 +41,7 @@ class ProfileService {
 
     final data = await _client
         .from('profiles')
-        .select('user_id, username, friend_id')
+        .select('user_id, player_name, friend_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -47,7 +51,7 @@ class ProfileService {
   }
 
   Future<void> saveProfile({
-    required String username,
+    required String playerName,
     required String friendId,
   }) async {
     final user = _client.auth.currentUser;
@@ -55,7 +59,7 @@ class ProfileService {
 
     final payload = {
       'user_id': user.id,
-      'username': username,
+      'player_name': playerName,
       'friend_id': friendId,
     };
 

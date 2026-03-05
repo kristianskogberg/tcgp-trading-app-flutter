@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/screens/card_screen.dart';
+import 'package:tcgp_trading_app/services/card_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,10 +11,13 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // get all cards from supabase
-  final _cardsStream = Supabase.instance.client
-      .from('card')
-      .stream(primaryKey: ['id']).order('id', ascending: true);
+  late Future<List<PocketCard>> _cardsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _cardsFuture = CardService().getAllCards();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,20 +25,21 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('TCGP Trading App'),
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: _cardsStream,
+      body: FutureBuilder<List<PocketCard>>(
+        future: _cardsFuture,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return const Center(child: Text('Failed to load cards'));
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           final cards = snapshot.data ?? [];
-          // Use GridView.builder for grid layout
+          if (cards.isEmpty) {
+            return const Center(child: Text('No cards found'));
+          }
           return LayoutBuilder(
             builder: (context, constraints) {
-              // Calculate number of columns based on screen width
               int crossAxisCount = (constraints.maxWidth ~/ 180).clamp(3, 4);
               return GridView.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -61,10 +66,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: AspectRatio(
                         aspectRatio: 1,
                         child: Image.network(
-                          card['image_url'] ?? '',
+                          card.imageUrl,
                           fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.broken_image),
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.broken_image);
+                          },
                         ),
                       ),
                     ),

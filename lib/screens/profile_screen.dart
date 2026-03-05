@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
-import 'package:tcgp_trading_app/screens/main_screen.dart';
 import 'package:tcgp_trading_app/utils/text_input_field.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -15,6 +15,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _usernameController = TextEditingController();
   final _friendIdController = TextEditingController();
   final _profileService = ProfileService();
+  final _authService = AuthService();
 
   String? _usernameErrorMessage;
   String? _friendIdErrorMessage;
@@ -24,9 +25,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _usernameController.addListener(_clearErrorMessage);
-    _friendIdController.addListener(_clearErrorMessage);
+    _usernameController.addListener(_onFieldChanged);
+    _friendIdController.addListener(_onFieldChanged);
     _loadProfile();
+  }
+
+  void _onFieldChanged() {
+    // Just trigger a rebuild so formValid recalculates.
+    // Don't clear error messages here — they are cleared on successful validation.
+    setState(() {});
   }
 
   Future<void> _loadProfile() async {
@@ -34,7 +41,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final profile = await _profileService.getProfile();
       if (profile != null && mounted) {
         if (_usernameController.text.isEmpty) {
-          _usernameController.text = profile['username'] ?? '';
+          _usernameController.text = profile['player_name'] ?? '';
         }
         if (_friendIdController.text.isEmpty) {
           _friendIdController.text = profile['friend_id'] ?? '';
@@ -43,7 +50,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Load failed: $e')));
+            .showSnackBar(const SnackBar(content: Text('Failed to load profile')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -55,15 +62,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _usernameController.dispose();
     _friendIdController.dispose();
     super.dispose();
-  }
-
-  void _clearErrorMessage() {
-    if (_usernameErrorMessage != null || _friendIdErrorMessage != null) {
-      setState(() {
-        _usernameErrorMessage = null;
-        _friendIdErrorMessage = null;
-      });
-    }
   }
 
   bool _validateInputs() {
@@ -93,28 +91,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return usernameErr == null && friendIdErr == null;
   }
 
-  Future<void> saveProfile() async {
+  Future<void> _saveProfile() async {
     if (!_validateInputs()) return;
     setState(() => _saving = true);
     try {
       await _profileService.saveProfile(
-        username: _usernameController.text.trim(),
+        playerName: _usernameController.text.trim(),
         friendId: _friendIdController.text.trim(),
       );
-      // Cache already updated in service.
-      _clearErrorMessage();
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const MainScreen()),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile saved')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Profile update failed: $e')));
+            .showSnackBar(const SnackBar(content: Text('Failed to save profile')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _logout() async {
+    try {
+      await _profileService.clearProfileCache();
+      await _authService.signOut();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Failed to sign out')));
+      }
     }
   }
 
@@ -122,12 +130,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final formValid = _usernameErrorMessage == null &&
         _friendIdErrorMessage == null &&
-        _usernameController.text.trim().isNotEmpty &&
+        _usernameController.text.trim().length >= 2 &&
         _friendIdController.text.trim().length == 12;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        actions: [
+          IconButton(
+            onPressed: _logout,
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sign out',
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -139,7 +154,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     controller: _usernameController,
                     errorText: _usernameErrorMessage,
                     label: "Player Name",
-                    onChanged: (_) => _validateInputs(),
                   ),
                   const SizedBox(height: 20),
                   TextInputField(
@@ -149,14 +163,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     maxLength: 12,
-                    onChanged: (_) => _validateInputs(),
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed:
-                          _saving ? null : (formValid ? saveProfile : null),
+                          _saving ? null : (formValid ? _saveProfile : null),
                       child: _saving
                           ? const SizedBox(
                               height: 18,

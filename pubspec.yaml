@@ -38,6 +38,7 @@ dependencies:
   flutter_dotenv: ^5.2.1
   palette_generator: ^0.3.3+7
   shared_preferences: ^2.2.2
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:
