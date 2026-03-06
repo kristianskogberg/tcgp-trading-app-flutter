@@ -5,7 +5,8 @@ import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/utils/text_input_field.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final VoidCallback? onMenuTap;
+  const ProfileScreen({super.key, this.onMenuTap});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -135,6 +136,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: widget.onMenuTap != null
+            ? IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: widget.onMenuTap,
+              )
+            : null,
         title: const Text('Profile'),
         actions: [
           IconButton(

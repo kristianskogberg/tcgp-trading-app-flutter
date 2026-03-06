@@ -25,9 +25,11 @@ class MyApp extends StatelessWidget {
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         overscroll: false,
       ),
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: const Color(0xFF02F8AE),
+          primary: const Color(0xFF02F8AE),
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
@@ -37,15 +39,14 @@ class MyApp extends StatelessWidget {
           surfaceTintColor: Colors.transparent,
           elevation: 0,
         ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        drawerTheme: const DrawerThemeData(
           backgroundColor: Color(0xFF141418),
-          selectedItemColor: Colors.deepPurpleAccent,
-          unselectedItemColor: Colors.white38,
+          surfaceTintColor: Colors.transparent,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.deepPurpleAccent,
-            foregroundColor: Colors.white,
+            backgroundColor: const Color(0xFF02F8AE),
+            foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -53,8 +54,8 @@ class MyApp extends StatelessWidget {
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: Colors.deepPurpleAccent,
-            side: const BorderSide(color: Colors.deepPurpleAccent),
+            foregroundColor: const Color(0xFF02F8AE),
+            side: const BorderSide(color: Color(0xFF02F8AE)),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),

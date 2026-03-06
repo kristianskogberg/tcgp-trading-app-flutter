@@ -5,7 +5,8 @@ import 'package:tcgp_trading_app/screens/card_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback? onMenuTap;
+  const HomeScreen({super.key, this.onMenuTap});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -271,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Navigator.pop(context);
                                 },
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: Colors.deepPurple,
+                                  backgroundColor: const Color(0xFF02F8AE),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -322,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
               label: Text(option),
               selected: isSelected,
               onSelected: (_) => onToggle(option),
-              selectedColor: Colors.deepPurple,
+              selectedColor: const Color(0xFF02F8AE),
               checkmarkColor: Colors.white,
               backgroundColor: const Color(0xFF1E1E24),
               labelStyle: TextStyle(
@@ -332,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
-                  color: isSelected ? Colors.deepPurple : Colors.white24,
+                  color: isSelected ? const Color(0xFF02F8AE) : Colors.white24,
                 ),
               ),
             );
@@ -363,14 +364,14 @@ class _HomeScreenState extends State<HomeScreen> {
         label: Text(label),
         selected: true,
         onSelected: (_) => _removeFilter(type, label),
-        selectedColor: Colors.deepPurple,
+        selectedColor: const Color(0xFF02F8AE),
         deleteIcon: const Icon(Icons.close, size: 16),
         onDeleted: () => _removeFilter(type, label),
         deleteIconColor: Colors.white70,
         labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Colors.deepPurple),
+          side: const BorderSide(color: const Color(0xFF02F8AE)),
         ),
       ),
     );
@@ -380,6 +381,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: widget.onMenuTap != null
+            ? IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: widget.onMenuTap,
+              )
+            : null,
         title: SizedBox(
           height: 40,
           child: TextField(
@@ -431,7 +438,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 8,
                     height: 8,
                     decoration: const BoxDecoration(
-                      color: Colors.deepPurple,
+                      color: const Color(0xFF02F8AE),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -547,19 +554,34 @@ class _CardTile extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) => CardScreen(card: card),
+          PageRouteBuilder(
+            opaque: false,
+            transitionDuration: const Duration(milliseconds: 300),
+            reverseTransitionDuration: const Duration(milliseconds: 300),
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                CardScreen(card: card),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation,
+                child: child,
+              );
+            },
           ),
         );
       },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(10),
-        child: Image.network(
-          card.imageUrl,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return const Icon(Icons.broken_image, color: Colors.white24);
-          },
+      child: Hero(
+        tag: 'card-hero-${card.id}',
+        createRectTween: (begin, end) => RectTween(begin: begin, end: end),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.network(
+            card.imageUrl,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Icon(Icons.broken_image, color: Colors.white24);
+            },
+          ),
         ),
       ),
     );

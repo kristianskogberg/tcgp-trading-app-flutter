@@ -130,14 +130,66 @@ class _CardScreenState extends State<CardScreen>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Center(
-                child: Image.network(
-                  card.imageUrl,
-                  height: 280,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Icon(Icons.broken_image, size: 100),
-                ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Hero(
+                    tag: 'card-hero-${card.id}',
+                    createRectTween: (begin, end) =>
+                        RectTween(begin: begin, end: end),
+                    child: Image.network(
+                      card.imageUrl,
+                      height: 220,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.broken_image, size: 100),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _InfoRow(
+                          label: 'Set',
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.network(
+                                'https://nsqcktpyuedsjcjkllll.supabase.co/storage/v1/object/public/tcgp_icons/${card.set.toLowerCase()}.webp',
+                                height: 24,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const SizedBox.shrink(),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoRow(
+                          label: 'Rarity',
+                          child: Text(card.rarity,
+                              style: const TextStyle(color: Colors.white)),
+                        ),
+                        const SizedBox(height: 12),
+                        _InfoRow(
+                          label: 'Pack',
+                          child: Text(
+                              card.packs.isNotEmpty
+                                  ? card.packs.join(', ')
+                                  : '—',
+                              style: const TextStyle(color: Colors.white)),
+                        ),
+                        const SizedBox(height: 12),
+                        const _InfoRow(
+                          label: 'Trade cost',
+                          child:
+                              Text('—', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
             Padding(
@@ -145,16 +197,18 @@ class _CardScreenState extends State<CardScreen>
               child: Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: _onWantPressed,
-                      child: const Text('I want this card'),
+                      icon: const Icon(Icons.favorite_outline, size: 18),
+                      label: const Text('I want this card'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: _onCanTradePressed,
-                      child: const Text('I can trade this card'),
+                      icon: const Icon(Icons.check_circle_outline, size: 18),
+                      label: const Text('I have this card'),
                     ),
                   ),
                 ],
@@ -166,7 +220,7 @@ class _CardScreenState extends State<CardScreen>
               child: TabBar(
                 controller: _tabController,
                 tabs: const [Tab(text: 'Offers'), Tab(text: 'Wants')],
-                indicatorColor: Colors.deepPurple,
+                indicatorColor: const Color(0xFF02F8AE),
                 labelColor: Colors.white,
                 unselectedLabelColor: Colors.white60,
               ),
@@ -250,7 +304,7 @@ class _TradeEntry extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: Colors.deepPurple,
+                backgroundColor: const Color(0xFF02F8AE),
                 child: Text(
                   username[0],
                   style: const TextStyle(color: Colors.white, fontSize: 12),
@@ -272,7 +326,7 @@ class _TradeEntry extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           SizedBox(
-            height: 60,
+            height: 100,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: cards.length,
@@ -282,6 +336,26 @@ class _TradeEntry extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final Widget child;
+
+  const _InfoRow({required this.label, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(fontSize: 12, color: Colors.white54)),
+        const SizedBox(height: 2),
+        child,
+      ],
     );
   }
 }
@@ -297,10 +371,10 @@ class _CardThumbnail extends StatelessWidget {
       borderRadius: BorderRadius.circular(4),
       child: Image.network(
         card.imageUrl,
-        height: 60,
+        height: 100,
         fit: BoxFit.contain,
         errorBuilder: (context, error, stackTrace) => const SizedBox(
-            width: 42, height: 60, child: Icon(Icons.broken_image, size: 20)),
+            width: 42, height: 100, child: Icon(Icons.broken_image, size: 20)),
       ),
     );
   }
