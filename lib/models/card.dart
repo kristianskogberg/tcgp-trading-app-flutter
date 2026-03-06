@@ -1,45 +1,51 @@
 class PocketCard {
+  final String id;
   final String set;
   final int number;
-  final String rarity;
   final String name;
+  final String rarity;
+  final String pack;
   final String imageUrl;
-  final List<String> packs;
+  final String type;
 
   PocketCard({
-    required this.set,
-    required this.number,
-    required this.rarity,
+    required this.id,
     required this.name,
-    required this.packs,
-  }) : imageUrl = _buildImageUrl(set, number);
+    required this.rarity,
+    required this.pack,
+    required this.imageUrl,
+    required this.type,
+  })  : set = _extractSet(id),
+        number = _extractNumber(id);
 
-  static String _buildImageUrl(String set, int number) {
-    final paddedNumber = number.toString().padLeft(3, '0');
-    return 'https://assets.tcgdex.net/en/tcgp/$set/$paddedNumber/high.webp';
+  static String _extractSet(String id) {
+    final dashIndex = id.lastIndexOf('-');
+    return dashIndex >= 0 ? id.substring(0, dashIndex).toUpperCase() : id;
+  }
+
+  static int _extractNumber(String id) {
+    final dashIndex = id.lastIndexOf('-');
+    if (dashIndex < 0) return 0;
+    return int.tryParse(id.substring(dashIndex + 1)) ?? 0;
   }
 
   factory PocketCard.fromJson(Map<String, dynamic> json) {
     return PocketCard(
-      set: json['set'] as String,
-      number: json['number'] as int,
-      rarity: json['rarity'] as String? ?? 'C',
+      id: json['id'] as String,
       name: json['name'] as String,
-      packs: (json['packs'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [],
+      rarity: json['rarity'] as String? ?? '',
+      pack: json['pack'] as String? ?? '',
+      imageUrl: json['image'] as String? ?? '',
+      type: json['type'] as String? ?? '',
     );
   }
 
   Map<String, dynamic> toJson() => {
-        'set': set,
-        'number': number,
-        'rarity': rarity,
+        'id': id,
         'name': name,
-        'packs': packs,
+        'rarity': rarity,
+        'pack': pack,
+        'image': imageUrl,
+        'type': type,
       };
-
-  /// Unique identifier for this card
-  String get id => '$set-$number';
 }

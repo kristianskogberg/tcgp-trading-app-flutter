@@ -38,6 +38,7 @@ dependencies:
   flutter_dotenv: ^5.2.1
   shared_preferences: ^2.2.2
   http: ^1.6.0
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +69,11 @@ flutter:
     - images/rarities/3-diamond.png
     - images/rarities/4-diamond.png
     - images/rarities/1-star.png
+    - images/rarities/2-star.png
+    - images/rarities/3-star.png
+    - images/rarities/1-star-shiny.png
+    - images/rarities/2-star-shiny.png
+    - images/rarities/crown.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

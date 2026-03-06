@@ -1,117 +1,38 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
+import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 
 // Placeholder trade data (card + language code)
+PocketCard _placeholder(String id, String name, String rarity) =>
+    PocketCard(id: id, name: name, rarity: rarity, pack: '', imageUrl: '', type: '');
+
 final _placeholderOffers = [
-  (
-    card: PocketCard(
-        set: 'A1', number: 1, rarity: 'C', name: 'Bulbasaur', packs: []),
-    lang: 'ENG'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 4, rarity: 'C', name: 'Charmander', packs: []),
-    lang: 'JPN'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 7, rarity: 'C', name: 'Squirtle', packs: []),
-    lang: 'ENG'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 35, rarity: 'U', name: 'Clefairy', packs: []),
-    lang: 'FRA'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 25, rarity: 'R', name: 'Pikachu', packs: []),
-    lang: 'DEU'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1a', number: 1, rarity: 'C', name: 'Ekans', packs: []),
-    lang: 'ESP'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1a', number: 10, rarity: 'U', name: 'Mankey', packs: []),
-    lang: 'ENG'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 130, rarity: 'RR', name: 'Gyarados', packs: []),
-    lang: 'KOR'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 94, rarity: 'R', name: 'Gengar', packs: []),
-    lang: 'ITA'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 6, rarity: 'R', name: 'Charizard', packs: []),
-    lang: 'JPN'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 9, rarity: 'R', name: 'Blastoise', packs: []),
-    lang: 'POR'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 3, rarity: 'R', name: 'Venusaur', packs: []),
-    lang: 'CHN'
-  ),
+  (card: _placeholder('a1-001', 'Bulbasaur', '◊'), lang: 'ENG'),
+  (card: _placeholder('a1-004', 'Charmander', '◊'), lang: 'JPN'),
+  (card: _placeholder('a1-007', 'Squirtle', '◊'), lang: 'ENG'),
+  (card: _placeholder('a1-035', 'Clefairy', '◊◊'), lang: 'FRA'),
+  (card: _placeholder('a1-025', 'Pikachu', '◊◊◊'), lang: 'DEU'),
+  (card: _placeholder('a1a-001', 'Ekans', '◊'), lang: 'ESP'),
+  (card: _placeholder('a1a-010', 'Mankey', '◊◊'), lang: 'ENG'),
+  (card: _placeholder('a1-130', 'Gyarados', '◊◊◊◊'), lang: 'KOR'),
+  (card: _placeholder('a1-094', 'Gengar', '◊◊◊'), lang: 'ITA'),
+  (card: _placeholder('a1-006', 'Charizard', '◊◊◊'), lang: 'JPN'),
+  (card: _placeholder('a1-009', 'Blastoise', '◊◊◊'), lang: 'POR'),
+  (card: _placeholder('a1-003', 'Venusaur', '◊◊◊'), lang: 'CHN'),
 ];
 
 final _placeholderWants = [
-  (
-    card: PocketCard(
-        set: 'A1', number: 150, rarity: 'SR', name: 'Mewtwo', packs: []),
-    lang: 'ENG'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 143, rarity: 'U', name: 'Snorlax', packs: []),
-    lang: 'JPN'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 131, rarity: 'RR', name: 'Lapras', packs: []),
-    lang: 'FRA'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 113, rarity: 'U', name: 'Chansey', packs: []),
-    lang: 'ENG'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1a', number: 15, rarity: 'R', name: 'Arcanine', packs: []),
-    lang: 'DEU'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 26, rarity: 'R', name: 'Raichu', packs: []),
-    lang: 'ESP'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 82, rarity: 'U', name: 'Magneton', packs: []),
-    lang: 'KOR'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1', number: 101, rarity: 'U', name: 'Electrode', packs: []),
-    lang: 'ENG'
-  ),
-  (
-    card: PocketCard(
-        set: 'A1a', number: 5, rarity: 'C', name: 'Voltorb', packs: []),
-    lang: 'ITA'
-  ),
+  (card: _placeholder('a1-150', 'Mewtwo', '☆'), lang: 'ENG'),
+  (card: _placeholder('a1-143', 'Snorlax', '◊◊'), lang: 'JPN'),
+  (card: _placeholder('a1-131', 'Lapras', '◊◊◊◊'), lang: 'FRA'),
+  (card: _placeholder('a1-113', 'Chansey', '◊◊'), lang: 'ENG'),
+  (card: _placeholder('a1a-015', 'Arcanine', '◊◊◊'), lang: 'DEU'),
+  (card: _placeholder('a1-026', 'Raichu', '◊◊◊'), lang: 'ESP'),
+  (card: _placeholder('a1-082', 'Magneton', '◊◊'), lang: 'KOR'),
+  (card: _placeholder('a1-101', 'Electrode', '◊◊'), lang: 'ENG'),
+  (card: _placeholder('a1a-005', 'Voltorb', '◊'), lang: 'ITA'),
 ];
 
 class CardScreen extends StatefulWidget {
@@ -169,11 +90,11 @@ class _CardScreenState extends State<CardScreen>
                     tag: 'card-hero-${card.id}',
                     createRectTween: (begin, end) =>
                         RectTween(begin: begin, end: end),
-                    child: Image.network(
-                      card.imageUrl,
+                    child: CachedNetworkImage(
+                      imageUrl: card.imageUrl,
                       height: 220,
                       fit: BoxFit.contain,
-                      errorBuilder: (context, error, stackTrace) =>
+                      errorWidget: (context, url, error) =>
                           const Icon(Icons.broken_image, size: 100),
                     ),
                   ),
@@ -200,16 +121,20 @@ class _CardScreenState extends State<CardScreen>
                         const SizedBox(height: 12),
                         _InfoRow(
                           label: 'Rarity',
-                          child: Text(card.rarity,
-                              style: const TextStyle(color: Colors.white)),
+                          child: getRarityAsset(card.rarity) != null
+                              ? Image.asset(
+                                  getRarityAsset(card.rarity)!,
+                                  height: 20,
+                                  fit: BoxFit.contain,
+                                )
+                              : Text(card.rarity,
+                                  style: const TextStyle(color: Colors.white)),
                         ),
                         const SizedBox(height: 12),
                         _InfoRow(
                           label: 'Pack',
                           child: Text(
-                              card.packs.isNotEmpty
-                                  ? card.packs.join(', ')
-                                  : '—',
+                              card.pack.isNotEmpty ? card.pack : '—',
                               style: const TextStyle(color: Colors.white)),
                         ),
                         const SizedBox(height: 12),
@@ -488,10 +413,10 @@ class _CardThumbnail extends StatelessWidget {
         Positioned.fill(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: Image.network(
-              card.imageUrl,
+            child: CachedNetworkImage(
+              imageUrl: card.imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
+              errorWidget: (context, url, error) =>
                   const Center(child: Icon(Icons.broken_image, size: 20)),
             ),
           ),

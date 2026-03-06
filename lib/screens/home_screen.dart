@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/screens/card_screen.dart';
@@ -74,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final card in cards) {
         sets.add(card.set);
         rarities.add(card.rarity);
-        packs.addAll(card.packs);
+        if (card.pack.isNotEmpty) packs.add(card.pack);
       }
       setState(() {
         _allCards = cards;
@@ -105,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         // Pack filter (OR within category)
         if (_selectedPacks.isNotEmpty &&
-            !card.packs.any((p) => _selectedPacks.contains(p))) {
+            !_selectedPacks.contains(card.pack)) {
           return false;
         }
         return true;
@@ -575,12 +576,18 @@ class _CardTile extends StatelessWidget {
         createRectTween: (begin, end) => RectTween(begin: begin, end: end),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(10),
-          child: Image.network(
-            card.imageUrl,
+          child: CachedNetworkImage(
+            imageUrl: card.imageUrl,
             fit: BoxFit.contain,
-            errorBuilder: (context, error, stackTrace) {
-              return const Icon(Icons.broken_image, color: Colors.white24);
-            },
+            placeholder: (context, url) => const Center(
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+            errorWidget: (context, url, error) =>
+                const Icon(Icons.broken_image, color: Colors.white24),
           ),
         ),
       ),

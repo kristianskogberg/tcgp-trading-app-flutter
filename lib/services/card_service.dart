@@ -5,8 +5,9 @@ import 'package:tcgp_trading_app/models/card.dart';
 
 class CardService {
   static const _cardsUrl =
-      'https://cdn.jsdelivr.net/npm/pokemon-tcg-pocket-database/dist/cards.json';
+      'https://raw.githubusercontent.com/chase-manning/pokemon-tcg-pocket-cards/refs/heads/main/v4.json';
   static const _cacheKey = 'cached_cards_json';
+  static const _etagKey = 'cached_cards_etag';
 
   static final CardService _instance = CardService._();
   factory CardService() => _instance;
@@ -14,29 +15,49 @@ class CardService {
 
   List<PocketCard>? _cards;
 
-  /// Load cards from CDN, falling back to cache if offline.
+  /// Load cards from GitHub, using ETag for conditional requests.
+  /// Falls back to cache if offline.
   Future<List<PocketCard>> getAllCards() async {
     if (_cards != null) return _cards!;
 
-    // Try fetching from CDN
+    final prefs = await SharedPreferences.getInstance();
+    final cachedEtag = prefs.getString(_etagKey);
+
     try {
+      final headers = <String, String>{};
+      if (cachedEtag != null) {
+        headers['If-None-Match'] = cachedEtag;
+      }
+
       final response = await http
-          .get(Uri.parse(_cardsUrl))
+          .get(Uri.parse(_cardsUrl), headers: headers)
           .timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
         final jsonString = response.body;
         _cards = _parseCards(jsonString);
-        // Cache for offline use
-        final prefs = await SharedPreferences.getInstance();
+        // Cache JSON and ETag
         await prefs.setString(_cacheKey, jsonString);
+        final etag = response.headers['etag'];
+        if (etag != null) {
+          await prefs.setString(_etagKey, etag);
+        }
         return _cards!;
+      }
+
+      if (response.statusCode == 304) {
+        // Not modified — use cached data
+        final cached = prefs.getString(_cacheKey);
+        if (cached != null) {
+          _cards = _parseCards(cached);
+          return _cards!;
+        }
       }
     } catch (_) {
       // Fall through to cache
     }
 
     // Fallback: load from cache
-    final prefs = await SharedPreferences.getInstance();
     final cached = prefs.getString(_cacheKey);
     if (cached != null) {
       _cards = _parseCards(cached);
@@ -57,11 +78,11 @@ class CardService {
     return all.where((c) => c.set == set).toList();
   }
 
-  /// Get a single card by set and number.
-  Future<PocketCard?> getCard(String set, int number) async {
+  /// Get a single card by id.
+  Future<PocketCard?> getCard(String id) async {
     final all = await getAllCards();
     try {
-      return all.firstWhere((c) => c.set == set && c.number == number);
+      return all.firstWhere((c) => c.id == id);
     } catch (_) {
       return null;
     }
