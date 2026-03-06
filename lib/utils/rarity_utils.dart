@@ -12,3 +12,16 @@ const rarityAssets = <String, String>{
 
 /// Returns the local asset path for a rarity symbol, or null if not mapped.
 String? getRarityAsset(String rarity) => rarityAssets[rarity];
+
+// trade cost in shinedust (null means not tradeable)
+const tradeCosts = <String, String>{
+  '◊': '0',
+  '◊◊': '0',
+  '◊◊◊': '1200',
+  '◊◊◊◊': '5000',
+  '☆': '10,000',
+  '☆☆': '25,000',
+};
+
+/// Returns the trade cost for a rarity, or null if not tradeable/mapped.
+String? getTradeCost(String rarity) => tradeCosts[rarity];

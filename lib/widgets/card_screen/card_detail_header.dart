@@ -8,6 +8,21 @@ class CardDetailHeader extends StatelessWidget {
 
   const CardDetailHeader({super.key, required this.card});
 
+  Widget _buildTradeCost(String rarity) {
+    final cost = getTradeCost(rarity);
+    if (cost == null) {
+      return const Text('—', style: TextStyle(color: Colors.white));
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(cost, style: const TextStyle(color: Colors.white)),
+        const SizedBox(width: 4),
+        Image.asset('images/shinedust.png', height: 18, fit: BoxFit.contain),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -17,8 +32,7 @@ class CardDetailHeader extends StatelessWidget {
         children: [
           Hero(
             tag: 'card-hero-${card.id}',
-            createRectTween: (begin, end) =>
-                RectTween(begin: begin, end: end),
+            createRectTween: (begin, end) => RectTween(begin: begin, end: end),
             child: CachedNetworkImage(
               imageUrl: card.imageUrl,
               height: 220,
@@ -66,9 +80,9 @@ class CardDetailHeader extends StatelessWidget {
                       style: const TextStyle(color: Colors.white)),
                 ),
                 const SizedBox(height: 12),
-                const _InfoRow(
+                _InfoRow(
                   label: 'Trade cost',
-                  child: Text('—', style: TextStyle(color: Colors.white)),
+                  child: _buildTradeCost(card.rarity),
                 ),
               ],
             ),
