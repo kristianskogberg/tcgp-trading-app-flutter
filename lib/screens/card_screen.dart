@@ -90,10 +90,23 @@ class CardScreen extends StatefulWidget {
   State<CardScreen> createState() => _CardScreenState();
 }
 
+const _languages = [
+  'English',
+  'Japanese',
+  'French',
+  'Italian',
+  'German',
+  'Spanish',
+  'Portuguese',
+  'Chinese',
+  'Korean',
+];
+
 class _CardScreenState extends State<CardScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   int _activeTab = 0;
+  Set<String> _selectedLanguages = {..._languages};
 
   @override
   void initState() {
@@ -129,7 +142,7 @@ class _CardScreenState extends State<CardScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -193,7 +206,7 @@ class _CardScreenState extends State<CardScreen>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(
                 children: [
                   Expanded(
@@ -216,19 +229,113 @@ class _CardScreenState extends State<CardScreen>
             ),
             const SizedBox(height: 8),
             Container(
-              color: const Color(0xFF1E1E24),
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E24),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: TabBar(
                 controller: _tabController,
-                tabs: const [Tab(text: 'Offers'), Tab(text: 'Wants')],
-                indicatorColor: const Color(0xFF02F8AE),
-                labelColor: Colors.white,
+                indicator: BoxDecoration(
+                  color: const Color(0xFF02F8AE),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                dividerHeight: 0,
+                labelColor: Colors.black,
                 unselectedLabelColor: Colors.white60,
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+                unselectedLabelStyle: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                  fontSize: 14,
+                ),
+                splashFactory: NoSplash.splashFactory,
+                overlayColor: WidgetStateProperty.all(Colors.transparent),
+                tabs: const [
+                  Tab(height: 36, text: 'Offers'),
+                  Tab(height: 36, text: 'Wants')
+                ],
+              ),
+            ),
+            // Language filter
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    FilterChip(
+                      label: const Text('All'),
+                      selected: _selectedLanguages.length == _languages.length,
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            _selectedLanguages = {..._languages};
+                          } else {
+                            _selectedLanguages.clear();
+                          }
+                        });
+                      },
+                      selectedColor: const Color(0xFF1E1E24),
+                      checkmarkColor: const Color(0xFF02F8AE),
+                      labelStyle: TextStyle(
+                        color: _selectedLanguages.length == _languages.length
+                            ? const Color(0xFF02F8AE)
+                            : Colors.white70,
+                        fontSize: 12,
+                      ),
+                      backgroundColor: const Color(0xFF1E1E24),
+                      side: BorderSide(
+                        color: _selectedLanguages.length == _languages.length
+                            ? const Color(0xFF02F8AE)
+                            : Colors.white24,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    ..._languages.map((lang) {
+                      final isSelected = _selectedLanguages.contains(lang);
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: FilterChip(
+                          label: Text(lang),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedLanguages.add(lang);
+                              } else {
+                                _selectedLanguages.remove(lang);
+                              }
+                            });
+                          },
+                          selectedColor: const Color(0xFF1E1E24),
+                          checkmarkColor: const Color(0xFF02F8AE),
+                          labelStyle: TextStyle(
+                            color: isSelected
+                                ? const Color(0xFF02F8AE)
+                                : Colors.white70,
+                            fontSize: 12,
+                          ),
+                          backgroundColor: const Color(0xFF1E1E24),
+                          side: BorderSide(
+                            color: isSelected
+                                ? const Color(0xFF02F8AE)
+                                : Colors.white24,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
               ),
             ),
             // Info box for the active tab
             Container(
               width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+              margin: const EdgeInsets.fromLTRB(6, 6, 6, 0),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFF1E1E24),
@@ -294,7 +401,7 @@ class _TradeEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
