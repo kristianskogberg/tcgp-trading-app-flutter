@@ -8,8 +8,8 @@ class CardDetailHeader extends StatelessWidget {
 
   const CardDetailHeader({super.key, required this.card});
 
-  Widget _buildTradeCost(String rarity) {
-    final cost = getTradeCost(rarity);
+  Widget _buildTradeCost(String rarity, String pack) {
+    final cost = getTradeCost(rarity, pack: pack);
     if (cost == null) {
       return const Text('—', style: TextStyle(color: Colors.white));
     }
@@ -82,7 +82,7 @@ class CardDetailHeader extends StatelessWidget {
                 const SizedBox(height: 12),
                 _InfoRow(
                   label: 'Trade cost',
-                  child: _buildTradeCost(card.rarity),
+                  child: _buildTradeCost(card.rarity, card.pack),
                 ),
               ],
             ),

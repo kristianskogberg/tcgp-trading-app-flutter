@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/widgets/card_screen/card_detail_header.dart';
 import 'package:tcgp_trading_app/widgets/card_screen/trade_section.dart';
 
@@ -7,11 +8,9 @@ class CardScreen extends StatelessWidget {
   final PocketCard card;
   const CardScreen({super.key, required this.card});
 
-  static const _untradableRarities = {'☆☆☆', '♕', 'Promo'};
-
   @override
   Widget build(BuildContext context) {
-    final isUntradable = _untradableRarities.contains(card.rarity);
+    final isUntradable = isCardUntradable(card.rarity, card.pack);
 
     return Scaffold(
       appBar: AppBar(
@@ -38,7 +37,7 @@ class CardScreen extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'This card is currently not tradable.',
+                        'This card is currently not available for trading.',
                         style: const TextStyle(
                             fontSize: 13, color: Colors.white54),
                       ),

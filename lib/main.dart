@@ -38,10 +38,30 @@ class MyApp extends StatelessWidget {
           backgroundColor: Color(0xFF0D0D0F),
           surfaceTintColor: Colors.transparent,
           elevation: 0,
+          toolbarHeight: 48,
         ),
-        drawerTheme: const DrawerThemeData(
-          backgroundColor: Color(0xFF141418),
+        navigationBarTheme: NavigationBarThemeData(
+          height: 60,
+          backgroundColor: const Color(0xFF141418),
           surfaceTintColor: Colors.transparent,
+          indicatorColor: Colors.transparent,
+          overlayColor: WidgetStateProperty.all(Colors.transparent),
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(color: Color(0xFF02F8AE));
+            }
+            return const IconThemeData(color: Colors.white54);
+          }),
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const TextStyle(
+                color: Color(0xFF02F8AE),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              );
+            }
+            return const TextStyle(color: Colors.white54, fontSize: 12);
+          }),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(

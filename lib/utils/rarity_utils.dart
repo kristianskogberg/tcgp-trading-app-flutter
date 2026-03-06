@@ -24,4 +24,15 @@ const tradeCosts = <String, String>{
 };
 
 /// Returns the trade cost for a rarity, or null if not tradeable/mapped.
-String? getTradeCost(String rarity) => tradeCosts[rarity];
+/// Cards from promo packs are also not tradeable.
+String? getTradeCost(String rarity, {String pack = ''}) {
+  if (pack.toLowerCase().contains('promo')) return null;
+  return tradeCosts[rarity];
+}
+
+/// Whether a card is untradable based on rarity and pack.
+bool isCardUntradable(String rarity, String pack) {
+  const untradableRarities = {'☆☆☆', '♕', 'Promo'};
+  return untradableRarities.contains(rarity) ||
+      pack.toLowerCase().contains('promo');
+}

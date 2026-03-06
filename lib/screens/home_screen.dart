@@ -6,8 +6,7 @@ import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/filter_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
-  final VoidCallback? onMenuTap;
-  const HomeScreen({super.key, this.onMenuTap});
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -185,12 +184,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: widget.onMenuTap != null
-            ? IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: widget.onMenuTap,
-              )
-            : null,
+        automaticallyImplyLeading: false,
+        titleSpacing: 12,
         title: SizedBox(
           height: 40,
           child: TextField(

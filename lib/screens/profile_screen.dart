@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/utils/text_input_field.dart';
 
 class ProfileScreen extends StatefulWidget {
-  final VoidCallback? onMenuTap;
-  const ProfileScreen({super.key, this.onMenuTap});
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -16,7 +14,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _usernameController = TextEditingController();
   final _friendIdController = TextEditingController();
   final _profileService = ProfileService();
-  final _authService = AuthService();
 
   String? _usernameErrorMessage;
   String? _friendIdErrorMessage;
@@ -115,18 +112,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _logout() async {
-    try {
-      await _profileService.clearProfileCache();
-      await _authService.signOut();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Failed to sign out')));
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final formValid = _usernameErrorMessage == null &&
@@ -136,20 +121,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: widget.onMenuTap != null
-            ? IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: widget.onMenuTap,
-              )
-            : null,
+        automaticallyImplyLeading: false,
         title: const Text('Profile'),
-        actions: [
-          IconButton(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout),
-            tooltip: 'Sign out',
-          ),
-        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
