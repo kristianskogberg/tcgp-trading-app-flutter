@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tcgp_trading_app/auth/profile_gate.dart';
 import 'package:tcgp_trading_app/screens/login_screen.dart';
-import 'package:tcgp_trading_app/screens/main_screen.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
@@ -16,7 +16,7 @@ class AuthGate extends StatelessWidget {
           }
           final session = snapshot.hasData ? snapshot.data!.session : null;
           if (session != null) {
-            return MainScreen();
+            return ProfileGate();
           } else {
             return LoginScreen();
           }

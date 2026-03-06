@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
+import 'package:tcgp_trading_app/auth/profile_service.dart';
+import 'package:tcgp_trading_app/utils/text_input_field.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -9,17 +12,22 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final authService = AuthService();
+  final _authService = AuthService();
+  final _profileService = ProfileService();
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _playerNameController = TextEditingController();
+  final _friendIdController = TextEditingController();
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _playerNameController.dispose();
+    _friendIdController.dispose();
     super.dispose();
   }
 
@@ -27,8 +35,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
+    final playerName = _playerNameController.text.trim();
+    final friendId = _friendIdController.text.trim();
 
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (email.isEmpty ||
+        password.isEmpty ||
+        confirmPassword.isEmpty ||
+        playerName.isEmpty ||
+        friendId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill in all fields')),
       );
@@ -56,8 +70,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (playerName.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Player Name must be at least 2 characters')),
+      );
+      return;
+    }
+
+    if (friendId.length != 12) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Friend ID must be 12 digits')),
+      );
+      return;
+    }
+
     try {
-      await authService.signUpWithEmailPassword(email, password);
+      await _authService.signUpWithEmailPassword(email, password);
+      try {
+        await _profileService.saveProfile(
+          playerName: playerName,
+          friendId: friendId,
+        );
+      } catch (_) {
+        // Profile save failed — the ProfileGate will catch this
+      }
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
@@ -93,6 +129,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
               controller: _confirmPasswordController,
               obscureText: true,
               decoration: const InputDecoration(labelText: 'Confirm Password'),
+            ),
+            const SizedBox(height: 20),
+            TextInputField(
+              controller: _playerNameController,
+              label: 'Player Name',
+            ),
+            const SizedBox(height: 10),
+            TextInputField(
+              controller: _friendIdController,
+              label: 'Friend ID',
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              maxLength: 12,
             ),
             const SizedBox(height: 20),
             ElevatedButton(

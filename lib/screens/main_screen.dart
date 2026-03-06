@@ -18,10 +18,12 @@ class _MainScreenState extends State<MainScreen> {
     return Scaffold(
       body: IndexedStack(
         index: _currentScreenIndex,
-        children: const [
-          HomeScreen(),
-          ProfileScreen(),
-          SettingsScreen(),
+        children: [
+          const HomeScreen(),
+          ProfileScreen(
+            onProfileSaved: () => setState(() => _currentScreenIndex = 0),
+          ),
+          const SettingsScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(

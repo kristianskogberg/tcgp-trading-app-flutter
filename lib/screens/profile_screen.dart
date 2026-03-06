@@ -4,7 +4,8 @@ import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/utils/text_input_field.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  final VoidCallback? onProfileSaved;
+  const ProfileScreen({super.key, this.onProfileSaved});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -42,13 +43,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _usernameController.text = profile['player_name'] ?? '';
         }
         if (_friendIdController.text.isEmpty) {
-          _friendIdController.text = profile['friend_id'] ?? '';
+          _friendIdController.text = profile['friend_id']?.toString() ?? '';
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Failed to load profile')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to load profile')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -101,11 +102,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile saved')),
         );
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else if (widget.onProfileSaved != null) {
+          widget.onProfileSaved!();
+        }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Failed to save profile')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to save profile: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
