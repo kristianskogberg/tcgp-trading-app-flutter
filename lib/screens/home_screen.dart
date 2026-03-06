@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
-import 'package:tcgp_trading_app/screens/card_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
+import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
+import 'package:tcgp_trading_app/widgets/home_screen/filter_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onMenuTap;
@@ -48,7 +48,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _cardsFuture = CardService().getAllCards();
-    _searchController.addListener(_onSearchChanged);
   }
 
   @override
@@ -59,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _onSearchChanged() {
+  void _onSearchChanged(String _) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       _applyFilters();
@@ -105,17 +104,13 @@ class _HomeScreenState extends State<HomeScreen> {
           return false;
         }
         // Pack filter (OR within category)
-        if (_selectedPacks.isNotEmpty &&
-            !_selectedPacks.contains(card.pack)) {
+        if (_selectedPacks.isNotEmpty && !_selectedPacks.contains(card.pack)) {
           return false;
         }
         return true;
       }).toList()
         ..sort((a, b) => a.number.compareTo(b.number));
     });
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(0);
-    }
   }
 
   void _removeFilter(String type, String value) {
@@ -133,214 +128,22 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openFilterSheet() {
-    // Draft copies
-    var draftSets = Set<String>.from(_selectedSets);
-    var draftRarities = Set<String>.from(_selectedRarities);
-    var draftPacks = Set<String>.from(_selectedPacks);
-
-    showModalBottomSheet(
+    openFilterSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.65,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          builder: (context, scrollController) {
-            return StatefulBuilder(
-              builder: (context, setSheetState) {
-                return Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF141418),
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(20)),
-                  ),
-                  child: Column(
-                    children: [
-                      // Handle bar
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12, bottom: 8),
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-                      // Title
-                      const Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Filters',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Filter sections
-                      Expanded(
-                        child: ListView(
-                          controller: scrollController,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          children: [
-                            _buildFilterSection(
-                              'Set',
-                              _availableSets,
-                              draftSets,
-                              (val) => setSheetState(() {
-                                draftSets.contains(val)
-                                    ? draftSets.remove(val)
-                                    : draftSets.add(val);
-                              }),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildFilterSection(
-                              'Rarity',
-                              _availableRarities,
-                              draftRarities,
-                              (val) => setSheetState(() {
-                                draftRarities.contains(val)
-                                    ? draftRarities.remove(val)
-                                    : draftRarities.add(val);
-                              }),
-                            ),
-                            const SizedBox(height: 16),
-                            _buildFilterSection(
-                              'Packs',
-                              _availablePacks,
-                              draftPacks,
-                              (val) => setSheetState(() {
-                                draftPacks.contains(val)
-                                    ? draftPacks.remove(val)
-                                    : draftPacks.add(val);
-                              }),
-                            ),
-                            const SizedBox(height: 80),
-                          ],
-                        ),
-                      ),
-                      // Bottom buttons
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF141418),
-                          border: Border(
-                            top: BorderSide(color: Colors.white12),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  setSheetState(() {
-                                    draftSets.clear();
-                                    draftRarities.clear();
-                                    draftPacks.clear();
-                                  });
-                                },
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.white70,
-                                  side: const BorderSide(color: Colors.white24),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                ),
-                                child: const Text('Clear All'),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: FilledButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _selectedSets = draftSets;
-                                    _selectedRarities = draftRarities;
-                                    _selectedPacks = draftPacks;
-                                  });
-                                  _applyFilters();
-                                  Navigator.pop(context);
-                                },
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: const Color(0xFF02F8AE),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                ),
-                                child: const Text('Apply'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-        );
+      availableSets: _availableSets,
+      availableRarities: _availableRarities,
+      availablePacks: _availablePacks,
+      selectedSets: _selectedSets,
+      selectedRarities: _selectedRarities,
+      selectedPacks: _selectedPacks,
+      onApply: (sets, rarities, packs) {
+        setState(() {
+          _selectedSets = sets;
+          _selectedRarities = rarities;
+          _selectedPacks = packs;
+        });
+        _applyFilters();
       },
-    );
-  }
-
-  Widget _buildFilterSection(
-    String title,
-    List<String> options,
-    Set<String> selected,
-    void Function(String) onToggle,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.white70,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: options.map((option) {
-            final isSelected = selected.contains(option);
-            return FilterChip(
-              label: Text(option),
-              selected: isSelected,
-              onSelected: (_) => onToggle(option),
-              selectedColor: const Color(0xFF02F8AE),
-              checkmarkColor: Colors.white,
-              backgroundColor: const Color(0xFF1E1E24),
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.white70,
-                fontSize: 13,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: isSelected ? const Color(0xFF02F8AE) : Colors.white24,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
     );
   }
 
@@ -392,6 +195,8 @@ class _HomeScreenState extends State<HomeScreen> {
           height: 40,
           child: TextField(
             controller: _searchController,
+            onChanged: _onSearchChanged,
+            keyboardType: TextInputType.text,
             style: const TextStyle(color: Colors.white, fontSize: 15),
             decoration: InputDecoration(
               hintText: 'Search cards...',
@@ -448,147 +253,103 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: FutureBuilder<List<PocketCard>>(
-        future: _cardsFuture,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return const Center(child: Text('Failed to load cards'));
-          }
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final cards = snapshot.data ?? [];
-          if (cards.isEmpty) {
-            return const Center(child: Text('No cards found'));
-          }
+      body: NotificationListener<ScrollStartNotification>(
+        onNotification: (notification) {
+          FocusScope.of(context).unfocus();
+          return false;
+        },
+        child: FutureBuilder<List<PocketCard>>(
+          future: _cardsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const Center(child: Text('Failed to load cards'));
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final cards = snapshot.data ?? [];
+            if (cards.isEmpty) {
+              return const Center(child: Text('No cards found'));
+            }
 
-          // Populate _allCards once data arrives
-          _populateCards(cards);
+            // Populate _allCards once data arrives
+            _populateCards(cards);
 
-          // Use _filteredCards if populated, otherwise show all
-          final displayCards = _allCards.isNotEmpty ? _filteredCards : cards;
+            // Use _filteredCards if populated, otherwise show all
+            final displayCards = _allCards.isNotEmpty ? _filteredCards : cards;
 
-          return Column(
-            children: [
-              // Active filter chips row
-              if (_hasActiveFilters)
-                SizedBox(
-                  height: 48,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    children: _buildActiveFilterChips(),
+            return Column(
+              children: [
+                // Active filter chips row
+                if (_hasActiveFilters)
+                  SizedBox(
+                    height: 48,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 6),
+                      children: _buildActiveFilterChips(),
+                    ),
                   ),
-                ),
-              // Result count
-              if (_isFiltering && displayCards.isNotEmpty)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '${displayCards.length} ${displayCards.length == 1 ? 'result' : 'results'}',
-                      style: const TextStyle(
-                        color: Colors.white38,
-                        fontSize: 12,
+                // Result count
+                if (_isFiltering && displayCards.isNotEmpty)
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${displayCards.length} ${displayCards.length == 1 ? 'result' : 'results'}',
+                        style: const TextStyle(
+                          color: Colors.white38,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              // Card grid or empty state
-              Expanded(
-                child: displayCards.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.search_off,
-                                size: 64, color: Colors.white24),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'No cards match',
-                              style: TextStyle(
-                                  color: Colors.white38, fontSize: 16),
-                            ),
-                          ],
+                // Card grid or empty state
+                Expanded(
+                  child: displayCards.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.search_off,
+                                  size: 64, color: Colors.white24),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'No cards match',
+                                style: TextStyle(
+                                    color: Colors.white38, fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        )
+                      : LayoutBuilder(
+                          builder: (context, constraints) {
+                            int crossAxisCount =
+                                (constraints.maxWidth ~/ 180).clamp(3, 4);
+                            return GridView.builder(
+                              controller: _scrollController,
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                childAspectRatio: 0.7,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                              ),
+                              padding: const EdgeInsets.all(6),
+                              itemCount: displayCards.length,
+                              itemBuilder: (context, index) {
+                                return CardTile(card: displayCards[index]);
+                              },
+                            );
+                          },
                         ),
-                      )
-                    : LayoutBuilder(
-                        builder: (context, constraints) {
-                          int crossAxisCount =
-                              (constraints.maxWidth ~/ 180).clamp(3, 4);
-                          return GridView.builder(
-                            controller: _scrollController,
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: crossAxisCount,
-                              childAspectRatio: 0.7,
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                            ),
-                            padding: const EdgeInsets.all(6),
-                            itemCount: displayCards.length,
-                            itemBuilder: (context, index) {
-                              return _CardTile(card: displayCards[index]);
-                            },
-                          );
-                        },
-                      ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _CardTile extends StatelessWidget {
-  final PocketCard card;
-  const _CardTile({required this.card});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            opaque: false,
-            transitionDuration: const Duration(milliseconds: 300),
-            reverseTransitionDuration: const Duration(milliseconds: 300),
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                CardScreen(card: card),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation,
-                child: child,
-              );
-            },
-          ),
-        );
-      },
-      child: Hero(
-        tag: 'card-hero-${card.id}',
-        createRectTween: (begin, end) => RectTween(begin: begin, end: end),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: CachedNetworkImage(
-            imageUrl: card.imageUrl,
-            fit: BoxFit.contain,
-            placeholder: (context, url) => const Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-            errorWidget: (context, url, error) =>
-                const Icon(Icons.broken_image, color: Colors.white24),
-          ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
