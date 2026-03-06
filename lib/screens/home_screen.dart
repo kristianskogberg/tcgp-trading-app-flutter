@@ -491,7 +491,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       '${displayCards.length} ${displayCards.length == 1 ? 'result' : 'results'}',
                       style: const TextStyle(
                         color: Colors.white38,
-                        fontSize: 13,
+                        fontSize: 12,
                       ),
                     ),
                   ),
@@ -527,7 +527,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               crossAxisSpacing: 8,
                               mainAxisSpacing: 8,
                             ),
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(6),
                             itemCount: displayCards.length,
                             itemBuilder: (context, index) {
                               return _CardTile(card: displayCards[index]);

@@ -1,85 +1,117 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/utils/languages.dart';
 
-// Placeholder trade data
+// Placeholder trade data (card + language code)
 final _placeholderOffers = [
-  {
-    'username': 'AshKetchum99',
-    'cards': [
-      PocketCard(
-          set: 'A1', number: 1, rarity: 'C', name: 'Bulbasaur', packs: []),
-      PocketCard(
-          set: 'A1', number: 4, rarity: 'C', name: 'Charmander', packs: []),
-      PocketCard(
-          set: 'A1', number: 7, rarity: 'C', name: 'Squirtle', packs: []),
-    ],
-  },
-  {
-    'username': 'MistyWaterflower',
-    'cards': [
-      PocketCard(
-          set: 'A1', number: 35, rarity: 'U', name: 'Clefairy', packs: []),
-      PocketCard(
-          set: 'A1', number: 25, rarity: 'R', name: 'Pikachu', packs: []),
-    ],
-  },
-  {
-    'username': 'BrockPewter',
-    'cards': [
-      PocketCard(set: 'A1a', number: 1, rarity: 'C', name: 'Ekans', packs: []),
-      PocketCard(
-          set: 'A1a', number: 10, rarity: 'U', name: 'Mankey', packs: []),
-      PocketCard(
-          set: 'A1', number: 130, rarity: 'RR', name: 'Gyarados', packs: []),
-      PocketCard(set: 'A1', number: 94, rarity: 'R', name: 'Gengar', packs: []),
-    ],
-  },
-  {
-    'username': 'TrainerRed',
-    'cards': [
-      PocketCard(
-          set: 'A1', number: 6, rarity: 'R', name: 'Charizard', packs: []),
-      PocketCard(
-          set: 'A1', number: 9, rarity: 'R', name: 'Blastoise', packs: []),
-      PocketCard(
-          set: 'A1', number: 3, rarity: 'R', name: 'Venusaur', packs: []),
-    ],
-  },
+  (
+    card: PocketCard(
+        set: 'A1', number: 1, rarity: 'C', name: 'Bulbasaur', packs: []),
+    lang: 'ENG'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 4, rarity: 'C', name: 'Charmander', packs: []),
+    lang: 'JPN'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 7, rarity: 'C', name: 'Squirtle', packs: []),
+    lang: 'ENG'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 35, rarity: 'U', name: 'Clefairy', packs: []),
+    lang: 'FRA'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 25, rarity: 'R', name: 'Pikachu', packs: []),
+    lang: 'DEU'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1a', number: 1, rarity: 'C', name: 'Ekans', packs: []),
+    lang: 'ESP'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1a', number: 10, rarity: 'U', name: 'Mankey', packs: []),
+    lang: 'ENG'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 130, rarity: 'RR', name: 'Gyarados', packs: []),
+    lang: 'KOR'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 94, rarity: 'R', name: 'Gengar', packs: []),
+    lang: 'ITA'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 6, rarity: 'R', name: 'Charizard', packs: []),
+    lang: 'JPN'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 9, rarity: 'R', name: 'Blastoise', packs: []),
+    lang: 'POR'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 3, rarity: 'R', name: 'Venusaur', packs: []),
+    lang: 'CHN'
+  ),
 ];
 
 final _placeholderWants = [
-  {
-    'username': 'GaryOak',
-    'cards': [
-      PocketCard(
-          set: 'A1', number: 150, rarity: 'SR', name: 'Mewtwo', packs: []),
-      PocketCard(
-          set: 'A1', number: 143, rarity: 'U', name: 'Snorlax', packs: []),
-      PocketCard(
-          set: 'A1', number: 131, rarity: 'RR', name: 'Lapras', packs: []),
-    ],
-  },
-  {
-    'username': 'NurseJoy',
-    'cards': [
-      PocketCard(
-          set: 'A1', number: 113, rarity: 'U', name: 'Chansey', packs: []),
-      PocketCard(
-          set: 'A1a', number: 15, rarity: 'R', name: 'Arcanine', packs: []),
-    ],
-  },
-  {
-    'username': 'LtSurge',
-    'cards': [
-      PocketCard(set: 'A1', number: 26, rarity: 'R', name: 'Raichu', packs: []),
-      PocketCard(
-          set: 'A1', number: 82, rarity: 'U', name: 'Magneton', packs: []),
-      PocketCard(
-          set: 'A1', number: 101, rarity: 'U', name: 'Electrode', packs: []),
-      PocketCard(
-          set: 'A1a', number: 5, rarity: 'C', name: 'Voltorb', packs: []),
-    ],
-  },
+  (
+    card: PocketCard(
+        set: 'A1', number: 150, rarity: 'SR', name: 'Mewtwo', packs: []),
+    lang: 'ENG'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 143, rarity: 'U', name: 'Snorlax', packs: []),
+    lang: 'JPN'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 131, rarity: 'RR', name: 'Lapras', packs: []),
+    lang: 'FRA'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 113, rarity: 'U', name: 'Chansey', packs: []),
+    lang: 'ENG'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1a', number: 15, rarity: 'R', name: 'Arcanine', packs: []),
+    lang: 'DEU'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 26, rarity: 'R', name: 'Raichu', packs: []),
+    lang: 'ESP'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 82, rarity: 'U', name: 'Magneton', packs: []),
+    lang: 'KOR'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1', number: 101, rarity: 'U', name: 'Electrode', packs: []),
+    lang: 'ENG'
+  ),
+  (
+    card: PocketCard(
+        set: 'A1a', number: 5, rarity: 'C', name: 'Voltorb', packs: []),
+    lang: 'ITA'
+  ),
 ];
 
 class CardScreen extends StatefulWidget {
@@ -90,23 +122,11 @@ class CardScreen extends StatefulWidget {
   State<CardScreen> createState() => _CardScreenState();
 }
 
-const _languages = [
-  'English',
-  'Japanese',
-  'French',
-  'Italian',
-  'German',
-  'Spanish',
-  'Portuguese',
-  'Chinese',
-  'Korean',
-];
-
 class _CardScreenState extends State<CardScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   int _activeTab = 0;
-  Set<String> _selectedLanguages = {..._languages};
+  Set<String> _selectedLanguages = {...languages.keys};
 
   @override
   void initState() {
@@ -129,9 +149,8 @@ class _CardScreenState extends State<CardScreen>
   Widget build(BuildContext context) {
     final card = widget.card;
 
-    final activeTrades =
+    final activeCards =
         _activeTab == 0 ? _placeholderOffers : _placeholderWants;
-    final activeLabel = _activeTab == 0 ? 'wants' : 'can offer';
 
     return Scaffold(
       appBar: AppBar(
@@ -249,93 +268,21 @@ class _CardScreenState extends State<CardScreen>
                   fontSize: 14,
                 ),
                 unselectedLabelStyle: const TextStyle(
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w400,
                   fontSize: 14,
                 ),
                 splashFactory: NoSplash.splashFactory,
                 overlayColor: WidgetStateProperty.all(Colors.transparent),
                 tabs: const [
-                  Tab(height: 36, text: 'Offers'),
-                  Tab(height: 36, text: 'Wants')
+                  Tab(height: 36, text: 'Get this card'),
+                  Tab(height: 36, text: 'Trade this card')
                 ],
-              ),
-            ),
-            // Language filter
-            Padding(
-              padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    FilterChip(
-                      label: const Text('All'),
-                      selected: _selectedLanguages.length == _languages.length,
-                      onSelected: (selected) {
-                        setState(() {
-                          if (selected) {
-                            _selectedLanguages = {..._languages};
-                          } else {
-                            _selectedLanguages.clear();
-                          }
-                        });
-                      },
-                      selectedColor: const Color(0xFF1E1E24),
-                      checkmarkColor: const Color(0xFF02F8AE),
-                      labelStyle: TextStyle(
-                        color: _selectedLanguages.length == _languages.length
-                            ? const Color(0xFF02F8AE)
-                            : Colors.white70,
-                        fontSize: 12,
-                      ),
-                      backgroundColor: const Color(0xFF1E1E24),
-                      side: BorderSide(
-                        color: _selectedLanguages.length == _languages.length
-                            ? const Color(0xFF02F8AE)
-                            : Colors.white24,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    ..._languages.map((lang) {
-                      final isSelected = _selectedLanguages.contains(lang);
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: FilterChip(
-                          label: Text(lang),
-                          selected: isSelected,
-                          onSelected: (selected) {
-                            setState(() {
-                              if (selected) {
-                                _selectedLanguages.add(lang);
-                              } else {
-                                _selectedLanguages.remove(lang);
-                              }
-                            });
-                          },
-                          selectedColor: const Color(0xFF1E1E24),
-                          checkmarkColor: const Color(0xFF02F8AE),
-                          labelStyle: TextStyle(
-                            color: isSelected
-                                ? const Color(0xFF02F8AE)
-                                : Colors.white70,
-                            fontSize: 12,
-                          ),
-                          backgroundColor: const Color(0xFF1E1E24),
-                          side: BorderSide(
-                            color: isSelected
-                                ? const Color(0xFF02F8AE)
-                                : Colors.white24,
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
               ),
             ),
             // Info box for the active tab
             Container(
               width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+              margin: const EdgeInsets.fromLTRB(6, 10, 6, 10),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFF1E1E24),
@@ -347,25 +294,146 @@ class _CardScreenState extends State<CardScreen>
                       size: 16, color: Colors.white38),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      _activeTab == 0
-                          ? 'These users have this card and want to trade it. Check if you have any of the cards they\'re looking for.'
-                          : 'These users are looking for this card. See what they can offer you in return.',
-                      style:
-                          const TextStyle(fontSize: 12, color: Colors.white54),
+                    child: Text.rich(
+                      TextSpan(
+                        style: const TextStyle(
+                            fontSize: 12, color: Colors.white54),
+                        children: _activeTab == 0
+                            ? [
+                                const TextSpan(text: 'If you want '),
+                                TextSpan(
+                                  text: card.name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white70),
+                                ),
+                                const TextSpan(
+                                    text:
+                                        ' and you are willing to trade for it, these are cards you could offer in return.'),
+                              ]
+                            : [
+                                const TextSpan(text: 'If you own '),
+                                TextSpan(
+                                  text: card.name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white70),
+                                ),
+                                const TextSpan(
+                                    text:
+                                        ' and you are willing to trade it, these are cards you could ask for in a trade.'),
+                              ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            // Trade entries rendered inline
-            ...activeTrades.map((trade) {
-              final username = trade['username'] as String;
-              final cards = trade['cards'] as List<PocketCard>;
-              return _TradeEntry(
-                  username: username, cards: cards, label: activeLabel);
-            }),
-            const SizedBox(height: 24),
+
+            // Language filter
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Row(
+                children: [
+                  FilterChip(
+                    label: const Text('All'),
+                    selected: _selectedLanguages.length == languages.length,
+                    onSelected: (selected) {
+                      setState(() {
+                        if (selected) {
+                          _selectedLanguages = {...languages.keys};
+                        } else {
+                          _selectedLanguages.clear();
+                        }
+                      });
+                    },
+                    selectedColor: const Color(0xFF1E1E24),
+                    checkmarkColor: const Color(0xFF02F8AE),
+                    labelStyle: TextStyle(
+                      color: _selectedLanguages.length == languages.length
+                          ? const Color(0xFF02F8AE)
+                          : Colors.white70,
+                      fontSize: 12,
+                    ),
+                    backgroundColor: const Color(0xFF1E1E24),
+                    side: BorderSide(
+                      color: _selectedLanguages.length == languages.length
+                          ? const Color(0xFF02F8AE)
+                          : Colors.white24,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  ...languages.entries.map((entry) {
+                    final isSelected = _selectedLanguages.contains(entry.key);
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(entry.value),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedLanguages.add(entry.key);
+                            } else {
+                              _selectedLanguages.remove(entry.key);
+                            }
+                          });
+                        },
+                        selectedColor: const Color(0xFF1E1E24),
+                        checkmarkColor: const Color(0xFF02F8AE),
+                        labelStyle: TextStyle(
+                          color: isSelected
+                              ? const Color(0xFF02F8AE)
+                              : Colors.white70,
+                          fontSize: 12,
+                        ),
+                        backgroundColor: const Color(0xFF1E1E24),
+                        side: BorderSide(
+                          color: isSelected
+                              ? const Color(0xFF02F8AE)
+                              : Colors.white24,
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            // Card grid
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 10, 6, 24),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // 3 columns on small screens, 4 on medium, 5 on wide
+                  final width = constraints.maxWidth;
+                  final crossAxisCount = width < 300
+                      ? 3
+                      : width < 400
+                          ? 4
+                          : 5;
+                  const spacing = 8.0;
+                  final itemWidth =
+                      (width - spacing * (crossAxisCount - 1)) / crossAxisCount;
+                  final itemHeight = itemWidth * 1.4;
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      crossAxisSpacing: spacing,
+                      mainAxisSpacing: spacing,
+                      childAspectRatio: itemWidth / itemHeight,
+                    ),
+                    itemCount: activeCards.length,
+                    itemBuilder: (context, i) => _CardThumbnail(
+                      card: activeCards[i].card,
+                      lang: activeCards[i].lang,
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -384,66 +452,6 @@ class _CardScreenState extends State<CardScreen>
       const SnackBar(content: Text('Marked as can trade')),
     );
     debugPrint('User can trade card: ${widget.card.id}');
-  }
-}
-
-class _TradeEntry extends StatelessWidget {
-  final String username;
-  final List<PocketCard> cards;
-  final String label;
-
-  const _TradeEntry({
-    required this.username,
-    required this.cards,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Divider(height: 1),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: const Color(0xFF02F8AE),
-                child: Text(
-                  username[0],
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  username,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label == 'wants' ? 'Looking for:' : 'Can offer:',
-            style: const TextStyle(fontSize: 12, color: Colors.white54),
-          ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: 100,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: cards.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
-              itemBuilder: (context, i) => _CardThumbnail(card: cards[i]),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -469,20 +477,44 @@ class _InfoRow extends StatelessWidget {
 
 class _CardThumbnail extends StatelessWidget {
   final PocketCard card;
+  final String lang;
 
-  const _CardThumbnail({required this.card});
+  const _CardThumbnail({required this.card, required this.lang});
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(4),
-      child: Image.network(
-        card.imageUrl,
-        height: 100,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => const SizedBox(
-            width: 42, height: 100, child: Icon(Icons.broken_image, size: 20)),
-      ),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Image.network(
+              card.imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Center(child: Icon(Icons.broken_image, size: 20)),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 0,
+          right: 0,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(0),
+            ),
+            child: Text(
+              lang,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
