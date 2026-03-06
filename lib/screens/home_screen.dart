@@ -1,9 +1,28 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
+import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/filter_sheet.dart';
+
+class PendingCardEdit {
+  final String cardId;
+  final String type; // 'wishlist' or 'owned'
+  final Set<String> languages;
+  PendingCardEdit({
+    required this.cardId,
+    required this.type,
+    Set<String>? languages,
+  }) : languages = languages ?? {'ENG'};
+
+  PendingCardEdit copyWith({Set<String>? languages}) => PendingCardEdit(
+        cardId: cardId,
+        type: type,
+        languages: languages ?? this.languages,
+      );
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,6 +33,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<PocketCard>> _cardsFuture;
+  final _userCardService = UserCardService();
 
   // All cards from the data source
   List<PocketCard> _allCards = [];
@@ -24,6 +44,16 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   Timer? _debounceTimer;
+
+  // Mode
+  HomeMode _currentMode = HomeMode.browse;
+
+  // Sort
+  String _sortBy = 'set'; // 'set', 'wishlist', 'owned'
+
+  // Pending edits for edit mode
+  final Map<String, PendingCardEdit> _pendingEdits = {};
+  final Set<String> _pendingRemovals = {};
 
   // Available filter options (extracted from data)
   List<String> _availableSets = [];
@@ -47,6 +77,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _cardsFuture = CardService().getAllCards();
+    _userCardService.loadMyCards();
   }
 
   @override
@@ -80,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _availableSets = sets.toList()..sort();
         _availableRarities = rarities.toList()..sort();
         _availablePacks = packs.toList()..sort();
-        _filteredCards = List.of(cards);
+        _filteredCards = List.of(cards)..sort((a, b) => a.id.compareTo(b.id));
       });
     });
   }
@@ -89,26 +120,35 @@ class _HomeScreenState extends State<HomeScreen> {
     final query = _searchController.text.toLowerCase();
     setState(() {
       _filteredCards = _allCards.where((card) {
-        // Search filter
         if (query.isNotEmpty && !card.name.toLowerCase().contains(query)) {
           return false;
         }
-        // Set filter (OR within category)
         if (_selectedSets.isNotEmpty && !_selectedSets.contains(card.set)) {
           return false;
         }
-        // Rarity filter (OR within category)
         if (_selectedRarities.isNotEmpty &&
             !_selectedRarities.contains(card.rarity)) {
           return false;
         }
-        // Pack filter (OR within category)
         if (_selectedPacks.isNotEmpty && !_selectedPacks.contains(card.pack)) {
           return false;
         }
         return true;
       }).toList()
-        ..sort((a, b) => a.number.compareTo(b.number));
+        ..sort((a, b) {
+          if (_sortBy == 'wishlist') {
+            final aW = _effectiveWishlist(a.id);
+            final bW = _effectiveWishlist(b.id);
+            if (aW && !bW) return -1;
+            if (!aW && bW) return 1;
+          } else if (_sortBy == 'owned') {
+            final aO = _effectiveOwned(a.id);
+            final bO = _effectiveOwned(b.id);
+            if (aO && !bO) return -1;
+            if (!aO && bO) return 1;
+          }
+          return a.id.compareTo(b.id);
+        });
     });
   }
 
@@ -146,6 +186,134 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  bool get _hasPendingChanges =>
+      _pendingEdits.isNotEmpty || _pendingRemovals.isNotEmpty;
+
+  bool _effectiveWishlist(String cardId) {
+    if (_pendingRemovals.contains('$cardId:wishlist')) return false;
+    if (_pendingEdits.containsKey('$cardId:wishlist')) return true;
+    return _userCardService.isWishlisted(cardId);
+  }
+
+  bool _effectiveOwned(String cardId) {
+    if (_pendingRemovals.contains('$cardId:owned')) return false;
+    if (_pendingEdits.containsKey('$cardId:owned')) return true;
+    return _userCardService.isOwned(cardId);
+  }
+
+  Set<String> _effectiveLanguages(String cardId) {
+    for (final type in ['wishlist', 'owned']) {
+      final key = '$cardId:$type';
+      if (_pendingEdits.containsKey(key)) {
+        return _pendingEdits[key]!.languages;
+      }
+    }
+    for (final type in ['wishlist', 'owned']) {
+      final langs = _userCardService.getLanguages(cardId, type);
+      if (langs.isNotEmpty) return langs;
+    }
+    return {'ENG'};
+  }
+
+  void _togglePending(String cardId, String type, Set<String> languages) {
+    setState(() {
+      final key = '$cardId:$type';
+      final oppositeType = type == 'wishlist' ? 'owned' : 'wishlist';
+      final oppositeKey = '$cardId:$oppositeType';
+
+      final isExisting = type == 'wishlist'
+          ? _userCardService.isWishlisted(cardId)
+          : _userCardService.isOwned(cardId);
+
+      if (isExisting && !_pendingRemovals.contains(key)) {
+        // Existing card → mark for removal
+        _pendingRemovals.add(key);
+        _pendingEdits.remove(key);
+      } else if (isExisting && _pendingRemovals.contains(key)) {
+        // Was marked for removal → restore
+        _pendingRemovals.remove(key);
+      } else if (_pendingEdits.containsKey(key)) {
+        // Pending addition → cancel
+        _pendingEdits.remove(key);
+      } else {
+        // New addition
+        _pendingEdits.remove(oppositeKey);
+        // If opposite type exists in DB, mark it for removal
+        final oppositeExists = oppositeType == 'wishlist'
+            ? _userCardService.isWishlisted(cardId)
+            : _userCardService.isOwned(cardId);
+        if (oppositeExists) {
+          _pendingRemovals.add(oppositeKey);
+        }
+        _pendingEdits[key] = PendingCardEdit(
+          cardId: cardId,
+          type: type,
+          languages: languages,
+        );
+      }
+    });
+  }
+
+  void _updatePendingLanguages(String cardId, Set<String> languages) {
+    setState(() {
+      for (final type in ['wishlist', 'owned']) {
+        final key = '$cardId:$type';
+        if (_pendingEdits.containsKey(key)) {
+          _pendingEdits[key] =
+              _pendingEdits[key]!.copyWith(languages: languages);
+        }
+      }
+    });
+  }
+
+  Future<void> _submitPendingEdits() async {
+    final additions = Map<String, PendingCardEdit>.from(_pendingEdits);
+    final removals = Set<String>.from(_pendingRemovals);
+    int successCount = 0;
+    int failCount = 0;
+
+    // Process removals
+    for (final key in removals) {
+      final lastColon = key.lastIndexOf(':');
+      final cardId = key.substring(0, lastColon);
+      final type = key.substring(lastColon + 1);
+      final existingLangs = _userCardService.getLanguages(cardId, type);
+      for (final lang in existingLangs) {
+        try {
+          await _userCardService.removeCard(cardId, type, lang);
+          successCount++;
+        } catch (e) {
+          failCount++;
+        }
+      }
+    }
+
+    // Process additions
+    for (final edit in additions.values) {
+      for (final lang in edit.languages) {
+        try {
+          await _userCardService.addCard(edit.cardId, edit.type, lang);
+          successCount++;
+        } catch (e) {
+          failCount++;
+        }
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _pendingEdits.clear();
+      _pendingRemovals.clear();
+    });
+
+    final message = failCount == 0
+        ? '$successCount card${successCount == 1 ? '' : 's'} saved'
+        : '$successCount saved, $failCount failed';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   List<Widget> _buildActiveFilterChips() {
     final chips = <Widget>[];
     for (final s in _selectedSets) {
@@ -174,14 +342,79 @@ class _HomeScreenState extends State<HomeScreen> {
         labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: const Color(0xFF02F8AE)),
+          side: const BorderSide(color: Color(0xFF02F8AE)),
         ),
+      ),
+    );
+  }
+
+  void _toggleEditMode() {
+    setState(() {
+      if (_currentMode == HomeMode.edit) {
+        _currentMode = HomeMode.browse;
+        _pendingEdits.clear();
+        _pendingRemovals.clear();
+      } else {
+        _currentMode = HomeMode.edit;
+      }
+    });
+  }
+
+  Widget _buildSortSelector() {
+    const options = [
+      ('set', 'Set'),
+      ('wishlist', 'Wishlist'),
+      ('owned', 'Owned'),
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Row(
+        children: [
+          const Text(
+            'Sort by',
+            style: TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          const SizedBox(width: 8),
+          ...options.map((option) {
+            final isSelected = _sortBy == option.$1;
+            return Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() => _sortBy = option.$1);
+                  _applyFilters();
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? const Color(0xFF02F8AE)
+                        : const Color(0xFF1E1E24),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    option.$2,
+                    style: TextStyle(
+                      color: isSelected ? Colors.black : Colors.white54,
+                      fontSize: 12,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isEditMode = _currentMode == HomeMode.edit;
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -225,6 +458,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              isEditMode ? Icons.edit : Icons.edit_outlined,
+              color: isEditMode ? const Color(0xFF02F8AE) : null,
+            ),
+            onPressed: _toggleEditMode,
+          ),
           Stack(
             children: [
               IconButton(
@@ -239,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 8,
                     height: 8,
                     decoration: const BoxDecoration(
-                      color: const Color(0xFF02F8AE),
+                      color: Color(0xFF02F8AE),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -267,15 +507,13 @@ class _HomeScreenState extends State<HomeScreen> {
               return const Center(child: Text('No cards found'));
             }
 
-            // Populate _allCards once data arrives
             _populateCards(cards);
 
-            // Use _filteredCards if populated, otherwise show all
             final displayCards = _allCards.isNotEmpty ? _filteredCards : cards;
 
             return Column(
               children: [
-                // Active filter chips row
+                _buildSortSelector(),
                 if (_hasActiveFilters)
                   SizedBox(
                     height: 48,
@@ -286,7 +524,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: _buildActiveFilterChips(),
                     ),
                   ),
-                // Result count
                 if (_isFiltering && displayCards.isNotEmpty)
                   Padding(
                     padding:
@@ -302,7 +539,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                // Card grid or empty state
                 Expanded(
                   child: displayCards.isEmpty
                       ? Center(
@@ -320,26 +556,80 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         )
-                      : LayoutBuilder(
-                          builder: (context, constraints) {
-                            int crossAxisCount =
-                                (constraints.maxWidth ~/ 180).clamp(3, 4);
-                            return GridView.builder(
-                              controller: _scrollController,
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: crossAxisCount,
-                                childAspectRatio: 0.7,
-                                crossAxisSpacing: 8,
-                                mainAxisSpacing: 8,
-                              ),
-                              padding: const EdgeInsets.all(6),
-                              itemCount: displayCards.length,
-                              itemBuilder: (context, index) {
-                                return CardTile(card: displayCards[index]);
+                      : Stack(
+                          children: [
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                int crossAxisCount =
+                                    (constraints.maxWidth ~/ 180).clamp(3, 4);
+                                return GridView.builder(
+                                  controller: _scrollController,
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    childAspectRatio: 0.7,
+                                    crossAxisSpacing: 8,
+                                    mainAxisSpacing: 8,
+                                  ),
+                                  padding: EdgeInsets.only(
+                                    left: 6,
+                                    right: 6,
+                                    top: 6,
+                                    bottom:
+                                        isEditMode && _hasPendingChanges
+                                            ? 72
+                                            : 6,
+                                  ),
+                                  itemCount: displayCards.length,
+                                  itemBuilder: (context, index) {
+                                    final card = displayCards[index];
+                                    return CardTile(
+                                      card: card,
+                                      mode: _currentMode,
+                                      isPendingWishlist:
+                                          _effectiveWishlist(card.id),
+                                      isPendingOwned:
+                                          _effectiveOwned(card.id),
+                                      pendingLanguages:
+                                          _effectiveLanguages(card.id),
+                                      onWishlistToggle: (langs) =>
+                                          _togglePending(
+                                              card.id, 'wishlist', langs),
+                                      onOwnedToggle: (langs) => _togglePending(
+                                          card.id, 'owned', langs),
+                                      onLanguagesChanged:
+                                          _updatePendingLanguages,
+                                    );
+                                  },
+                                );
                               },
-                            );
-                          },
+                            ),
+                            if (isEditMode && _hasPendingChanges)
+                              Positioned(
+                                left: 16,
+                                right: 16,
+                                bottom: 12,
+                                child: ElevatedButton(
+                                  onPressed: _submitPendingEdits,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF02F8AE),
+                                    foregroundColor: Colors.black,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Submit (${_pendingEdits.length + _pendingRemovals.length})',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                 ),
               ],
