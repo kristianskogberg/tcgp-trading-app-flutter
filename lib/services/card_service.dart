@@ -14,6 +14,7 @@ class CardService {
   CardService._();
 
   List<PocketCard>? _cards;
+  Map<String, PocketCard>? _cardMap;
 
   /// Load cards from GitHub, using ETag for conditional requests.
   /// Falls back to cache if offline.
@@ -88,8 +89,16 @@ class CardService {
     }
   }
 
+  Map<String, PocketCard> getCardMap() {
+    if (_cardMap != null) return _cardMap!;
+    if (_cards == null) return {};
+    _cardMap = {for (final c in _cards!) c.id: c};
+    return _cardMap!;
+  }
+
   /// Clear in-memory cache (e.g. for pull-to-refresh).
   void clearCache() {
     _cards = null;
+    _cardMap = null;
   }
 }

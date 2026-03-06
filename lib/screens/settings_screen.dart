@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
+import 'package:tcgp_trading_app/services/user_card_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -30,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed != true) return;
     try {
+      await UserCardService().clearCache();
       await ProfileService().clearProfileCache();
       await AuthService().signOut();
     } catch (e) {

@@ -29,10 +29,13 @@ class UserCardService {
   Map<String, UserCardEntry> _wishlist = {};
   Map<String, UserCardEntry> _owned = {};
   bool _loaded = false;
+  String? _cachedUserId;
   static const _cacheKey = 'cached_user_cards_v2';
+  static const _cacheUserKey = 'cached_user_cards_user_id';
 
   Future<void> _persistCache() async {
     final prefs = await SharedPreferences.getInstance();
+    final userId = _client.auth.currentUser?.id;
     await prefs.setString(
       _cacheKey,
       jsonEncode({
@@ -40,17 +43,32 @@ class UserCardService {
         'owned': _owned.values.map((e) => e.toJson()).toList(),
       }),
     );
+    if (userId != null) {
+      await prefs.setString(_cacheUserKey, userId);
+    }
   }
 
   Future<void> _loadCache() async {
     if (_loaded) return;
     final prefs = await SharedPreferences.getInstance();
+    final cachedUserId = prefs.getString(_cacheUserKey);
+    final currentUserId = _client.auth.currentUser?.id;
+
+    // Discard cache if it belongs to a different user
+    if (cachedUserId != null && cachedUserId != currentUserId) {
+      await prefs.remove(_cacheKey);
+      await prefs.remove(_cacheUserKey);
+      _loaded = true;
+      return;
+    }
+
     final raw = prefs.getString(_cacheKey);
     if (raw != null) {
       try {
         final data = jsonDecode(raw) as Map<String, dynamic>;
         _wishlist = _parseEntries(data['wishlist'] as List);
         _owned = _parseEntries(data['owned'] as List);
+        _cachedUserId = cachedUserId;
       } catch (_) {}
     }
     _loaded = true;
@@ -144,11 +162,71 @@ class UserCardService {
     await _persistCache();
   }
 
+  /// Find users who own [cardId], then return their distinct wishlist card_ids.
+  Future<List<String>> getTradeMatchesForWanted(String cardId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return [];
+
+    // Step 1: find user_ids who own this card (excluding current user)
+    final owners = await _client
+        .from('user_cards')
+        .select('user_id')
+        .eq('card_id', cardId)
+        .eq('type', 'owned')
+        .neq('user_id', user.id);
+
+    final ownerIds = owners.map((r) => r['user_id'] as String).toSet().toList();
+    if (ownerIds.isEmpty) return [];
+
+    // Step 2: get their wishlist card_ids
+    final wishlisted = await _client
+        .from('user_cards')
+        .select('card_id')
+        .inFilter('user_id', ownerIds)
+        .eq('type', 'wishlist');
+
+    return wishlisted
+        .map((r) => r['card_id'] as String)
+        .toSet()
+        .toList();
+  }
+
+  /// Find users who want [cardId], then return their distinct owned card_ids.
+  Future<List<String>> getTradeMatchesForOwned(String cardId) async {
+    final user = _client.auth.currentUser;
+    if (user == null) return [];
+
+    // Step 1: find user_ids who want this card (excluding current user)
+    final wanters = await _client
+        .from('user_cards')
+        .select('user_id')
+        .eq('card_id', cardId)
+        .eq('type', 'wishlist')
+        .neq('user_id', user.id);
+
+    final wanterIds = wanters.map((r) => r['user_id'] as String).toSet().toList();
+    if (wanterIds.isEmpty) return [];
+
+    // Step 2: get their owned card_ids
+    final owned = await _client
+        .from('user_cards')
+        .select('card_id')
+        .inFilter('user_id', wanterIds)
+        .eq('type', 'owned');
+
+    return owned
+        .map((r) => r['card_id'] as String)
+        .toSet()
+        .toList();
+  }
+
   Future<void> clearCache() async {
     _wishlist = {};
     _owned = {};
     _loaded = false;
+    _cachedUserId = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_cacheKey);
+    await prefs.remove(_cacheUserKey);
   }
 }

@@ -1,5 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/screens/card_screen.dart';
+import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/widgets/shared/language_selector.dart';
 
@@ -19,6 +22,9 @@ class _TradeSectionState extends State<TradeSection>
   int _activeTab = 0;
   bool _isWishlisted = false;
   bool _isOwned = false;
+  List<PocketCard>? _wantMatches;
+  List<PocketCard>? _ownedMatches;
+  bool _loadingMatches = false;
 
   @override
   void initState() {
@@ -167,8 +173,78 @@ class _TradeSectionState extends State<TradeSection>
             ],
           ),
         ),
+        _buildMatchGrid(),
         const SizedBox(height: 16),
       ],
+    );
+  }
+
+  Widget _buildMatchGrid() {
+    final matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
+    final isActive = _activeTab == 0 ? _isWishlisted : _isOwned;
+
+    if (!isActive) return const SizedBox.shrink();
+
+    if (_loadingMatches) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (matches == null) return const SizedBox.shrink();
+
+    if (matches.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24, horizontal: 6),
+        child: Center(
+          child: Text(
+            'No trade matches found',
+            style: TextStyle(color: Colors.white38, fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          childAspectRatio: 0.7,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+        ),
+        itemCount: matches.length,
+        itemBuilder: (context, index) {
+          final matchCard = matches[index];
+          return GestureDetector(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CardScreen(card: matchCard),
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: CachedNetworkImage(
+                imageUrl: matchCard.imageUrl,
+                fit: BoxFit.contain,
+                placeholder: (context, url) => Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                errorWidget: (context, url, error) =>
+                    const Icon(Icons.broken_image, color: Colors.white24),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -179,6 +255,7 @@ class _TradeSectionState extends State<TradeSection>
         _isWishlisted = _userCardService.isWishlisted(widget.card.id);
         _isOwned = _userCardService.isOwned(widget.card.id);
       });
+      _fetchMatches();
     });
   }
 
@@ -186,7 +263,52 @@ class _TradeSectionState extends State<TradeSection>
     setState(() {
       _isWishlisted = _userCardService.isWishlisted(widget.card.id);
       _isOwned = _userCardService.isOwned(widget.card.id);
+      _wantMatches = null;
+      _ownedMatches = null;
     });
+    _fetchMatches();
+  }
+
+  Future<void> _fetchMatches() async {
+    final cardId = widget.card.id;
+    final wantNeeded = _isWishlisted && _wantMatches == null;
+    final ownedNeeded = _isOwned && _ownedMatches == null;
+    if (!wantNeeded && !ownedNeeded) return;
+
+    setState(() => _loadingMatches = true);
+
+    try {
+      final cardMap = CardService().getCardMap();
+      final futures = <Future>[];
+
+      if (wantNeeded) {
+        futures
+            .add(_userCardService.getTradeMatchesForWanted(cardId).then((ids) {
+          _wantMatches = ids
+              .where((id) => cardMap.containsKey(id))
+              .map((id) => cardMap[id]!)
+              .toList();
+        }));
+      }
+
+      if (ownedNeeded) {
+        futures
+            .add(_userCardService.getTradeMatchesForOwned(cardId).then((ids) {
+          _ownedMatches = ids
+              .where((id) => cardMap.containsKey(id))
+              .map((id) => cardMap[id]!)
+              .toList();
+        }));
+      }
+
+      await Future.wait(futures);
+    } catch (_) {
+      _wantMatches ??= [];
+      _ownedMatches ??= [];
+    }
+
+    if (!mounted) return;
+    setState(() => _loadingMatches = false);
   }
 
   Future<void> _onWantPressed() async {
