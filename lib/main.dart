@@ -41,7 +41,7 @@ class MyApp extends StatelessWidget {
           toolbarHeight: 48,
         ),
         navigationBarTheme: NavigationBarThemeData(
-          height: 60,
+          height: 48,
           backgroundColor: const Color(0xFF141418),
           surfaceTintColor: Colors.transparent,
           indicatorColor: Colors.transparent,
@@ -51,16 +51,6 @@ class MyApp extends StatelessWidget {
               return const IconThemeData(color: Color(0xFF02F8AE));
             }
             return const IconThemeData(color: Colors.white54);
-          }),
-          labelTextStyle: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.selected)) {
-              return const TextStyle(
-                color: Color(0xFF02F8AE),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              );
-            }
-            return const TextStyle(color: Colors.white54, fontSize: 12);
           }),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(

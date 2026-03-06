@@ -388,18 +388,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF02F8AE)
-                        : const Color(0xFF1E1E24),
+                    color: const Color(0xFF1E1E24),
                     borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? const Color(0xFF02F8AE)
+                          : Colors.transparent,
+                    ),
                   ),
                   child: Text(
                     option.$2,
                     style: TextStyle(
-                      color: isSelected ? Colors.black : Colors.white54,
+                      color:
+                          isSelected ? const Color(0xFF02F8AE) : Colors.white54,
                       fontSize: 12,
                       fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                          isSelected ? FontWeight.w400 : FontWeight.w400,
                     ),
                   ),
                 ),
@@ -575,10 +579,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                     left: 6,
                                     right: 6,
                                     top: 6,
-                                    bottom:
-                                        isEditMode && _hasPendingChanges
-                                            ? 72
-                                            : 6,
+                                    bottom: isEditMode && _hasPendingChanges
+                                        ? 72
+                                        : 6,
                                   ),
                                   itemCount: displayCards.length,
                                   itemBuilder: (context, index) {
@@ -588,8 +591,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       mode: _currentMode,
                                       isPendingWishlist:
                                           _effectiveWishlist(card.id),
-                                      isPendingOwned:
-                                          _effectiveOwned(card.id),
+                                      isPendingOwned: _effectiveOwned(card.id),
                                       pendingLanguages:
                                           _effectiveLanguages(card.id),
                                       onWishlistToggle: (langs) =>

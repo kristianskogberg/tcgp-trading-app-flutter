@@ -152,17 +152,26 @@ class _CardTileState extends State<CardTile> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.language,
-                              size: 14, color: Colors.white),
+                          Icon(Icons.language,
+                              size: 14,
+                              color: widget.isPendingWishlist
+                                  ? Colors.redAccent
+                                  : widget.isPendingOwned
+                                      ? const Color(0xFF02F8AE)
+                                      : Colors.white),
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
                               _languageLabel,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                color: widget.isPendingWishlist
+                                    ? Colors.redAccent
+                                    : widget.isPendingOwned
+                                        ? const Color(0xFF02F8AE)
+                                        : Colors.white,
                               ),
                             ),
                           ),
