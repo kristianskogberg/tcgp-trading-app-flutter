@@ -4,6 +4,7 @@ import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/screens/card_screen.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
+import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 
 class CardTile extends StatefulWidget {
   final PocketCard card;
@@ -124,88 +125,96 @@ class _CardTileState extends State<CardTile> {
   }
 
   Widget _buildEditTile(BuildContext context) {
+    final untradable = isCardUntradable(widget.card.rarity, widget.card.pack);
+
     return Stack(
       children: [
-        Positioned.fill(child: _buildCardImage()),
-        Positioned(
-          left: 4,
-          right: 4,
-          bottom: 8,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_hasPending)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: GestureDetector(
-                    onTap: _showLanguagePicker,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 6, horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A30),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.white24, width: 1.5),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.language,
-                              size: 14,
-                              color: widget.isPendingWishlist
-                                  ? Colors.redAccent
-                                  : widget.isPendingOwned
-                                      ? const Color(0xFF02F8AE)
-                                      : Colors.white),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              _languageLabel,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
+        Positioned.fill(
+          child: Opacity(
+            opacity: untradable ? 0.6 : 1.0,
+            child: _buildCardImage(),
+          ),
+        ),
+        if (!untradable)
+          Positioned(
+            left: 4,
+            right: 4,
+            bottom: 8,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_hasPending)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: GestureDetector(
+                      onTap: _showLanguagePicker,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2A2A30),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.white24, width: 1.5),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.language,
+                                size: 14,
                                 color: widget.isPendingWishlist
                                     ? Colors.redAccent
                                     : widget.isPendingOwned
                                         ? const Color(0xFF02F8AE)
-                                        : Colors.white,
+                                        : Colors.white),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                _languageLabel,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: widget.isPendingWishlist
+                                      ? Colors.redAccent
+                                      : widget.isPendingOwned
+                                          ? const Color(0xFF02F8AE)
+                                          : Colors.white,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.favorite,
+                        isActive: widget.isPendingWishlist,
+                        activeColor: Colors.redAccent,
+                        onTap: () =>
+                            widget.onWishlistToggle?.call(_selectedLanguages),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: _ActionButton(
+                        icon: Icons.check_circle,
+                        isActive: widget.isPendingOwned,
+                        activeColor: const Color(0xFF02F8AE),
+                        onTap: () =>
+                            widget.onOwnedToggle?.call(_selectedLanguages),
+                      ),
+                    ),
+                  ],
                 ),
-              Row(
-                children: [
-                  Expanded(
-                    child: _ActionButton(
-                      icon: Icons.favorite,
-                      isActive: widget.isPendingWishlist,
-                      activeColor: Colors.redAccent,
-                      onTap: () =>
-                          widget.onWishlistToggle?.call(_selectedLanguages),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: _ActionButton(
-                      icon: Icons.check_circle,
-                      isActive: widget.isPendingOwned,
-                      activeColor: const Color(0xFF02F8AE),
-                      onTap: () =>
-                          widget.onOwnedToggle?.call(_selectedLanguages),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
