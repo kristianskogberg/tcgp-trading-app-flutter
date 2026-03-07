@@ -2,9 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/trade_match.dart';
-import 'package:tcgp_trading_app/screens/card_screen.dart';
+import 'package:tcgp_trading_app/screens/chat_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/utils/activity_utils.dart';
 import 'package:tcgp_trading_app/widgets/shared/language_selector.dart';
 
 class TradeSection extends StatefulWidget {
@@ -216,12 +217,7 @@ class _TradeSectionState extends State<TradeSection>
               return SizedBox(
                 width: itemWidth,
                 child: GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CardScreen(card: matchCard),
-                    ),
-                  ),
+                  onTap: () => _onMatchTapped(matchCard, tradeMatch),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -274,7 +270,7 @@ class _TradeSectionState extends State<TradeSection>
                             height: 6,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: _activityColor(tradeMatch.lastActiveAt),
+                              color: activityColor(tradeMatch.lastActiveAt),
                             ),
                           ),
                           const SizedBox(width: 4),
@@ -302,12 +298,100 @@ class _TradeSectionState extends State<TradeSection>
     );
   }
 
-  Color _activityColor(DateTime? lastActiveAt) {
-    if (lastActiveAt == null) return Colors.white24;
-    final diff = DateTime.now().toUtc().difference(lastActiveAt.toUtc());
-    if (diff.inMinutes < 30) return const Color(0xFF02F8AE);
-    if (diff.inHours < 6) return Colors.amber;
-    return Colors.white24;
+  void _navigateToChat(PocketCard matchCard, TradeMatch tradeMatch) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          contextCard: widget.card,
+          matchCard: matchCard,
+          tradeMatch: tradeMatch,
+          isWantTab: _activeTab == 0,
+        ),
+      ),
+    );
+  }
+
+  void _onMatchTapped(PocketCard matchCard, TradeMatch tradeMatch) {
+    final needsWarning = _activeTab == 0
+        ? !_userCardService.isOwned(matchCard.id)
+        : !_userCardService.isWishlisted(matchCard.id);
+
+    if (!needsWarning) {
+      _navigateToChat(matchCard, tradeMatch);
+      return;
+    }
+
+    final action = _activeTab == 0 ? 'listed' : 'added';
+    final listName = _activeTab == 0 ? 'for trade' : 'to your wishlist';
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: const Color(0xFF1E1E24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Heads up',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'You have not $action ${matchCard.name} $listName.',
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.white24),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _navigateToChat(matchCard, tradeMatch);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF02F8AE),
+                        foregroundColor: Colors.black,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Continue'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _loadState() {
