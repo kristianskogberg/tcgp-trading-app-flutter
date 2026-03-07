@@ -164,9 +164,9 @@ class _CardTileState extends State<CardTile> {
                             Icon(Icons.language,
                                 size: 14,
                                 color: widget.isPendingWishlist
-                                    ? Colors.redAccent
+                                    ? const Color(0xFF02F8AE)
                                     : widget.isPendingOwned
-                                        ? const Color(0xFF02F8AE)
+                                        ? Colors.redAccent
                                         : Colors.white),
                             const SizedBox(width: 4),
                             Flexible(
@@ -177,9 +177,9 @@ class _CardTileState extends State<CardTile> {
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: widget.isPendingWishlist
-                                      ? Colors.redAccent
+                                      ? const Color(0xFF02F8AE)
                                       : widget.isPendingOwned
-                                          ? const Color(0xFF02F8AE)
+                                          ? Colors.redAccent
                                           : Colors.white,
                                 ),
                               ),
@@ -195,7 +195,7 @@ class _CardTileState extends State<CardTile> {
                       child: _ActionButton(
                         icon: Icons.favorite,
                         isActive: widget.isPendingWishlist,
-                        activeColor: Colors.redAccent,
+                        activeColor: const Color(0xFF02F8AE),
                         onTap: () =>
                             widget.onWishlistToggle?.call(_selectedLanguages),
                       ),
@@ -205,7 +205,7 @@ class _CardTileState extends State<CardTile> {
                       child: _ActionButton(
                         icon: Icons.check_circle,
                         isActive: widget.isPendingOwned,
-                        activeColor: const Color(0xFF02F8AE),
+                        activeColor: Colors.redAccent,
                         onTap: () =>
                             widget.onOwnedToggle?.call(_selectedLanguages),
                       ),

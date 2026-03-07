@@ -205,72 +205,97 @@ class _TradeSectionState extends State<TradeSection>
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          childAspectRatio: 0.55,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: matches.length,
-        itemBuilder: (context, index) {
-          final (matchCard, tradeMatch) = matches[index];
-          return GestureDetector(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CardScreen(card: matchCard),
-              ),
-            ),
-            child: Column(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: CachedNetworkImage(
-                      imageUrl: matchCard.imageUrl,
-                      fit: BoxFit.contain,
-                      placeholder: (context, url) => Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white10,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.broken_image, color: Colors.white24),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final itemWidth = (constraints.maxWidth - 8 * 3) / 4;
+          return Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: matches.map((match) {
+              final (matchCard, tradeMatch) = match;
+              return SizedBox(
+                width: itemWidth,
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CardScreen(card: matchCard),
                     ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: _activityColor(tradeMatch.lastActiveAt),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Stack(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: CachedNetworkImage(
+                              imageUrl: matchCard.imageUrl,
+                              fit: BoxFit.contain,
+                              placeholder: (context, url) => Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white10,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => const Icon(
+                                  Icons.broken_image,
+                                  color: Colors.white24),
+                            ),
+                          ),
+                          if (_userCardService.isWishlisted(matchCard.id) ||
+                              _userCardService.isOwned(matchCard.id))
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _userCardService.isOwned(matchCard.id)
+                                      ? Icons.check_circle
+                                      : Icons.favorite,
+                                  size: 14,
+                                  color: const Color(0xFF02F8AE),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    Flexible(
-                      child: Text(
-                        tradeMatch.playerName,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.white54,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _activityColor(tradeMatch.lastActiveAt),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              tradeMatch.playerName,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white54,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              );
+            }).toList(),
           );
         },
       ),
