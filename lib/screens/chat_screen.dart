@@ -218,8 +218,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String get _displayName =>
       widget.tradeMatch?.playerName ?? widget.otherPlayerName ?? 'Unknown';
 
-  String? get _displayIcon =>
-      widget.tradeMatch?.icon ?? widget.otherIcon;
+  String? get _displayIcon => widget.tradeMatch?.icon ?? widget.otherIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -291,8 +290,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       _displayName.isNotEmpty
                           ? _displayName[0].toUpperCase()
                           : '?',
-                      style: const TextStyle(
-                          fontSize: 16, color: Colors.white70),
+                      style:
+                          const TextStyle(fontSize: 16, color: Colors.white70),
                     )
                   : null,
             ),
@@ -465,10 +464,10 @@ class _ChatScreenState extends State<ChatScreen> {
         decoration: BoxDecoration(
           color: isMine ? const Color(0xFF02F8AE) : const Color(0xFF2A2A30),
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isMine ? 16 : 4),
-            bottomRight: Radius.circular(isMine ? 4 : 16),
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft: Radius.circular(isMine ? 12 : 0),
+            bottomRight: Radius.circular(isMine ? 0 : 12),
           ),
         ),
         child: Column(
