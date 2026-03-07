@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tcgp_trading_app/models/trade_match.dart';
 
 class UserCardEntry {
   final String cardId;
@@ -162,61 +163,33 @@ class UserCardService {
     await _persistCache();
   }
 
-  /// Find users who own [cardId], then return their distinct wishlist card_ids.
-  Future<List<String>> getTradeMatchesForWanted(String cardId) async {
+  /// Find users who own [cardId], then return their wishlist cards with profile info.
+  Future<List<TradeMatch>> getTradeMatchesForWanted(String cardId) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
-    // Step 1: find user_ids who own this card (excluding current user)
-    final owners = await _client
-        .from('user_cards')
-        .select('user_id')
-        .eq('card_id', cardId)
-        .eq('type', 'owned')
-        .neq('user_id', user.id);
+    final rows = await _client.rpc('get_trade_matches_for_wanted', params: {
+      'p_card_id': cardId,
+      'p_user_id': user.id,
+    });
 
-    final ownerIds = owners.map((r) => r['user_id'] as String).toSet().toList();
-    if (ownerIds.isEmpty) return [];
-
-    // Step 2: get their wishlist card_ids
-    final wishlisted = await _client
-        .from('user_cards')
-        .select('card_id')
-        .inFilter('user_id', ownerIds)
-        .eq('type', 'wishlist');
-
-    return wishlisted
-        .map((r) => r['card_id'] as String)
-        .toSet()
+    return (rows as List)
+        .map((r) => TradeMatch.fromJson(r as Map<String, dynamic>))
         .toList();
   }
 
-  /// Find users who want [cardId], then return their distinct owned card_ids.
-  Future<List<String>> getTradeMatchesForOwned(String cardId) async {
+  /// Find users who want [cardId], then return their owned cards with profile info.
+  Future<List<TradeMatch>> getTradeMatchesForOwned(String cardId) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
-    // Step 1: find user_ids who want this card (excluding current user)
-    final wanters = await _client
-        .from('user_cards')
-        .select('user_id')
-        .eq('card_id', cardId)
-        .eq('type', 'wishlist')
-        .neq('user_id', user.id);
+    final rows = await _client.rpc('get_trade_matches_for_owned', params: {
+      'p_card_id': cardId,
+      'p_user_id': user.id,
+    });
 
-    final wanterIds = wanters.map((r) => r['user_id'] as String).toSet().toList();
-    if (wanterIds.isEmpty) return [];
-
-    // Step 2: get their owned card_ids
-    final owned = await _client
-        .from('user_cards')
-        .select('card_id')
-        .inFilter('user_id', wanterIds)
-        .eq('type', 'owned');
-
-    return owned
-        .map((r) => r['card_id'] as String)
-        .toSet()
+    return (rows as List)
+        .map((r) => TradeMatch.fromJson(r as Map<String, dynamic>))
         .toList();
   }
 

@@ -11,6 +11,7 @@ class ProfileService {
 
   Map<String, dynamic>? _cachedProfile;
   static const _cacheKey = 'cached_profile_v1';
+  DateTime? _lastActiveUpdate;
 
   Future<void> _persistCache() async {
     if (_cachedProfile == null) return;
@@ -71,6 +72,16 @@ class ProfileService {
 
     _cachedProfile = saved;
     await _persistCache();
+  }
+
+  Future<void> updateLastActive() async {
+    if (_lastActiveUpdate != null &&
+        DateTime.now().difference(_lastActiveUpdate!) <
+            const Duration(minutes: 5)) {
+      return;
+    }
+    await _client.rpc('update_last_active');
+    _lastActiveUpdate = DateTime.now();
   }
 
   Future<void> clearProfileCache() async {

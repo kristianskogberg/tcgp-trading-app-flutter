@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/screens/card_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
@@ -22,8 +23,8 @@ class _TradeSectionState extends State<TradeSection>
   int _activeTab = 0;
   bool _isWishlisted = false;
   bool _isOwned = false;
-  List<PocketCard>? _wantMatches;
-  List<PocketCard>? _ownedMatches;
+  List<(PocketCard, TradeMatch)>? _wantMatches;
+  List<(PocketCard, TradeMatch)>? _ownedMatches;
   bool _loadingMatches = false;
 
   @override
@@ -213,13 +214,13 @@ class _TradeSectionState extends State<TradeSection>
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 4,
-          childAspectRatio: 0.7,
+          childAspectRatio: 0.55,
           crossAxisSpacing: 8,
           mainAxisSpacing: 8,
         ),
         itemCount: matches.length,
         itemBuilder: (context, index) {
-          final matchCard = matches[index];
+          final (matchCard, tradeMatch) = matches[index];
           return GestureDetector(
             onTap: () => Navigator.push(
               context,
@@ -227,25 +228,65 @@ class _TradeSectionState extends State<TradeSection>
                 builder: (_) => CardScreen(card: matchCard),
               ),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: CachedNetworkImage(
-                imageUrl: matchCard.imageUrl,
-                fit: BoxFit.contain,
-                placeholder: (context, url) => Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white10,
+            child: Column(
+              children: [
+                Expanded(
+                  child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
+                    child: CachedNetworkImage(
+                      imageUrl: matchCard.imageUrl,
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white10,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) =>
+                          const Icon(Icons.broken_image, color: Colors.white24),
+                    ),
                   ),
                 ),
-                errorWidget: (context, url, error) =>
-                    const Icon(Icons.broken_image, color: Colors.white24),
-              ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _activityColor(tradeMatch.lastActiveAt),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        tradeMatch.playerName,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.white54,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           );
         },
       ),
     );
+  }
+
+  Color _activityColor(DateTime? lastActiveAt) {
+    if (lastActiveAt == null) return Colors.white24;
+    final diff = DateTime.now().toUtc().difference(lastActiveAt.toUtc());
+    if (diff.inMinutes < 30) return const Color(0xFF02F8AE);
+    if (diff.inHours < 6) return Colors.amber;
+    return Colors.white24;
   }
 
   void _loadState() {
@@ -282,27 +323,36 @@ class _TradeSectionState extends State<TradeSection>
       final futures = <Future>[];
 
       if (wantNeeded) {
-        futures
-            .add(_userCardService.getTradeMatchesForWanted(cardId).then((ids) {
-          _wantMatches = ids
-              .where((id) => cardMap.containsKey(id))
-              .map((id) => cardMap[id]!)
+        futures.add(
+            _userCardService.getTradeMatchesForWanted(cardId).then((matches) {
+          debugPrint('Want RPC returned ${matches.length} matches');
+          for (final m in matches) {
+            debugPrint('  match cardId=${m.cardId}, inMap=${cardMap.containsKey(m.cardId)}');
+          }
+          _wantMatches = matches
+              .where((m) => cardMap.containsKey(m.cardId))
+              .map((m) => (cardMap[m.cardId]!, m))
               .toList();
         }));
       }
 
       if (ownedNeeded) {
-        futures
-            .add(_userCardService.getTradeMatchesForOwned(cardId).then((ids) {
-          _ownedMatches = ids
-              .where((id) => cardMap.containsKey(id))
-              .map((id) => cardMap[id]!)
+        futures.add(
+            _userCardService.getTradeMatchesForOwned(cardId).then((matches) {
+          debugPrint('Owned RPC returned ${matches.length} matches');
+          for (final m in matches) {
+            debugPrint('  match cardId=${m.cardId}, inMap=${cardMap.containsKey(m.cardId)}');
+          }
+          _ownedMatches = matches
+              .where((m) => cardMap.containsKey(m.cardId))
+              .map((m) => (cardMap[m.cardId]!, m))
               .toList();
         }));
       }
 
       await Future.wait(futures);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Trade match error: $e');
       _wantMatches ??= [];
       _ownedMatches ??= [];
     }
