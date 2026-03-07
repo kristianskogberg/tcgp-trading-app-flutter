@@ -237,6 +237,75 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  List<String> get _quickMessages => [
+        'I sent you a friend request',
+        'My in-game name is $_myPlayerName',
+        'I sent you the offer',
+        'Thanks for the trade!',
+        'I already traded that card, sorry'
+      ];
+
+  void _showQuickMessages() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF242429),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Align(
+                  alignment: Alignment.center,
+                  child: Text(
+                    'Quick Messages',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              ..._quickMessages.map((msg) => ListTile(
+                    dense: true,
+                    title: Text(msg,
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 14)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _sendQuickMessage(msg);
+                    },
+                  )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendQuickMessage(String text) async {
+    if (_conversationId == null) return;
+    try {
+      final message = await _chatService.sendMessage(_conversationId!, text);
+      if (!mounted) return;
+      if (!_messages.any((m) => m.id == message.id)) {
+        setState(() => _messages.insert(0, message));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to send message')),
+      );
+    }
+  }
+
   String get _displayName =>
       widget.tradeMatch?.playerName ?? widget.otherPlayerName ?? 'Unknown';
 
@@ -356,16 +425,54 @@ class _ChatScreenState extends State<ChatScreen> {
               color: const Color(0xFF1E1E24),
               child: Row(
                 children: [
-                  IconButton(
-                    onPressed: _loading || _error != null
-                        ? null
-                        : _sendFriendIdMessage,
+                  PopupMenuButton<String>(
                     icon: Icon(
-                      Icons.person_add_outlined,
+                      Icons.add_circle_rounded,
                       color: _loading || _error != null
                           ? Colors.white24
                           : const Color(0xFF02F8AE),
                     ),
+                    enabled: !_loading && _error == null,
+                    color: const Color(0xFF242429),
+                    surfaceTintColor: Colors.transparent,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    position: PopupMenuPosition.over,
+                    onSelected: (value) {
+                      if (value == 'friend_id') _sendFriendIdMessage();
+                      if (value == 'quick_message') _showQuickMessages();
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        height: 44,
+                        value: 'friend_id',
+                        enabled: _myFriendId.isNotEmpty,
+                        child: const Row(
+                          children: [
+                            Icon(Icons.person_add_outlined,
+                                size: 20, color: Colors.white70),
+                            SizedBox(width: 12),
+                            Text('Send my Friend ID',
+                                style: TextStyle(color: Colors.white70)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        height: 44,
+                        value: 'quick_message',
+                        child: Row(
+                          children: [
+                            Icon(Icons.message_outlined,
+                                size: 20, color: Colors.white70),
+                            SizedBox(width: 12),
+                            Text('Send a Quick Message',
+                                style: TextStyle(color: Colors.white70)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   Expanded(
                     child: TextField(
