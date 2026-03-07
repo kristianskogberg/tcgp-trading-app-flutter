@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
-import 'package:tcgp_trading_app/widgets/shared/friend_id_chip.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onProfileSaved;
@@ -298,7 +297,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
-        FriendIdChip(friendId: _friendIdController.text),
+        Text(
+          '${_friendIdController.text.substring(0, 4)}-${_friendIdController.text.substring(4, 8)}-${_friendIdController.text.substring(8, 12)}',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
       ],
     );
   }

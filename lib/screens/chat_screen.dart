@@ -746,18 +746,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () async {
-                    await Clipboard.setData(ClipboardData(text: friendId));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Friend ID copied ($friendId)')),
-                      );
-                    }
-                  },
-                  child:
-                      const Icon(Icons.copy, size: 16, color: Colors.white70),
-                ),
+                _CopyButton(friendId: friendId),
               ],
             ),
             const SizedBox(height: 4),
@@ -837,5 +826,65 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     return '${dt.day}/${dt.month} $time';
+  }
+}
+
+class _CopyButton extends StatefulWidget {
+  final String friendId;
+  const _CopyButton({required this.friendId});
+
+  @override
+  State<_CopyButton> createState() => _CopyButtonState();
+}
+
+class _CopyButtonState extends State<_CopyButton> {
+  bool _copied = false;
+
+  Future<void> _onTap() async {
+    await Clipboard.setData(ClipboardData(text: widget.friendId));
+    if (!mounted) return;
+    setState(() => _copied = true);
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _copied = false);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          Icon(Icons.copy,
+              size: 16,
+              color: _copied ? const Color(0xFF02F8AE) : Colors.white70),
+          if (_copied)
+            Positioned(
+              bottom: 22,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOut,
+                builder: (context, value, child) =>
+                    Opacity(opacity: value, child: child),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A30),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Copied',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF02F8AE)),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
