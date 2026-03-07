@@ -2,27 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
+import 'package:tcgp_trading_app/models/pending_card_edit.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
-import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
+import 'package:tcgp_trading_app/widgets/home_screen/active_filter_chips.dart';
+import 'package:tcgp_trading_app/widgets/home_screen/card_grid.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/filter_sheet.dart';
-
-class PendingCardEdit {
-  final String cardId;
-  final String type; // 'wishlist' or 'owned'
-  final Set<String> languages;
-  PendingCardEdit({
-    required this.cardId,
-    required this.type,
-    Set<String>? languages,
-  }) : languages = languages ?? {'ENG'};
-
-  PendingCardEdit copyWith({Set<String>? languages}) => PendingCardEdit(
-        cardId: cardId,
-        type: type,
-        languages: languages ?? this.languages,
-      );
-}
+import 'package:tcgp_trading_app/widgets/home_screen/home_app_bar.dart';
+import 'package:tcgp_trading_app/widgets/home_screen/sort_selector.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -73,6 +60,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _isFiltering =>
       _hasActiveFilters || _searchController.text.isNotEmpty;
 
+  bool get _hasPendingChanges =>
+      _pendingEdits.isNotEmpty || _pendingRemovals.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +77,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _debounceTimer?.cancel();
     super.dispose();
   }
+
+  // ---------------------------------------------------------------------------
+  // Search & Filter logic
+  // ---------------------------------------------------------------------------
 
   void _onSearchChanged(String _) {
     _debounceTimer?.cancel();
@@ -186,8 +180,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  bool get _hasPendingChanges =>
-      _pendingEdits.isNotEmpty || _pendingRemovals.isNotEmpty;
+  void _onSortChanged(String sort) {
+    setState(() => _sortBy = sort);
+    _applyFilters();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Edit mode logic
+  // ---------------------------------------------------------------------------
 
   bool _effectiveWishlist(String cardId) {
     if (_pendingRemovals.contains('$cardId:wishlist')) return false;
@@ -226,19 +226,14 @@ class _HomeScreenState extends State<HomeScreen> {
           : _userCardService.isOwned(cardId);
 
       if (isExisting && !_pendingRemovals.contains(key)) {
-        // Existing card → mark for removal
         _pendingRemovals.add(key);
         _pendingEdits.remove(key);
       } else if (isExisting && _pendingRemovals.contains(key)) {
-        // Was marked for removal → restore
         _pendingRemovals.remove(key);
       } else if (_pendingEdits.containsKey(key)) {
-        // Pending addition → cancel
         _pendingEdits.remove(key);
       } else {
-        // New addition
         _pendingEdits.remove(oppositeKey);
-        // If opposite type exists in DB, mark it for removal
         final oppositeExists = oppositeType == 'wishlist'
             ? _userCardService.isWishlisted(cardId)
             : _userCardService.isOwned(cardId);
@@ -272,7 +267,6 @@ class _HomeScreenState extends State<HomeScreen> {
     int successCount = 0;
     int failCount = 0;
 
-    // Process removals
     for (final key in removals) {
       final lastColon = key.lastIndexOf(':');
       final cardId = key.substring(0, lastColon);
@@ -288,7 +282,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // Process additions
     for (final edit in additions.values) {
       for (final lang in edit.languages) {
         try {
@@ -314,40 +307,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  List<Widget> _buildActiveFilterChips() {
-    final chips = <Widget>[];
-    for (final s in _selectedSets) {
-      chips.add(_buildDismissibleChip(s, 'set'));
-    }
-    for (final r in _selectedRarities) {
-      chips.add(_buildDismissibleChip(r, 'rarity'));
-    }
-    for (final p in _selectedPacks) {
-      chips.add(_buildDismissibleChip(p, 'pack'));
-    }
-    return chips;
-  }
-
-  Widget _buildDismissibleChip(String label, String type) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: true,
-        onSelected: (_) => _removeFilter(type, label),
-        selectedColor: const Color(0xFF02F8AE),
-        deleteIcon: const Icon(Icons.close, size: 16),
-        onDeleted: () => _removeFilter(type, label),
-        deleteIconColor: Colors.white70,
-        labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF02F8AE)),
-        ),
-      ),
-    );
-  }
-
   void _toggleEditMode() {
     setState(() {
       if (_currentMode == HomeMode.edit) {
@@ -360,137 +319,25 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Widget _buildSortSelector() {
-    const options = [
-      ('set', 'Set'),
-      ('wishlist', 'Wishlist'),
-      ('owned', 'Owned'),
-    ];
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Row(
-        children: [
-          const Text(
-            'Sort by',
-            style: TextStyle(color: Colors.white54, fontSize: 12),
-          ),
-          const SizedBox(width: 8),
-          ...options.map((option) {
-            final isSelected = _sortBy == option.$1;
-            return Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: GestureDetector(
-                onTap: () {
-                  setState(() => _sortBy = option.$1);
-                  _applyFilters();
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E1E24),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: isSelected
-                          ? const Color(0xFF02F8AE)
-                          : Colors.transparent,
-                    ),
-                  ),
-                  child: Text(
-                    option.$2,
-                    style: TextStyle(
-                      color:
-                          isSelected ? const Color(0xFF02F8AE) : Colors.white54,
-                      fontSize: 12,
-                      fontWeight:
-                          isSelected ? FontWeight.w400 : FontWeight.w400,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    final isEditMode = _currentMode == HomeMode.edit;
-
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        titleSpacing: 12,
-        title: SizedBox(
-          height: 40,
-          child: TextField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-            keyboardType: TextInputType.text,
-            style: const TextStyle(color: Colors.white, fontSize: 15),
-            decoration: InputDecoration(
-              hintText: 'Search cards...',
-              hintStyle: const TextStyle(color: Colors.white38, fontSize: 15),
-              prefixIcon:
-                  const Icon(Icons.search, color: Colors.white38, size: 20),
-              suffixIcon: ListenableBuilder(
-                listenable: _searchController,
-                builder: (context, _) {
-                  if (_searchController.text.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return IconButton(
-                    icon: const Icon(Icons.close,
-                        color: Colors.white54, size: 18),
-                    onPressed: () {
-                      _searchController.clear();
-                      _applyFilters();
-                    },
-                  );
-                },
-              ),
-              filled: true,
-              fillColor: const Color(0xFF1E1E24),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isEditMode ? Icons.edit : Icons.edit_outlined,
-              color: isEditMode ? const Color(0xFF02F8AE) : null,
-            ),
-            onPressed: _toggleEditMode,
-          ),
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.tune),
-                onPressed: _allCards.isNotEmpty ? _openFilterSheet : null,
-              ),
-              if (_hasActiveFilters)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF02F8AE),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
+      appBar: HomeAppBar(
+        searchController: _searchController,
+        onSearchChanged: _onSearchChanged,
+        onClearSearch: () {
+          _searchController.clear();
+          _applyFilters();
+        },
+        isEditMode: _currentMode == HomeMode.edit,
+        onToggleEditMode: _toggleEditMode,
+        hasActiveFilters: _hasActiveFilters,
+        hasCards: _allCards.isNotEmpty,
+        onOpenFilterSheet: _openFilterSheet,
       ),
       body: NotificationListener<ScrollStartNotification>(
         onNotification: (notification) {
@@ -517,16 +364,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
             return Column(
               children: [
-                _buildSortSelector(),
+                SortSelector(
+                  currentSort: _sortBy,
+                  onSortChanged: _onSortChanged,
+                ),
                 if (_hasActiveFilters)
-                  SizedBox(
-                    height: 48,
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      children: _buildActiveFilterChips(),
-                    ),
+                  ActiveFilterChips(
+                    selectedSets: _selectedSets,
+                    selectedRarities: _selectedRarities,
+                    selectedPacks: _selectedPacks,
+                    onRemoveFilter: _removeFilter,
                   ),
                 if (_isFiltering && displayCards.isNotEmpty)
                   Padding(
@@ -560,78 +407,22 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         )
-                      : Stack(
-                          children: [
-                            LayoutBuilder(
-                              builder: (context, constraints) {
-                                int crossAxisCount =
-                                    (constraints.maxWidth ~/ 180).clamp(3, 4);
-                                return GridView.builder(
-                                  controller: _scrollController,
-                                  gridDelegate:
-                                      SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: crossAxisCount,
-                                    childAspectRatio: 0.7,
-                                    crossAxisSpacing: 8,
-                                    mainAxisSpacing: 8,
-                                  ),
-                                  padding: EdgeInsets.only(
-                                    left: 6,
-                                    right: 6,
-                                    top: 6,
-                                    bottom: isEditMode && _hasPendingChanges
-                                        ? 72
-                                        : 6,
-                                  ),
-                                  itemCount: displayCards.length,
-                                  itemBuilder: (context, index) {
-                                    final card = displayCards[index];
-                                    return CardTile(
-                                      card: card,
-                                      mode: _currentMode,
-                                      isPendingWishlist:
-                                          _effectiveWishlist(card.id),
-                                      isPendingOwned: _effectiveOwned(card.id),
-                                      pendingLanguages:
-                                          _effectiveLanguages(card.id),
-                                      onWishlistToggle: (langs) =>
-                                          _togglePending(
-                                              card.id, 'wishlist', langs),
-                                      onOwnedToggle: (langs) => _togglePending(
-                                          card.id, 'owned', langs),
-                                      onLanguagesChanged:
-                                          _updatePendingLanguages,
-                                    );
-                                  },
-                                );
-                              },
-                            ),
-                            if (isEditMode && _hasPendingChanges)
-                              Positioned(
-                                left: 16,
-                                right: 16,
-                                bottom: 12,
-                                child: ElevatedButton(
-                                  onPressed: _submitPendingEdits,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF02F8AE),
-                                    foregroundColor: Colors.black,
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    'Submit (${_pendingEdits.length + _pendingRemovals.length})',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                          ],
+                      : CardGrid(
+                          cards: displayCards,
+                          scrollController: _scrollController,
+                          mode: _currentMode,
+                          hasPendingChanges: _hasPendingChanges,
+                          pendingCount:
+                              _pendingEdits.length + _pendingRemovals.length,
+                          effectiveWishlist: _effectiveWishlist,
+                          effectiveOwned: _effectiveOwned,
+                          effectiveLanguages: _effectiveLanguages,
+                          onWishlistToggle: (cardId, langs) =>
+                              _togglePending(cardId, 'wishlist', langs),
+                          onOwnedToggle: (cardId, langs) =>
+                              _togglePending(cardId, 'owned', langs),
+                          onLanguagesChanged: _updatePendingLanguages,
+                          onSubmit: _submitPendingEdits,
                         ),
                 ),
               ],
