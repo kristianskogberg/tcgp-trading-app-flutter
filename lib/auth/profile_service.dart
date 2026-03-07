@@ -42,7 +42,7 @@ class ProfileService {
 
     final data = await _client
         .from('profiles')
-        .select('user_id, player_name, friend_id')
+        .select('user_id, player_name, friend_id, icon')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -54,6 +54,7 @@ class ProfileService {
   Future<void> saveProfile({
     required String playerName,
     required String friendId,
+    String? icon,
   }) async {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('No authenticated user');
@@ -62,6 +63,7 @@ class ProfileService {
       'user_id': user.id,
       'player_name': playerName,
       'friend_id': friendId,
+      'icon': icon,
     };
 
     final saved = await _client

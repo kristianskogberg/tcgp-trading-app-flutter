@@ -75,6 +75,7 @@ flutter:
     - images/rarities/2-star-shiny.png
     - images/rarities/crown.png
     - images/shinedust.png
+    - images/profile/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

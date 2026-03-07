@@ -50,7 +50,7 @@ void openFilterSheet({
                       padding:
                           EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       child: Align(
-                        alignment: Alignment.centerLeft,
+                        alignment: Alignment.center,
                         child: Text(
                           'Filters',
                           style: TextStyle(

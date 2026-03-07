@@ -117,21 +117,23 @@ class ChatService {
 
     final profiles = await _client
         .from('profiles')
-        .select('user_id, player_name')
+        .select('user_id, player_name, icon')
         .inFilter('user_id', otherUserIds.toList());
 
-    final nameMap = <String, String>{};
+    final profileMap = <String, Map<String, dynamic>>{};
     for (final p in profiles) {
-      nameMap[p['user_id'] as String] = p['player_name'] as String;
+      profileMap[p['user_id'] as String] = p;
     }
 
     return rows.map((r) {
       final otherUserId =
           r['user_a'] == userId ? r['user_b'] : r['user_a'];
+      final profile = profileMap[otherUserId];
       return {
         ...r,
         'other_user_id': otherUserId,
-        'other_player_name': nameMap[otherUserId] ?? 'Unknown',
+        'other_player_name': profile?['player_name'] as String? ?? 'Unknown',
+        'other_icon': profile?['icon'] as String?,
       };
     }).toList();
   }

@@ -38,6 +38,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     final conversationId = conversation['id'] as String;
     final otherUserId = conversation['other_user_id'] as String;
     final otherPlayerName = conversation['other_player_name'] as String;
+    final otherIcon = conversation['other_icon'] as String?;
 
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).push(
@@ -46,6 +47,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
           conversationId: conversationId,
           otherUserId: otherUserId,
           otherPlayerName: otherPlayerName,
+          otherIcon: otherIcon,
         ),
       ),
     );
@@ -102,6 +104,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
 
   Widget _buildConversationTile(Map<String, dynamic> conversation) {
     final playerName = conversation['other_player_name'] as String;
+    final icon = conversation['other_icon'] as String?;
     final lastMessage = conversation['last_message_text'] as String?;
     final lastMessageAt = conversation['last_message_at'] != null
         ? DateTime.parse(conversation['last_message_at'] as String)
@@ -111,7 +114,17 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       leading: CircleAvatar(
         radius: 22,
         backgroundColor: const Color(0xFF2A2A30),
-        child: const Icon(Icons.person, size: 22, color: Colors.white54),
+        backgroundImage:
+            icon != null ? AssetImage('images/profile/$icon') : null,
+        child: icon == null
+            ? Text(
+                playerName.isNotEmpty
+                    ? playerName[0].toUpperCase()
+                    : '?',
+                style: const TextStyle(
+                    fontSize: 18, color: Colors.white70),
+              )
+            : null,
       ),
       title: Text(
         playerName,

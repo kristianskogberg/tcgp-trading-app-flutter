@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/screens/register_screen.dart';
+import 'package:tcgp_trading_app/utils/input_fields.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,17 +61,9 @@ class _LoginScreenState extends State<LoginScreen> {
         body: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
+            EmailField(controller: _emailController),
             const SizedBox(height: 10),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
-            ),
+            PasswordField(controller: _passwordController),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: login,

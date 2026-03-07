@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
-import 'package:tcgp_trading_app/utils/text_input_field.dart';
+import 'package:tcgp_trading_app/utils/input_fields.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -113,36 +112,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
         body: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-            ),
+            EmailField(controller: _emailController),
             const SizedBox(height: 10),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
-            ),
+            PasswordField(controller: _passwordController),
             const SizedBox(height: 10),
-            TextField(
+            PasswordField(
               controller: _confirmPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Confirm Password'),
+              label: 'Confirm Password',
             ),
             const SizedBox(height: 20),
-            TextInputField(
-              controller: _playerNameController,
-              label: 'Player Name',
-            ),
+            PlayerNameField(controller: _playerNameController),
             const SizedBox(height: 10),
-            TextInputField(
-              controller: _friendIdController,
-              label: 'Friend ID',
-              keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              maxLength: 12,
-            ),
+            FriendIdField(controller: _friendIdController),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: signUp,

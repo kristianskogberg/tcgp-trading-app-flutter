@@ -19,6 +19,7 @@ class ChatScreen extends StatefulWidget {
   final String? conversationId;
   final String? otherUserId;
   final String? otherPlayerName;
+  final String? otherIcon;
 
   const ChatScreen({
     super.key,
@@ -28,13 +29,15 @@ class ChatScreen extends StatefulWidget {
     required this.isWantTab,
   })  : conversationId = null,
         otherUserId = null,
-        otherPlayerName = null;
+        otherPlayerName = null,
+        otherIcon = null;
 
   const ChatScreen.fromConversation({
     super.key,
     required String this.conversationId,
     required String this.otherUserId,
     required String this.otherPlayerName,
+    this.otherIcon,
   })  : contextCard = null,
         matchCard = null,
         tradeMatch = null,
@@ -215,6 +218,9 @@ class _ChatScreenState extends State<ChatScreen> {
   String get _displayName =>
       widget.tradeMatch?.playerName ?? widget.otherPlayerName ?? 'Unknown';
 
+  String? get _displayIcon =>
+      widget.tradeMatch?.icon ?? widget.otherIcon;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -277,7 +283,18 @@ class _ChatScreenState extends State<ChatScreen> {
             CircleAvatar(
               radius: 18,
               backgroundColor: const Color(0xFF2A2A30),
-              child: const Icon(Icons.person, size: 20, color: Colors.white54),
+              backgroundImage: _displayIcon != null
+                  ? AssetImage('images/profile/$_displayIcon')
+                  : null,
+              child: _displayIcon == null
+                  ? Text(
+                      _displayName.isNotEmpty
+                          ? _displayName[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                          fontSize: 16, color: Colors.white70),
+                    )
+                  : null,
             ),
             const SizedBox(width: 10),
             Expanded(

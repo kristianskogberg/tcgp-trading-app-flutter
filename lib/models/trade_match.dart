@@ -3,6 +3,7 @@ class TradeMatch {
   final String userId;
   final String playerName;
   final String friendId;
+  final String? icon;
   final DateTime? lastActiveAt;
 
   const TradeMatch({
@@ -10,6 +11,7 @@ class TradeMatch {
     required this.userId,
     required this.playerName,
     required this.friendId,
+    this.icon,
     this.lastActiveAt,
   });
 
@@ -18,6 +20,7 @@ class TradeMatch {
         userId: json['user_id'] as String,
         playerName: json['player_name'] as String? ?? 'Unknown',
         friendId: json['friend_id'] as String? ?? '',
+        icon: json['icon'] as String?,
         lastActiveAt: json['last_active_at'] != null
             ? DateTime.parse(json['last_active_at'] as String)
             : null,
