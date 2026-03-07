@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
+import 'package:tcgp_trading_app/screens/conversations_screen.dart';
 import 'package:tcgp_trading_app/screens/home_screen.dart';
 import 'package:tcgp_trading_app/screens/profile_screen.dart';
 import 'package:tcgp_trading_app/screens/settings_screen.dart';
@@ -56,6 +57,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           index: _currentScreenIndex,
           children: [
             const HomeScreen(),
+            const ConversationsScreen(),
             ProfileScreen(
               onProfileSaved: () => setState(() => _currentScreenIndex = 0),
             ),
@@ -81,6 +83,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               icon: const Icon(Icons.home_outlined),
               selectedIcon: const Icon(Icons.home, color: Color(0xFF02F8AE)),
               label: 'Home',
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.chat_bubble_outline),
+              selectedIcon:
+                  const Icon(Icons.chat_bubble, color: Color(0xFF02F8AE)),
+              label: 'Messages',
             ),
             NavigationDestination(
               icon: const Icon(Icons.person_outline),

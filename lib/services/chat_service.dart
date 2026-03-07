@@ -1,0 +1,142 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tcgp_trading_app/models/message.dart';
+
+class ChatService {
+  static final ChatService _instance = ChatService._internal();
+  factory ChatService() => _instance;
+  ChatService._internal();
+
+  final SupabaseClient _client = Supabase.instance.client;
+
+  Future<String> getOrCreateConversation(String otherUserId) async {
+    final result = await _client.rpc(
+      'get_or_create_conversation',
+      params: {'p_other_user_id': otherUserId},
+    );
+    return result as String;
+  }
+
+  Future<Message> sendTradeMessage(
+    String conversationId,
+    String offerCardId,
+    String receiveCardId,
+  ) async {
+    return sendMessage(conversationId, 'TRADE:$offerCardId:$receiveCardId');
+  }
+
+  Future<List<Message>> getMessages(
+    String conversationId, {
+    int limit = 30,
+    DateTime? before,
+  }) async {
+    var query =
+        _client.from('messages').select().eq('conversation_id', conversationId);
+
+    if (before != null) {
+      query = query.lt('created_at', before.toIso8601String());
+    }
+
+    final rows = await query.order('created_at', ascending: false).limit(limit);
+    return (rows as List)
+        .map((r) => Message.fromJson(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<Message> sendMessage(String conversationId, String content) async {
+    final userId = _client.auth.currentUser!.id;
+    final trimmed = content.trim();
+
+    final row = await _client
+        .from('messages')
+        .insert({
+          'conversation_id': conversationId,
+          'sender_id': userId,
+          'content': trimmed,
+        })
+        .select()
+        .single();
+
+    // Update conversation metadata (fire-and-forget)
+    final displayText = trimmed.startsWith('TRADE:')
+        ? 'Trade proposal'
+        : (trimmed.length > 100
+            ? '${trimmed.substring(0, 100)}...'
+            : trimmed);
+    _client
+        .from('conversations')
+        .update({
+          'last_message_at': DateTime.now().toUtc().toIso8601String(),
+          'last_message_text': displayText,
+        })
+        .eq('id', conversationId)
+        .then((_) {})
+        .catchError((_) {});
+
+    return Message.fromJson(row);
+  }
+
+  RealtimeChannel subscribeToMessages(
+    String conversationId,
+    void Function(Message message) onMessage,
+  ) {
+    return _client
+        .channel('messages:$conversationId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: conversationId,
+          ),
+          callback: (payload) {
+            final msg = Message.fromJson(payload.newRecord);
+            onMessage(msg);
+          },
+        )
+        .subscribe();
+  }
+
+  Future<List<Map<String, dynamic>>> getConversations() async {
+    final userId = _client.auth.currentUser!.id;
+    final rows = await _client
+        .from('conversations')
+        .select()
+        .or('user_a.eq.$userId,user_b.eq.$userId')
+        .not('last_message_text', 'is', null)
+        .order('last_message_at', ascending: false);
+
+    // Collect other-user IDs to fetch their profile names
+    final otherUserIds = (rows as List).map((r) {
+      final row = r as Map<String, dynamic>;
+      return row['user_a'] == userId ? row['user_b'] : row['user_a'];
+    }).toSet();
+
+    if (otherUserIds.isEmpty) return [];
+
+    final profiles = await _client
+        .from('profiles')
+        .select('user_id, player_name')
+        .inFilter('user_id', otherUserIds.toList());
+
+    final nameMap = <String, String>{};
+    for (final p in profiles) {
+      nameMap[p['user_id'] as String] = p['player_name'] as String;
+    }
+
+    return rows.map((r) {
+      final otherUserId =
+          r['user_a'] == userId ? r['user_b'] : r['user_a'];
+      return {
+        ...r,
+        'other_user_id': otherUserId,
+        'other_player_name': nameMap[otherUserId] ?? 'Unknown',
+      };
+    }).toList();
+  }
+
+  void unsubscribe(RealtimeChannel channel) {
+    _client.removeChannel(channel);
+  }
+}
