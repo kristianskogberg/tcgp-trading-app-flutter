@@ -182,10 +182,6 @@ class _TradeSectionState extends State<TradeSection>
 
   Widget _buildMatchGrid() {
     final matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
-    final isActive = _activeTab == 0 ? _isWishlisted : _isOwned;
-
-    if (!isActive) return const SizedBox.shrink();
-
     if (_loadingMatches) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -312,8 +308,8 @@ class _TradeSectionState extends State<TradeSection>
 
   Future<void> _fetchMatches() async {
     final cardId = widget.card.id;
-    final wantNeeded = _isWishlisted && _wantMatches == null;
-    final ownedNeeded = _isOwned && _ownedMatches == null;
+    final wantNeeded = _wantMatches == null;
+    final ownedNeeded = _ownedMatches == null;
     if (!wantNeeded && !ownedNeeded) return;
 
     setState(() => _loadingMatches = true);
@@ -325,10 +321,6 @@ class _TradeSectionState extends State<TradeSection>
       if (wantNeeded) {
         futures.add(
             _userCardService.getTradeMatchesForWanted(cardId).then((matches) {
-          debugPrint('Want RPC returned ${matches.length} matches');
-          for (final m in matches) {
-            debugPrint('  match cardId=${m.cardId}, inMap=${cardMap.containsKey(m.cardId)}');
-          }
           _wantMatches = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
@@ -339,10 +331,6 @@ class _TradeSectionState extends State<TradeSection>
       if (ownedNeeded) {
         futures.add(
             _userCardService.getTradeMatchesForOwned(cardId).then((matches) {
-          debugPrint('Owned RPC returned ${matches.length} matches');
-          for (final m in matches) {
-            debugPrint('  match cardId=${m.cardId}, inMap=${cardMap.containsKey(m.cardId)}');
-          }
           _ownedMatches = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
@@ -352,7 +340,6 @@ class _TradeSectionState extends State<TradeSection>
 
       await Future.wait(futures);
     } catch (e) {
-      debugPrint('Trade match error: $e');
       _wantMatches ??= [];
       _ownedMatches ??= [];
     }
