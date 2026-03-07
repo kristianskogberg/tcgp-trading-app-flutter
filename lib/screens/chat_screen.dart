@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/message.dart';
@@ -62,6 +63,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   late final Map<String, PocketCard> _cardMap;
   String _myPlayerName = '';
+  String _myFriendId = '';
 
   String get _currentUserId => Supabase.instance.client.auth.currentUser!.id;
 
@@ -79,6 +81,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted || profile == null) return;
     setState(() {
       _myPlayerName = profile['player_name'] as String? ?? 'Me';
+      _myFriendId = profile['friend_id']?.toString() ?? '';
     });
   }
 
@@ -215,6 +218,25 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _sendFriendIdMessage() async {
+    if (_conversationId == null || _myFriendId.isEmpty) return;
+    try {
+      final message = await _chatService.sendMessage(
+        _conversationId!,
+        'FRIENDID:$_myPlayerName:$_myFriendId',
+      );
+      if (!mounted) return;
+      if (!_messages.any((m) => m.id == message.id)) {
+        setState(() => _messages.insert(0, message));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to send Friend ID')),
+      );
+    }
+  }
+
   String get _displayName =>
       widget.tradeMatch?.playerName ?? widget.otherPlayerName ?? 'Unknown';
 
@@ -257,20 +279,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     Icon(Icons.block, size: 20, color: Colors.white70),
                     SizedBox(width: 12),
                     Text('Block user', style: TextStyle(color: Colors.white70)),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(height: 1),
-              const PopupMenuItem(
-                height: 44,
-                value: 'report',
-                child: Row(
-                  children: [
-                    Icon(Icons.flag_outlined,
-                        size: 20, color: Colors.redAccent),
-                    SizedBox(width: 12),
-                    Text('Report user',
-                        style: TextStyle(color: Colors.redAccent)),
                   ],
                 ),
               ),
@@ -344,10 +352,21 @@ class _ChatScreenState extends State<ChatScreen> {
           SafeArea(
             bottom: true,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
               color: const Color(0xFF1E1E24),
               child: Row(
                 children: [
+                  IconButton(
+                    onPressed: _loading || _error != null
+                        ? null
+                        : _sendFriendIdMessage,
+                    icon: Icon(
+                      Icons.person_add_outlined,
+                      color: _loading || _error != null
+                          ? Colors.white24
+                          : const Color(0xFF02F8AE),
+                    ),
+                  ),
                   Expanded(
                     child: TextField(
                       controller: _textController,
@@ -355,6 +374,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       textCapitalization: TextCapitalization.sentences,
                       textInputAction: TextInputAction.send,
                       onSubmitted: (_) => _sendMessage(),
+                      maxLength: 100,
+                      maxLines: 4,
+                      minLines: 1,
+                      buildCounter: (context,
+                              {required currentLength,
+                              required isFocused,
+                              required maxLength}) =>
+                          null,
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
                         hintStyle: const TextStyle(
@@ -370,11 +397,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
                   IconButton(
                     onPressed: _loading || _error != null ? null : _sendMessage,
                     icon: Icon(
-                      Icons.send,
+                      Icons.send_rounded,
                       color: _loading || _error != null
                           ? Colors.white24
                           : const Color(0xFF02F8AE),
@@ -450,9 +476,12 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessageBubble(Message msg) {
     final isMine = msg.senderId == _currentUserId;
 
-    // Detect trade messages
+    // Detect special messages
     if (msg.content.startsWith('TRADE:')) {
       return _buildTradeMessageBubble(msg, isMine);
+    }
+    if (msg.content.startsWith('FRIENDID:')) {
+      return _buildFriendIdMessageBubble(msg, isMine);
     }
 
     return Align(
@@ -542,6 +571,86 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                     child: _buildCardColumn(
                         receiveCard, isMine ? _displayName : _myPlayerName)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: Text(
+                _formatTime(msg.createdAt.toLocal()),
+                style: const TextStyle(fontSize: 10, color: Colors.white38),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFriendIdMessageBubble(Message msg, bool isMine) {
+    // FRIENDID:playerName:friendId
+    final parts = msg.content.split(':');
+    final playerName = parts.length > 1 ? parts[1] : '';
+    final friendId = parts.length > 2 ? parts[2] : '';
+
+    String formatFriendId(String id) {
+      final digits = id.replaceAll(RegExp(r'\D'), '');
+      final buf = StringBuffer();
+      for (var i = 0; i < digits.length; i++) {
+        if (i > 0 && i % 4 == 0) buf.write('-');
+        buf.write(digits[i]);
+      }
+      return buf.toString();
+    }
+
+    return Align(
+      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        padding: const EdgeInsets.all(10),
+        constraints: const BoxConstraints(maxWidth: 260),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E24),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF02F8AE).withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              playerName,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: Text(
+                    formatFriendId(friendId),
+                    style: const TextStyle(fontSize: 16, color: Colors.white70),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () async {
+                    await Clipboard.setData(ClipboardData(text: friendId));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Friend ID copied ($friendId)')),
+                      );
+                    }
+                  },
+                  child:
+                      const Icon(Icons.copy, size: 16, color: Colors.white70),
+                ),
               ],
             ),
             const SizedBox(height: 4),

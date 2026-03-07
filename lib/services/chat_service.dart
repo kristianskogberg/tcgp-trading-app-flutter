@@ -45,6 +45,12 @@ class ChatService {
   Future<Message> sendMessage(String conversationId, String content) async {
     final userId = _client.auth.currentUser!.id;
     final trimmed = content.trim();
+    if (trimmed.isEmpty) throw Exception('Message cannot be empty');
+    if (!trimmed.startsWith('TRADE:') &&
+        !trimmed.startsWith('FRIENDID:') &&
+        trimmed.length > 100) {
+      throw Exception('Message too long');
+    }
 
     final row = await _client
         .from('messages')
@@ -59,9 +65,11 @@ class ChatService {
     // Update conversation metadata (fire-and-forget)
     final displayText = trimmed.startsWith('TRADE:')
         ? 'Trade proposal'
-        : (trimmed.length > 100
-            ? '${trimmed.substring(0, 100)}...'
-            : trimmed);
+        : trimmed.startsWith('FRIENDID:')
+            ? 'Shared Friend ID'
+            : (trimmed.length > 100
+                ? '${trimmed.substring(0, 100)}...'
+                : trimmed);
     _client
         .from('conversations')
         .update({
@@ -126,8 +134,7 @@ class ChatService {
     }
 
     return rows.map((r) {
-      final otherUserId =
-          r['user_a'] == userId ? r['user_b'] : r['user_a'];
+      final otherUserId = r['user_a'] == userId ? r['user_b'] : r['user_a'];
       final profile = profileMap[otherUserId];
       return {
         ...r,
