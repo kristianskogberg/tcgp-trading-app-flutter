@@ -535,9 +535,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: _buildCardColumn(
                         offerCard, isMine ? _myPlayerName : _displayName)),
                 const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  padding: EdgeInsets.symmetric(horizontal: 2),
                   child: Icon(Icons.swap_horiz,
-                      size: 24, color: Color(0xFF02F8AE)),
+                      size: 32, color: Color(0xFF02F8AE)),
                 ),
                 Expanded(
                     child: _buildCardColumn(

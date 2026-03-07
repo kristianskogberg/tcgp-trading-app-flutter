@@ -433,6 +433,7 @@ class _TradeSectionState extends State<TradeSection>
           _wantMatches = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
+              .where((pair) => pair.$1.rarity == widget.card.rarity)
               .toList();
         }));
       }
@@ -443,6 +444,7 @@ class _TradeSectionState extends State<TradeSection>
           _ownedMatches = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
+              .where((pair) => pair.$1.rarity == widget.card.rarity)
               .toList();
         }));
       }
