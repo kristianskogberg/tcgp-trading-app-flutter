@@ -230,6 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _pendingEdits.remove(key);
       } else if (isExisting && _pendingRemovals.contains(key)) {
         _pendingRemovals.remove(key);
+        _pendingEdits.remove(oppositeKey);
       } else if (_pendingEdits.containsKey(key)) {
         _pendingEdits.remove(key);
       } else {
@@ -286,6 +287,12 @@ class _HomeScreenState extends State<HomeScreen> {
     int successCount = 0;
     int failCount = 0;
 
+    // Update in-memory cache immediately so UI reflects changes
+    _userCardService.applyBulkEditsToCache(
+      additions: additions,
+      removals: removals,
+    );
+
     for (final key in removals) {
       final lastColon = key.lastIndexOf(':');
       final cardId = key.substring(0, lastColon);
@@ -327,7 +334,28 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _toggleEditMode() {
+  Future<void> _toggleEditMode() async {
+    if (_currentMode == HomeMode.edit && _hasPendingChanges) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Heads up'),
+          content: const Text(
+              'You have unsaved changes. Do you want to discard them?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Keep editing'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Discard'),
+            ),
+          ],
+        ),
+      );
+      if (discard != true) return;
+    }
     setState(() {
       if (_currentMode == HomeMode.edit) {
         _currentMode = HomeMode.browse;

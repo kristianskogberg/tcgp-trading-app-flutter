@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/screens/chat_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
@@ -8,7 +9,8 @@ import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/services/language_filter_service.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
-import 'package:tcgp_trading_app/widgets/shared/language_selector.dart';
+import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
+import 'package:flutter/gestures.dart';
 
 class TradeSection extends StatefulWidget {
   final PocketCard card;
@@ -22,6 +24,8 @@ class TradeSection extends StatefulWidget {
 class _TradeSectionState extends State<TradeSection>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
+  final activeColor = const Color(0xFF02F8AE);
+  final inactiveColor = Colors.white60;
   final _userCardService = UserCardService();
   final _langFilterService = LanguageFilterService();
   int _activeTab = 0;
@@ -87,48 +91,6 @@ class _TradeSectionState extends State<TradeSection>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: Row(
-            children: [
-              Expanded(
-                child: _isWishlisted
-                    ? FilledButton.icon(
-                        onPressed: _onWantPressed,
-                        icon: const Icon(Icons.favorite, size: 18),
-                        label: const Text('I want this card'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF02F8AE),
-                          foregroundColor: Colors.black,
-                        ),
-                      )
-                    : OutlinedButton.icon(
-                        onPressed: _onWantPressed,
-                        icon: const Icon(Icons.favorite_outline, size: 18),
-                        label: const Text('I want this card'),
-                      ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _isOwned
-                    ? FilledButton.icon(
-                        onPressed: _onCanTradePressed,
-                        icon: const Icon(Icons.check_circle, size: 18),
-                        label: const Text('I have this card'),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF02F8AE),
-                          foregroundColor: Colors.black,
-                        ),
-                      )
-                    : OutlinedButton.icon(
-                        onPressed: _onCanTradePressed,
-                        icon: const Icon(Icons.check_circle_outline, size: 18),
-                        label: const Text('I have this card'),
-                      ),
-              ),
-            ],
-          ),
-        ),
         const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -145,7 +107,7 @@ class _TradeSectionState extends State<TradeSection>
             labelColor: const Color(0xFF02F8AE),
             unselectedLabelColor: Colors.white60,
             labelStyle: const TextStyle(
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w400,
               fontSize: 14,
             ),
             unselectedLabelStyle: const TextStyle(
@@ -154,9 +116,143 @@ class _TradeSectionState extends State<TradeSection>
             ),
             splashFactory: NoSplash.splashFactory,
             overlayColor: WidgetStateProperty.all(Colors.transparent),
-            tabs: const [
-              Tab(height: 36, text: 'I want this card'),
-              Tab(height: 36, text: 'I have this card')
+            tabs: [
+              Tab(
+                height: 36,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.favorite_border, size: 16),
+                    SizedBox(width: 6),
+                    Text('I want this card'),
+                  ],
+                ),
+              ),
+              Tab(
+                height: 36,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle_outline, size: 16),
+                    SizedBox(width: 6),
+                    Text('I have this card'),
+                  ],
+                ),
+              )
+            ],
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(6, 10, 6, 4),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E24),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline, size: 16, color: Colors.white38),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    style: const TextStyle(fontSize: 12, color: Colors.white54),
+                    children: _activeTab == 0
+                        ? (_isWishlisted
+                            ? [
+                                const TextSpan(text: 'You have wishlisted '),
+                                TextSpan(
+                                  text: card.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                TextSpan(
+                                    text:
+                                        ' in ${_formatLanguages(card.id, 'wishlist')}. '),
+                                TextSpan(
+                                  text: 'Edit',
+                                  style: const TextStyle(
+                                    color: Color(0xFF02F8AE),
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      _showEditCardDialog('wishlist');
+                                    },
+                                ),
+                              ]
+                            : [
+                                const TextSpan(
+                                    text: 'You have not wishlisted '),
+                                TextSpan(
+                                  text: card.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                const TextSpan(text: ' yet. '),
+                                TextSpan(
+                                  text: 'Wishlist now',
+                                  style: const TextStyle(
+                                    color: Color(0xFF02F8AE),
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      _onWantPressed();
+                                    },
+                                ),
+                              ])
+                        : (_isOwned
+                            ? [
+                                const TextSpan(text: 'You have listed '),
+                                TextSpan(
+                                  text: card.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                TextSpan(
+                                    text:
+                                        ' for trade in ${_formatLanguages(card.id, 'owned')}. '),
+                                TextSpan(
+                                  text: 'Edit',
+                                  style: const TextStyle(
+                                    color: Color(0xFF02F8AE),
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      _showEditCardDialog('owned');
+                                    },
+                                ),
+                              ]
+                            : [
+                                const TextSpan(text: 'You have not listed '),
+                                TextSpan(
+                                  text: card.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                                const TextSpan(text: ' for trade yet. '),
+                                TextSpan(
+                                  text: 'List now',
+                                  style: const TextStyle(
+                                    color: Color(0xFF02F8AE),
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      _onCanTradePressed();
+                                    },
+                                ),
+                              ]),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -187,7 +283,7 @@ class _TradeSectionState extends State<TradeSection>
                             ),
                             const TextSpan(
                                 text:
-                                    ' and you are willing to trade for it, these are cards you could offer in return.'),
+                                    ' and you are willing to trade for it, these are the cards you could offer in return.'),
                           ]
                         : [
                             const TextSpan(text: 'If you own '),
@@ -199,7 +295,7 @@ class _TradeSectionState extends State<TradeSection>
                             ),
                             const TextSpan(
                                 text:
-                                    ' and you are willing to trade it, these are cards you could ask for in a trade.'),
+                                    ' and you are willing to trade it, these are the cards you could ask for in return.'),
                           ],
                   ),
                 ),
@@ -592,6 +688,15 @@ class _TradeSectionState extends State<TradeSection>
     );
   }
 
+  String _formatLanguages(String cardId, String type) {
+    final langs = _userCardService.getLanguages(cardId, type);
+    if (langs.isEmpty) return 'no languages';
+    return langs
+        .map((code) =>
+            code == 'ANY' ? 'any language' : (languages[code] ?? code))
+        .join(', ');
+  }
+
   void _loadState() {
     _userCardService.loadMyCards().then((_) {
       if (!mounted) return;
@@ -662,45 +767,198 @@ class _TradeSectionState extends State<TradeSection>
   }
 
   Future<void> _onWantPressed() async {
-    await _showLanguageSheet('wishlist');
+    await _showEditCardDialog('wishlist');
   }
 
   Future<void> _onCanTradePressed() async {
-    await _showLanguageSheet('owned');
+    await _showEditCardDialog('owned');
   }
 
-  Future<void> _showLanguageSheet(String type) async {
+  Future<void> _showEditCardDialog(String type) async {
     final cardId = widget.card.id;
-    final title = type == 'wishlist'
-        ? 'Select languages you want'
-        : 'Select languages you have';
+    final isWishlist = type == 'wishlist';
 
-    await showModalBottomSheet(
+    // Only show the relevant type active based on which tab opened the dialog
+    bool pendingWishlist = isWishlist && _isWishlisted;
+    bool pendingOwned = !isWishlist && _isOwned;
+    Set<String> pendingLangs = _userCardService.getLanguages(cardId, type);
+    if (pendingLangs.isEmpty) {
+      pendingLangs = {'ANY'};
+      pendingWishlist = isWishlist;
+      pendingOwned = !isWishlist;
+    }
+
+    final result = await showDialog<
+        ({bool wishlisted, bool owned, Set<String> languages})?>(
       context: context,
-      backgroundColor: const Color(0xFF1E1E24),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) => LanguageSelector(
-        title: title,
-        selectedLanguages: _userCardService.getLanguages(cardId, type),
-        onToggle: (lang, selected) async {
-          try {
-            if (selected) {
-              await _userCardService.addCard(cardId, type, lang);
-            } else {
-              await _userCardService.removeCard(cardId, type, lang);
-            }
-          } catch (e) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to update: $e')),
-            );
-          }
-        },
+      builder: (context) => _EditCardDialog(
+        card: widget.card,
+        initialWishlist: pendingWishlist,
+        initialOwned: pendingOwned,
+        initialLanguages: pendingLangs,
+        type: type,
       ),
     );
+
+    if (result == null || !mounted) return;
+
+    try {
+      // Sync both types by comparing before/after
+      for (final t in ['wishlist', 'owned']) {
+        final wasActive = t == 'wishlist' ? _isWishlisted : _isOwned;
+        final isNowActive = t == 'wishlist' ? result.wishlisted : result.owned;
+        final oldLangs = _userCardService.getLanguages(cardId, t);
+
+        if (wasActive && !isNowActive) {
+          // Remove all entries for this type
+          for (final lang in oldLangs) {
+            await _userCardService.removeCard(cardId, t, lang);
+          }
+        } else if (isNowActive) {
+          // Remove languages no longer selected
+          for (final lang in oldLangs) {
+            if (!result.languages.contains(lang)) {
+              await _userCardService.removeCard(cardId, t, lang);
+            }
+          }
+          // Add new languages
+          for (final lang in result.languages) {
+            if (!oldLangs.contains(lang)) {
+              await _userCardService.addCard(cardId, t, lang);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update: $e')),
+      );
+    }
+
     if (!mounted) return;
     _refreshState();
+  }
+}
+
+class _EditCardDialog extends StatefulWidget {
+  final PocketCard card;
+  final bool initialWishlist;
+  final bool initialOwned;
+  final Set<String> initialLanguages;
+  final String type;
+
+  const _EditCardDialog({
+    required this.card,
+    required this.initialWishlist,
+    required this.initialOwned,
+    required this.initialLanguages,
+    required this.type,
+  });
+
+  @override
+  State<_EditCardDialog> createState() => _EditCardDialogState();
+}
+
+class _EditCardDialogState extends State<_EditCardDialog> {
+  late bool _wishlisted;
+  late bool _owned;
+  late Set<String> _languages;
+
+  @override
+  void initState() {
+    super.initState();
+    _wishlisted = widget.initialWishlist;
+    _owned = widget.initialOwned;
+    _languages = Set.from(widget.initialLanguages);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: const Color(0xFF1E1E24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 140,
+              height: 200,
+              child: CardTile(
+                card: widget.card,
+                mode: HomeMode.edit,
+                isPendingWishlist: _wishlisted,
+                isPendingOwned: _owned,
+                pendingLanguages: _languages,
+                onWishlistToggle: (langs) {
+                  setState(() {
+                    _wishlisted = !_wishlisted;
+                    if (_wishlisted) {
+                      _owned = false;
+                      _languages = langs;
+                    }
+                  });
+                },
+                onOwnedToggle: (langs) {
+                  setState(() {
+                    _owned = !_owned;
+                    if (_owned) {
+                      _wishlisted = false;
+                      _languages = langs;
+                    }
+                  });
+                },
+                onLanguagesChanged: (_, langs) {
+                  setState(() => _languages = langs);
+                },
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.white24),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () {
+                      Navigator.pop(context, (
+                        wishlisted: _wishlisted,
+                        owned: _owned,
+                        languages: _languages,
+                      ));
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF02F8AE),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Text('Save'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

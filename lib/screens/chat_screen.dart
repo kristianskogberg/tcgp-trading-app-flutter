@@ -1,6 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/message.dart';
@@ -8,7 +6,12 @@ import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
-import 'package:tcgp_trading_app/utils/activity_utils.dart';
+import 'package:tcgp_trading_app/widgets/chat_screen/chat_app_bar.dart';
+import 'package:tcgp_trading_app/widgets/chat_screen/chat_input_bar.dart';
+import 'package:tcgp_trading_app/widgets/chat_screen/chat_message_area.dart';
+import 'package:tcgp_trading_app/widgets/chat_screen/chat_text_bubble.dart';
+import 'package:tcgp_trading_app/widgets/chat_screen/chat_trade_bubble.dart';
+import 'package:tcgp_trading_app/widgets/chat_screen/chat_friend_id_bubble.dart';
 
 class ChatScreen extends StatefulWidget {
   final PocketCard? contextCard;
@@ -210,7 +213,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (_conversationId != null) {
         final confirmMsg = await _chatService.sendMessage(
           _conversationId!,
-          '$_myPlayerName accepted the trade',
+          'Trade accepted',
         );
         if (mounted && !_messages.any((m) => m.id == confirmMsg.id)) {
           setState(() => _messages.insert(0, confirmMsg));
@@ -238,7 +241,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (_conversationId != null) {
         final confirmMsg = await _chatService.sendMessage(
           _conversationId!,
-          '$_myPlayerName denied the trade',
+          'Trade denied',
         );
         if (mounted && !_messages.any((m) => m.id == confirmMsg.id)) {
           setState(() => _messages.insert(0, confirmMsg));
@@ -398,702 +401,83 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            color: const Color(0xFF242429),
-            surfaceTintColor: Colors.transparent,
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            position: PopupMenuPosition.under,
-            onSelected: (_) {},
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                height: 44,
-                value: 'view_profile',
-                child: Row(
-                  children: [
-                    Icon(Icons.person_outline, size: 20, color: Colors.white70),
-                    SizedBox(width: 12),
-                    Text('View profile',
-                        style: TextStyle(color: Colors.white70)),
-                  ],
-                ),
-              ),
-              const PopupMenuItem(
-                height: 44,
-                value: 'block',
-                child: Row(
-                  children: [
-                    Icon(Icons.block, size: 20, color: Colors.white70),
-                    SizedBox(width: 12),
-                    Text('Block user', style: TextStyle(color: Colors.white70)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: const Color(0xFF2A2A30),
-              backgroundImage: _displayIcon != null
-                  ? AssetImage('images/profile/$_displayIcon')
-                  : null,
-              child: _displayIcon == null
-                  ? Text(
-                      _otherPlayerName.isNotEmpty
-                          ? _otherPlayerName[0].toUpperCase()
-                          : '?',
-                      style:
-                          const TextStyle(fontSize: 16, color: Colors.white70),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _otherPlayerName,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (widget.tradeMatch != null) ...[
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color:
-                                activityColor(widget.tradeMatch!.lastActiveAt),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          activityLabel(widget.tradeMatch!.lastActiveAt),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.white54,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
+      appBar: ChatAppBar(
+        displayName: _otherPlayerName,
+        displayIcon: _displayIcon,
+        lastActiveAt: widget.tradeMatch?.lastActiveAt,
       ),
       body: Column(
         children: [
-          Expanded(child: _buildMessageArea()),
-          SafeArea(
-            bottom: true,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 8),
-              color: const Color(0xFF1E1E24),
-              child: Row(
-                children: [
-                  PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.add_circle_rounded,
-                      color: _loading || _error != null
-                          ? Colors.white24
-                          : const Color(0xFF02F8AE),
-                    ),
-                    enabled: !_loading && _error == null,
-                    color: const Color(0xFF242429),
-                    surfaceTintColor: Colors.transparent,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    position: PopupMenuPosition.over,
-                    onSelected: (value) {
-                      if (value == 'friend_id') _sendFriendIdMessage();
-                      if (value == 'quick_message') _showQuickMessages();
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        height: 44,
-                        value: 'friend_id',
-                        enabled: _myFriendId.isNotEmpty,
-                        child: const Row(
-                          children: [
-                            Icon(Icons.person_add_outlined,
-                                size: 20, color: Colors.white70),
-                            SizedBox(width: 12),
-                            Text('Send my Friend ID',
-                                style: TextStyle(color: Colors.white70)),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        height: 44,
-                        value: 'quick_message',
-                        child: Row(
-                          children: [
-                            Icon(Icons.message_outlined,
-                                size: 20, color: Colors.white70),
-                            SizedBox(width: 12),
-                            Text('Send a Quick Message',
-                                style: TextStyle(color: Colors.white70)),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      enabled: !_loading && _error == null,
-                      textCapitalization: TextCapitalization.sentences,
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
-                      maxLength: 100,
-                      maxLines: 4,
-                      minLines: 1,
-                      buildCounter: (context,
-                              {required currentLength,
-                              required isFocused,
-                              required maxLength}) =>
-                          null,
-                      decoration: InputDecoration(
-                        hintText: 'Type a message...',
-                        hintStyle: const TextStyle(
-                            color: Colors.white24, fontSize: 14),
-                        filled: true,
-                        fillColor: const Color(0xFF2A2A30),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: _loading || _error != null ? null : _sendMessage,
-                    icon: Icon(
-                      Icons.send_rounded,
-                      color: _loading || _error != null
-                          ? Colors.white24
-                          : const Color(0xFF02F8AE),
-                    ),
-                  ),
-                ],
-              ),
+          Expanded(
+            child: ChatMessageArea(
+              loading: _loading,
+              error: _error,
+              messages: _messages,
+              hasMore: _hasMore,
+              scrollController: _scrollController,
+              messageBubbleBuilder: _buildMessageBubble,
+              onLoadMore: _loadMore,
             ),
+          ),
+          ChatInputBar(
+            textController: _textController,
+            enabled: !_loading && _error == null,
+            hasFriendId: _myFriendId.isNotEmpty,
+            onSend: _sendMessage,
+            onSendFriendId: _sendFriendIdMessage,
+            onShowQuickMessages: _showQuickMessages,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMessageArea() {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.white24),
-            const SizedBox(height: 12),
-            Text(_error!,
-                style: const TextStyle(fontSize: 14, color: Colors.white38)),
-          ],
-        ),
-      );
-    }
-
-    if (_messages.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 48, color: Colors.white24),
-            SizedBox(height: 12),
-            Text(
-              'Send a message to start the conversation',
-              style: TextStyle(fontSize: 14, color: Colors.white38),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      controller: _scrollController,
-      reverse: true,
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: _messages.length + (_hasMore ? 1 : 0),
-      itemBuilder: (context, index) {
-        if (index == _messages.length) {
-          if (!_loadingMore) _loadMore();
-          return const Padding(
-            padding: EdgeInsets.all(16),
-            child: Center(
-                child: SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )),
-          );
-        }
-        return _buildMessageBubble(_messages[index]);
-      },
     );
   }
 
   Widget _buildMessageBubble(Message msg) {
     final isMine = msg.senderId == _currentUserId;
 
-    // Detect special messages
     if (msg.content.startsWith('TRADE:')) {
-      return _buildTradeMessageBubble(msg, isMine);
+      final parts = msg.content.split(':');
+      final offerCardId = parts.length > 1 ? parts[1] : '';
+      final offerLang = parts.length > 2 ? parts[2] : '';
+      final receiveCardId = parts.length > 3 ? parts[3] : '';
+      final receiveLang = parts.length > 4 ? parts[4] : '';
+      final status = parts.length > 5 ? parts[5] : 'pending';
+      final hasAcceptedTrade = _messages.any((m) =>
+          m.content.startsWith('TRADE:') &&
+          m.content.split(':').length > 5 &&
+          m.content.split(':')[5] == 'accepted');
+
+      return ChatTradeBubble(
+        isMine: isMine,
+        myPlayerName: _myPlayerName,
+        displayName: _otherPlayerName,
+        offerCard: _cardMap[offerCardId],
+        receiveCard: _cardMap[receiveCardId],
+        offerLanguage: offerLang,
+        receiveLanguage: receiveLang,
+        status: status,
+        isProcessing: _processingTradeIds.contains(msg.id),
+        hasAcceptedTrade: hasAcceptedTrade,
+        createdAt: msg.createdAt,
+        onAccept: () => _acceptTrade(msg),
+        onDeny: () => _denyTrade(msg),
+      );
     }
+
     if (msg.content.startsWith('FRIENDID:')) {
-      return _buildFriendIdMessageBubble(msg, isMine);
+      final parts = msg.content.split(':');
+      return ChatFriendIdBubble(
+        playerName: parts.length > 1 ? parts[1] : '',
+        friendId: parts.length > 2 ? parts[2] : '',
+        createdAt: msg.createdAt,
+        isMine: isMine,
+      );
     }
 
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        constraints: const BoxConstraints(maxWidth: 280),
-        decoration: BoxDecoration(
-          color: isMine ? const Color(0xFF02F8AE) : const Color(0xFF2A2A30),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(12),
-            topRight: const Radius.circular(12),
-            bottomLeft: Radius.circular(isMine ? 12 : 0),
-            bottomRight: Radius.circular(isMine ? 0 : 12),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              msg.content,
-              style: TextStyle(
-                color: isMine ? Colors.black : Colors.white,
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              _formatTime(msg.createdAt.toLocal()),
-              style: TextStyle(
-                fontSize: 10,
-                color: isMine ? Colors.black45 : Colors.white38,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTradeMessageBubble(Message msg, bool isMine) {
-    final parts = msg.content.split(':');
-    // TRADE:offerCardId:offerLang:receiveCardId:receiveLang:status
-    final offerCardId = parts.length > 1 ? parts[1] : '';
-    final offerLang = parts.length > 2 ? parts[2] : '';
-    final receiveCardId = parts.length > 3 ? parts[3] : '';
-    final receiveLang = parts.length > 4 ? parts[4] : '';
-    final status = parts.length > 5 ? parts[5] : 'pending';
-    final offerCard = _cardMap[offerCardId];
-    final receiveCard = _cardMap[receiveCardId];
-
-    final isAccepted = status == 'accepted';
-    final isDenied = status == 'denied';
-    final isPending = status == 'pending';
-    final isProcessing = _processingTradeIds.contains(msg.id);
-    final hasAcceptedTrade = _messages.any((m) =>
-        m.content.startsWith('TRADE:') &&
-        m.content.split(':').length > 5 &&
-        m.content.split(':')[5] == 'accepted');
-
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.all(10),
-        constraints: const BoxConstraints(maxWidth: 260),
-        decoration: BoxDecoration(
-          color: isAccepted
-              ? const Color(0xFF02F8AE).withOpacity(0.15)
-              : isDenied
-                  ? Colors.redAccent.withOpacity(0.10)
-                  : const Color(0xFF1E1E24),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isAccepted
-                ? const Color(0xFF02F8AE).withOpacity(0.6)
-                : isDenied
-                    ? Colors.redAccent.withOpacity(0.3)
-                    : const Color(0xFF02F8AE).withOpacity(0.3),
-            width: isAccepted ? 1.5 : 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (isAccepted)
-              const Row(
-                children: [
-                  Icon(Icons.check_circle, size: 14, color: Color(0xFF02F8AE)),
-                  SizedBox(width: 4),
-                  Text(
-                    'Accepted',
-                    style: TextStyle(
-                      color: Color(0xFF02F8AE),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              )
-            else if (isDenied)
-              const Row(
-                children: [
-                  Icon(Icons.cancel, size: 14, color: Colors.white38),
-                  SizedBox(width: 4),
-                  Text(
-                    'Denied',
-                    style: TextStyle(
-                      color: Colors.white38,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              )
-            else
-              Text(
-                isMine
-                    ? '$_myPlayerName proposed a trade'
-                    : '$_otherPlayerName proposed a trade',
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                ),
-              ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                    child: _buildCardColumn(
-                        offerCard, isMine ? _myPlayerName : _otherPlayerName,
-                        language: offerLang)),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 2),
-                  child: Icon(Icons.swap_horiz,
-                      size: 32, color: Color(0xFF02F8AE)),
-                ),
-                Expanded(
-                    child: _buildCardColumn(
-                        receiveCard, isMine ? _otherPlayerName : _myPlayerName,
-                        language: receiveLang)),
-              ],
-            ),
-            // Accept/Deny buttons for receiver on pending trades
-            if (!isMine && isPending && !hasAcceptedTrade) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 32,
-                      child: OutlinedButton(
-                        onPressed: isProcessing ? null : () => _denyTrade(msg),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.white24),
-                          foregroundColor: Colors.white70,
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child:
-                            const Text('Deny', style: TextStyle(fontSize: 12)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: SizedBox(
-                      height: 32,
-                      child: ElevatedButton(
-                        onPressed:
-                            isProcessing ? null : () => _acceptTrade(msg),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF02F8AE),
-                          foregroundColor: Colors.black,
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text('Accept',
-                            style: TextStyle(fontSize: 12)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Text(
-                _formatTime(msg.createdAt.toLocal()),
-                style: const TextStyle(fontSize: 10, color: Colors.white38),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFriendIdMessageBubble(Message msg, bool isMine) {
-    // FRIENDID:playerName:friendId
-    final parts = msg.content.split(':');
-    final playerName = parts.length > 1 ? parts[1] : '';
-    final friendId = parts.length > 2 ? parts[2] : '';
-
-    String formatFriendId(String id) {
-      final digits = id.replaceAll(RegExp(r'\D'), '');
-      final buf = StringBuffer();
-      for (var i = 0; i < digits.length; i++) {
-        if (i > 0 && i % 4 == 0) buf.write('-');
-        buf.write(digits[i]);
-      }
-      return buf.toString();
-    }
-
-    return Align(
-      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.all(10),
-        constraints: const BoxConstraints(maxWidth: 260),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E24),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF02F8AE).withOpacity(0.3),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              playerName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    formatFriendId(friendId),
-                    style: const TextStyle(fontSize: 16, color: Colors.white70),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _CopyButton(friendId: friendId),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Text(
-                _formatTime(msg.createdAt.toLocal()),
-                style: const TextStyle(fontSize: 10, color: Colors.white38),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardColumn(PocketCard? card, String label,
-      {String language = ''}) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (card != null) ...[
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: card.imageUrl,
-                  height: 150,
-                  fit: BoxFit.contain,
-                  placeholder: (context, url) => Container(
-                    height: 150,
-                    decoration: BoxDecoration(
-                      color: Colors.white10,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) =>
-                      const Icon(Icons.broken_image, color: Colors.white24),
-                ),
-              ),
-              if (language.isNotEmpty)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.8),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: Text(
-                      language,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: Colors.white54),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-          ),
-        ] else
-          Container(
-            height: 150,
-            decoration: BoxDecoration(
-              color: Colors.white10,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Center(
-              child: Icon(Icons.help_outline, size: 24, color: Colors.white24),
-            ),
-          ),
-      ],
-    );
-  }
-
-  String _formatTime(DateTime dt) {
-    final now = DateTime.now();
-    final hour = dt.hour.toString().padLeft(2, '0');
-    final minute = dt.minute.toString().padLeft(2, '0');
-    final time = '$hour:$minute';
-
-    if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
-      return time;
-    }
-
-    final yesterday = now.subtract(const Duration(days: 1));
-    if (dt.year == yesterday.year &&
-        dt.month == yesterday.month &&
-        dt.day == yesterday.day) {
-      return 'Yesterday $time';
-    }
-
-    return '${dt.day}/${dt.month} $time';
-  }
-}
-
-class _CopyButton extends StatefulWidget {
-  final String friendId;
-  const _CopyButton({required this.friendId});
-
-  @override
-  State<_CopyButton> createState() => _CopyButtonState();
-}
-
-class _CopyButtonState extends State<_CopyButton> {
-  bool _copied = false;
-
-  Future<void> _onTap() async {
-    await Clipboard.setData(ClipboardData(text: widget.friendId));
-    if (!mounted) return;
-    setState(() => _copied = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _copied = false);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _onTap,
-      child: Stack(
-        clipBehavior: Clip.none,
-        alignment: Alignment.center,
-        children: [
-          Icon(Icons.copy,
-              size: 16,
-              color: _copied ? const Color(0xFF02F8AE) : Colors.white70),
-          if (_copied)
-            Positioned(
-              bottom: 22,
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOut,
-                builder: (context, value, child) =>
-                    Opacity(opacity: value, child: child),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A30),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'Copied',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF02F8AE)),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
+    return ChatTextBubble(
+      content: msg.content,
+      createdAt: msg.createdAt,
+      isMine: isMine,
     );
   }
 }

@@ -56,6 +56,7 @@ class PlayerNameField extends StatelessWidget {
       controller: controller,
       label: 'Player Name',
       icon: Icons.person,
+      maxLength: 14,
       errorText: errorText,
     );
   }

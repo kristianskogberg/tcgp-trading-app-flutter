@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tcgp_trading_app/models/pending_card_edit.dart';
 import 'package:tcgp_trading_app/models/trade_match.dart';
 
 class UserCardEntry {
@@ -198,6 +199,31 @@ class UserCardService {
     return (rows as List)
         .map((r) => TradeMatch.fromJson(r as Map<String, dynamic>))
         .toList();
+  }
+
+  void applyBulkEditsToCache({
+    required Map<String, PendingCardEdit> additions,
+    required Set<String> removals,
+  }) {
+    // Process removals - remove all language entries for each cardId:type
+    for (final key in removals) {
+      final lastColon = key.lastIndexOf(':');
+      final cardId = key.substring(0, lastColon);
+      final type = key.substring(lastColon + 1);
+      final map = type == 'wishlist' ? _wishlist : _owned;
+      map.removeWhere((_, e) => e.cardId == cardId);
+    }
+    // Process additions
+    for (final edit in additions.values) {
+      final map = edit.type == 'wishlist' ? _wishlist : _owned;
+      // Remove old entries for this card+type first
+      map.removeWhere((_, e) => e.cardId == edit.cardId);
+      for (final lang in edit.languages) {
+        final entry = UserCardEntry(cardId: edit.cardId, language: lang);
+        map[entry.key] = entry;
+      }
+    }
+    _persistCache(); // single persist
   }
 
   Future<void> clearCache() async {

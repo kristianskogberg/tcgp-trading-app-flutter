@@ -106,6 +106,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       usernameErr = "Player Name cannot be empty.";
     } else if (username.length < 2) {
       usernameErr = "Min 2 characters.";
+    } else if (username.length > 14) {
+      usernameErr = "Max 14 characters.";
     }
 
     if (friendId.isEmpty) {
@@ -283,6 +285,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final formValid = _usernameErrorMessage == null &&
         _friendIdErrorMessage == null &&
         _usernameController.text.trim().length >= 2 &&
+        _usernameController.text.trim().length <= 14 &&
         _friendIdController.text.trim().length == 12;
 
     return Scaffold(
