@@ -10,6 +10,7 @@ import 'package:tcgp_trading_app/widgets/home_screen/card_grid.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/filter_sheet.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/home_app_bar.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/sort_selector.dart';
+import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -336,23 +337,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _toggleEditMode() async {
     if (_currentMode == HomeMode.edit && _hasPendingChanges) {
-      final discard = await showDialog<bool>(
+      final discard = await showAppDialog<bool>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Heads up'),
-          content: const Text(
-              'You have unsaved changes. Do you want to discard them?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Keep editing'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Discard'),
-            ),
-          ],
-        ),
+        title: 'Heads up',
+        content: const Text(
+            'You have unsaved changes. Do you want to discard them?'),
+        cancelText: 'Keep editing',
+        primaryText: 'Discard',
+        onPrimaryPressed: () => true,
       );
       if (discard != true) return;
     }

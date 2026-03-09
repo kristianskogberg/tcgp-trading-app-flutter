@@ -10,6 +10,7 @@ import 'package:tcgp_trading_app/services/language_filter_service.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
+import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 import 'package:flutter/gestures.dart';
 
 class TradeSection extends StatefulWidget {
@@ -619,72 +620,12 @@ class _TradeSectionState extends State<TradeSection>
     final action = _activeTab == 0 ? 'listed' : 'added';
     final listName = _activeTab == 0 ? 'for trade' : 'to your wishlist';
 
-    showDialog(
+    showAppDialog<void>(
       context: context,
-      builder: (context) => Dialog(
-        backgroundColor: const Color(0xFF1E1E24),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Heads up',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'You have not $action ${matchCard.name} $listName.',
-                style: const TextStyle(fontSize: 14, color: Colors.white70),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.white24),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _navigateToChat(matchCard, tradeMatch);
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF02F8AE),
-                        foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      child: const Text('Continue'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+      title: 'Heads up',
+      content: Text('You have not $action ${matchCard.name} $listName.'),
+      primaryText: 'Continue',
+      onPrimaryAction: () => _navigateToChat(matchCard, tradeMatch),
     );
   }
 
@@ -875,89 +816,44 @@ class _EditCardDialogState extends State<_EditCardDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: const Color(0xFF1E1E24),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 140,
-              height: 200,
-              child: CardTile(
-                card: widget.card,
-                mode: HomeMode.edit,
-                isPendingWishlist: _wishlisted,
-                isPendingOwned: _owned,
-                pendingLanguages: _languages,
-                onWishlistToggle: (langs) {
-                  setState(() {
-                    _wishlisted = !_wishlisted;
-                    if (_wishlisted) {
-                      _owned = false;
-                      _languages = langs;
-                    }
-                  });
-                },
-                onOwnedToggle: (langs) {
-                  setState(() {
-                    _owned = !_owned;
-                    if (_owned) {
-                      _wishlisted = false;
-                      _languages = langs;
-                    }
-                  });
-                },
-                onLanguagesChanged: (_, langs) {
-                  setState(() => _languages = langs);
-                },
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      Navigator.pop(context, (
-                        wishlisted: _wishlisted,
-                        owned: _owned,
-                        languages: _languages,
-                      ));
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF02F8AE),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: const Text('Save'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+    return AppDialog(
+      centerContent: true,
+      content: SizedBox(
+        width: 140,
+        height: 200,
+        child: CardTile(
+          card: widget.card,
+          mode: HomeMode.edit,
+          isPendingWishlist: _wishlisted,
+          isPendingOwned: _owned,
+          pendingLanguages: _languages,
+          onWishlistToggle: (langs) {
+            setState(() {
+              _wishlisted = !_wishlisted;
+              if (_wishlisted) {
+                _owned = false;
+                _languages = langs;
+              }
+            });
+          },
+          onOwnedToggle: (langs) {
+            setState(() {
+              _owned = !_owned;
+              if (_owned) {
+                _wishlisted = false;
+                _languages = langs;
+              }
+            });
+          },
+          onLanguagesChanged: (_, langs) {
+            setState(() => _languages = langs);
+          },
         ),
+      ),
+      onPrimaryPressed: () => (
+        wishlisted: _wishlisted,
+        owned: _owned,
+        languages: _languages,
       ),
     );
   }

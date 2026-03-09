@@ -4,6 +4,7 @@ import 'package:tcgp_trading_app/utils/input_fields.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onProfileSaved;
@@ -159,22 +160,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _signOut() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Sign out'),
-          ),
-        ],
-      ),
+      title: 'Sign out',
+      content: const Text('Are you sure you want to sign out?'),
+      primaryText: 'Sign out',
+      onPrimaryPressed: () => true,
     );
     if (confirmed != true) return;
     try {
