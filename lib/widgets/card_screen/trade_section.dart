@@ -478,6 +478,23 @@ class _TradeSectionState extends State<TradeSection>
   }
 
   void _navigateToChat(PocketCard matchCard, TradeMatch tradeMatch) {
+    // Determine languages for the trade message
+    final String offerLanguage;
+    final String receiveLanguage;
+    if (_activeTab == 0) {
+      // "I want this card" tab: offerCard=matchCard, receiveCard=contextCard
+      offerLanguage = tradeMatch.language;
+      final contextLangs =
+          _userCardService.getLanguages(widget.card.id, 'wishlist');
+      receiveLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
+    } else {
+      // "I have this card" tab: offerCard=contextCard, receiveCard=matchCard
+      final contextLangs =
+          _userCardService.getLanguages(widget.card.id, 'owned');
+      offerLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
+      receiveLanguage = tradeMatch.language;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -486,6 +503,8 @@ class _TradeSectionState extends State<TradeSection>
           matchCard: matchCard,
           tradeMatch: tradeMatch,
           isWantTab: _activeTab == 0,
+          offerLanguage: offerLanguage,
+          receiveLanguage: receiveLanguage,
         ),
       ),
     );

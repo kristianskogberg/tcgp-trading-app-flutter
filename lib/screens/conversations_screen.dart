@@ -34,14 +34,14 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     }
   }
 
-  void _openConversation(Map<String, dynamic> conversation) {
+  Future<void> _openConversation(Map<String, dynamic> conversation) async {
     final conversationId = conversation['id'] as String;
     final otherUserId = conversation['other_user_id'] as String;
     final otherPlayerName = conversation['other_player_name'] as String;
     final otherIcon = conversation['other_icon'] as String?;
 
     if (!mounted) return;
-    Navigator.of(context, rootNavigator: true).push(
+    await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) => ChatScreen.fromConversation(
           conversationId: conversationId,
@@ -51,6 +51,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         ),
       ),
     );
+    if (!mounted) return;
+    _loadConversations();
   }
 
   @override
@@ -118,11 +120,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
             icon != null ? AssetImage('images/profile/$icon') : null,
         child: icon == null
             ? Text(
-                playerName.isNotEmpty
-                    ? playerName[0].toUpperCase()
-                    : '?',
-                style: const TextStyle(
-                    fontSize: 18, color: Colors.white70),
+                playerName.isNotEmpty ? playerName[0].toUpperCase() : '?',
+                style: const TextStyle(fontSize: 18, color: Colors.white70),
               )
             : null,
       ),

@@ -19,9 +19,14 @@ class ChatService {
   Future<Message> sendTradeMessage(
     String conversationId,
     String offerCardId,
+    String offerLanguage,
     String receiveCardId,
+    String receiveLanguage,
   ) async {
-    return sendMessage(conversationId, 'TRADE:$offerCardId:$receiveCardId');
+    return sendMessage(
+      conversationId,
+      'TRADE:$offerCardId:$offerLanguage:$receiveCardId:$receiveLanguage',
+    );
   }
 
   Future<List<Message>> getMessages(

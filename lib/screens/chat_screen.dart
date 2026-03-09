@@ -15,6 +15,8 @@ class ChatScreen extends StatefulWidget {
   final PocketCard? matchCard;
   final TradeMatch? tradeMatch;
   final bool isWantTab;
+  final String? offerLanguage;
+  final String? receiveLanguage;
 
   // For opening from conversations list (no TradeMatch needed)
   final String? conversationId;
@@ -28,6 +30,8 @@ class ChatScreen extends StatefulWidget {
     required this.matchCard,
     required this.tradeMatch,
     required this.isWantTab,
+    this.offerLanguage,
+    this.receiveLanguage,
   })  : conversationId = null,
         otherUserId = null,
         otherPlayerName = null,
@@ -42,7 +46,9 @@ class ChatScreen extends StatefulWidget {
   })  : contextCard = null,
         matchCard = null,
         tradeMatch = null,
-        isWantTab = false;
+        isWantTab = false,
+        offerLanguage = null,
+        receiveLanguage = null;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -130,7 +136,12 @@ class _ChatScreenState extends State<ChatScreen> {
             widget.isWantTab ? widget.matchCard! : widget.contextCard!;
         final receiveCard =
             widget.isWantTab ? widget.contextCard! : widget.matchCard!;
-        await _sendTradeMessage(offerCard.id, receiveCard.id);
+        await _sendTradeMessage(
+          offerCard.id,
+          widget.offerLanguage ?? '',
+          receiveCard.id,
+          widget.receiveLanguage ?? '',
+        );
       }
     } catch (e) {
       debugPrint('ChatScreen._initChat error: $e');
@@ -143,13 +154,19 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendTradeMessage(
-      String offerCardId, String receiveCardId) async {
+    String offerCardId,
+    String offerLanguage,
+    String receiveCardId,
+    String receiveLanguage,
+  ) async {
     if (_conversationId == null) return;
     try {
       final message = await _chatService.sendTradeMessage(
         _conversationId!,
         offerCardId,
+        offerLanguage,
         receiveCardId,
+        receiveLanguage,
       );
       if (!mounted) return;
       if (!_messages.any((m) => m.id == message.id)) {
@@ -632,9 +649,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildTradeMessageBubble(Message msg, bool isMine) {
     final parts = msg.content.split(':');
-    // TRADE:offerCardId:receiveCardId
+    // TRADE:offerCardId:offerLang:receiveCardId:receiveLang
     final offerCardId = parts.length > 1 ? parts[1] : '';
-    final receiveCardId = parts.length > 2 ? parts[2] : '';
+    final offerLang = parts.length > 2 ? parts[2] : '';
+    final receiveCardId = parts.length > 3 ? parts[3] : '';
+    final receiveLang = parts.length > 4 ? parts[4] : '';
     final offerCard = _cardMap[offerCardId];
     final receiveCard = _cardMap[receiveCardId];
 
@@ -669,7 +688,8 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 Expanded(
                     child: _buildCardColumn(
-                        offerCard, isMine ? _myPlayerName : _displayName)),
+                        offerCard, isMine ? _myPlayerName : _displayName,
+                        language: offerLang)),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 2),
                   child: Icon(Icons.swap_horiz,
@@ -677,7 +697,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 Expanded(
                     child: _buildCardColumn(
-                        receiveCard, isMine ? _displayName : _myPlayerName)),
+                        receiveCard, isMine ? _displayName : _myPlayerName,
+                        language: receiveLang)),
               ],
             ),
             const SizedBox(height: 4),
@@ -763,27 +784,53 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildCardColumn(PocketCard? card, String label) {
+  Widget _buildCardColumn(PocketCard? card, String label,
+      {String language = ''}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         if (card != null) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: CachedNetworkImage(
-              imageUrl: card.imageUrl,
-              height: 150,
-              fit: BoxFit.contain,
-              placeholder: (context, url) => Container(
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.white10,
-                  borderRadius: BorderRadius.circular(8),
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: card.imageUrl,
+                  height: 150,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => Container(
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.white10,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) =>
+                      const Icon(Icons.broken_image, color: Colors.white24),
                 ),
               ),
-              errorWidget: (context, url, error) =>
-                  const Icon(Icons.broken_image, color: Colors.white24),
-            ),
+              if (language.isNotEmpty)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: Text(
+                      language,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
