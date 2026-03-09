@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
+import 'package:tcgp_trading_app/auth/auth_service.dart';
+import 'package:tcgp_trading_app/auth/profile_service.dart';
+import 'package:tcgp_trading_app/services/user_card_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onProfileSaved;
@@ -153,6 +156,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+  Future<void> _signOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign out'),
+        content: const Text('Are you sure you want to sign out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await UserCardService().clearCache();
+      await ProfileService().clearProfileCache();
+      await AuthService().signOut();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to sign out')),
+        );
+      }
+    }
+  }
+
   void _cancelEdit() {
     setState(() {
       _usernameController.text = _savedUsername;
@@ -260,6 +295,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: const Icon(Icons.edit),
               onPressed: _enterEditMode,
             ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _signOut,
+          ),
         ],
       ),
       body: _loading

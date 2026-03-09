@@ -25,7 +25,7 @@ class ChatService {
   ) async {
     return sendMessage(
       conversationId,
-      'TRADE:$offerCardId:$offerLanguage:$receiveCardId:$receiveLanguage',
+      'TRADE:$offerCardId:$offerLanguage:$receiveCardId:$receiveLanguage:pending',
     );
   }
 
@@ -88,10 +88,32 @@ class ChatService {
     return Message.fromJson(row);
   }
 
+  Future<void> updateTradeStatus(String messageId, String newStatus) async {
+    final row = await _client
+        .from('messages')
+        .select('content')
+        .eq('id', messageId)
+        .single();
+
+    final content = row['content'] as String;
+    final parts = content.split(':');
+    // Replace or append status segment (index 5)
+    if (parts.length > 5) {
+      parts[5] = newStatus;
+    } else {
+      parts.add(newStatus);
+    }
+
+    await _client
+        .from('messages')
+        .update({'content': parts.join(':')}).eq('id', messageId);
+  }
+
   RealtimeChannel subscribeToMessages(
     String conversationId,
-    void Function(Message message) onMessage,
-  ) {
+    void Function(Message message) onMessage, {
+    void Function(Message message)? onUpdate,
+  }) {
     return _client
         .channel('messages:$conversationId')
         .onPostgresChanges(
@@ -106,6 +128,22 @@ class ChatService {
           callback: (payload) {
             final msg = Message.fromJson(payload.newRecord);
             onMessage(msg);
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'conversation_id',
+            value: conversationId,
+          ),
+          callback: (payload) {
+            if (onUpdate != null) {
+              final msg = Message.fromJson(payload.newRecord);
+              onUpdate(msg);
+            }
           },
         )
         .subscribe();

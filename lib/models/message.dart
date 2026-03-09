@@ -20,4 +20,12 @@ class Message {
         content: json['content'] as String,
         createdAt: DateTime.parse(json['created_at'] as String),
       );
+
+  Message copyWith({String? content}) => Message(
+        id: id,
+        conversationId: conversationId,
+        senderId: senderId,
+        content: content ?? this.content,
+        createdAt: createdAt,
+      );
 }

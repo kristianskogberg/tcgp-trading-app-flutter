@@ -60,6 +60,25 @@ CREATE POLICY "Users insert messages in own conversations" ON messages FOR INSER
     )
   );
 
+-- Only the receiver (non-sender, conversation participant) can update message content
+CREATE POLICY "Receiver can update trade status" ON messages FOR UPDATE
+  USING (
+    sender_id != auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = messages.conversation_id
+      AND (c.user_a = auth.uid() OR c.user_b = auth.uid())
+    )
+  )
+  WITH CHECK (
+    sender_id != auth.uid()
+    AND EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = messages.conversation_id
+      AND (c.user_a = auth.uid() OR c.user_b = auth.uid())
+    )
+  );
+
 -- RPC: get-or-create conversation
 -- Handles race conditions and canonical user ordering in a single round-trip
 CREATE OR REPLACE FUNCTION get_or_create_conversation(p_other_user_id UUID)

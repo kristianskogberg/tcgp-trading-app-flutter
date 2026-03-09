@@ -66,6 +66,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _hasMore = true;
   RealtimeChannel? _channel;
   String? _error;
+  final Set<String> _processingTradeIds = {};
 
   late final Map<String, PocketCard> _cardMap;
   String _myPlayerName = '';
@@ -120,6 +121,7 @@ class _ChatScreenState extends State<ChatScreen> {
       final channel = _chatService.subscribeToMessages(
         conversationId,
         _onNewMessage,
+        onUpdate: _onUpdatedMessage,
       );
 
       setState(() {
@@ -182,6 +184,71 @@ class _ChatScreenState extends State<ChatScreen> {
     // Deduplicate (own messages already added from sendMessage response)
     if (_messages.any((m) => m.id == message.id)) return;
     setState(() => _messages.insert(0, message));
+  }
+
+  void _onUpdatedMessage(Message message) {
+    if (!mounted) return;
+    final index = _messages.indexWhere((m) => m.id == message.id);
+    if (index == -1) return;
+    setState(() => _messages[index] = message);
+  }
+
+  Future<void> _acceptTrade(Message msg) async {
+    if (_processingTradeIds.contains(msg.id)) return;
+    setState(() => _processingTradeIds.add(msg.id));
+    try {
+      await _chatService.updateTradeStatus(msg.id, 'accepted');
+      // Update locally immediately
+      final parts = msg.content.split(':');
+      if (parts.length > 5) {
+        parts[5] = 'accepted';
+      } else {
+        parts.add('accepted');
+      }
+      _onUpdatedMessage(msg.copyWith(content: parts.join(':')));
+      // Send confirmation text message
+      if (_conversationId != null) {
+        final confirmMsg = await _chatService.sendMessage(
+          _conversationId!,
+          '$_myPlayerName accepted the trade',
+        );
+        if (mounted && !_messages.any((m) => m.id == confirmMsg.id)) {
+          setState(() => _messages.insert(0, confirmMsg));
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to accept trade: $e');
+    } finally {
+      if (mounted) setState(() => _processingTradeIds.remove(msg.id));
+    }
+  }
+
+  Future<void> _denyTrade(Message msg) async {
+    if (_processingTradeIds.contains(msg.id)) return;
+    setState(() => _processingTradeIds.add(msg.id));
+    try {
+      await _chatService.updateTradeStatus(msg.id, 'denied');
+      final parts = msg.content.split(':');
+      if (parts.length > 5) {
+        parts[5] = 'denied';
+      } else {
+        parts.add('denied');
+      }
+      _onUpdatedMessage(msg.copyWith(content: parts.join(':')));
+      if (_conversationId != null) {
+        final confirmMsg = await _chatService.sendMessage(
+          _conversationId!,
+          '$_myPlayerName denied the trade',
+        );
+        if (mounted && !_messages.any((m) => m.id == confirmMsg.id)) {
+          setState(() => _messages.insert(0, confirmMsg));
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to deny trade: $e');
+    } finally {
+      if (mounted) setState(() => _processingTradeIds.remove(msg.id));
+    }
   }
 
   void _onScroll() {
@@ -323,7 +390,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  String get _displayName =>
+  String get _otherPlayerName =>
       widget.tradeMatch?.playerName ?? widget.otherPlayerName ?? 'Unknown';
 
   String? get _displayIcon => widget.tradeMatch?.icon ?? widget.otherIcon;
@@ -381,8 +448,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   : null,
               child: _displayIcon == null
                   ? Text(
-                      _displayName.isNotEmpty
-                          ? _displayName[0].toUpperCase()
+                      _otherPlayerName.isNotEmpty
+                          ? _otherPlayerName[0].toUpperCase()
                           : '?',
                       style:
                           const TextStyle(fontSize: 16, color: Colors.white70),
@@ -395,7 +462,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _displayName,
+                    _otherPlayerName,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -649,13 +716,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildTradeMessageBubble(Message msg, bool isMine) {
     final parts = msg.content.split(':');
-    // TRADE:offerCardId:offerLang:receiveCardId:receiveLang
+    // TRADE:offerCardId:offerLang:receiveCardId:receiveLang:status
     final offerCardId = parts.length > 1 ? parts[1] : '';
     final offerLang = parts.length > 2 ? parts[2] : '';
     final receiveCardId = parts.length > 3 ? parts[3] : '';
     final receiveLang = parts.length > 4 ? parts[4] : '';
+    final status = parts.length > 5 ? parts[5] : 'pending';
     final offerCard = _cardMap[offerCardId];
     final receiveCard = _cardMap[receiveCardId];
+
+    final isAccepted = status == 'accepted';
+    final isDenied = status == 'denied';
+    final isPending = status == 'pending';
+    final isProcessing = _processingTradeIds.contains(msg.id);
+    final hasAcceptedTrade = _messages.any((m) =>
+        m.content.startsWith('TRADE:') &&
+        m.content.split(':').length > 5 &&
+        m.content.split(':')[5] == 'accepted');
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
@@ -664,31 +741,70 @@ class _ChatScreenState extends State<ChatScreen> {
         padding: const EdgeInsets.all(10),
         constraints: const BoxConstraints(maxWidth: 260),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E24),
+          color: isAccepted
+              ? const Color(0xFF02F8AE).withOpacity(0.15)
+              : isDenied
+                  ? Colors.redAccent.withOpacity(0.10)
+                  : const Color(0xFF1E1E24),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFF02F8AE).withOpacity(0.3),
-            width: 1,
+            color: isAccepted
+                ? const Color(0xFF02F8AE).withOpacity(0.6)
+                : isDenied
+                    ? Colors.redAccent.withOpacity(0.3)
+                    : const Color(0xFF02F8AE).withOpacity(0.3),
+            width: isAccepted ? 1.5 : 1,
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              isMine
-                  ? '$_myPlayerName proposed a trade'
-                  : '$_displayName proposed a trade',
-              style: const TextStyle(
-                color: Colors.white54,
-                fontSize: 12,
+            if (isAccepted)
+              const Row(
+                children: [
+                  Icon(Icons.check_circle, size: 14, color: Color(0xFF02F8AE)),
+                  SizedBox(width: 4),
+                  Text(
+                    'Accepted',
+                    style: TextStyle(
+                      color: Color(0xFF02F8AE),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            else if (isDenied)
+              const Row(
+                children: [
+                  Icon(Icons.cancel, size: 14, color: Colors.white38),
+                  SizedBox(width: 4),
+                  Text(
+                    'Denied',
+                    style: TextStyle(
+                      color: Colors.white38,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              )
+            else
+              Text(
+                isMine
+                    ? '$_myPlayerName proposed a trade'
+                    : '$_otherPlayerName proposed a trade',
+                style: const TextStyle(
+                  color: Colors.white54,
+                  fontSize: 12,
+                ),
               ),
-            ),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                     child: _buildCardColumn(
-                        offerCard, isMine ? _myPlayerName : _displayName,
+                        offerCard, isMine ? _myPlayerName : _otherPlayerName,
                         language: offerLang)),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 2),
@@ -697,10 +813,56 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 Expanded(
                     child: _buildCardColumn(
-                        receiveCard, isMine ? _displayName : _myPlayerName,
+                        receiveCard, isMine ? _otherPlayerName : _myPlayerName,
                         language: receiveLang)),
               ],
             ),
+            // Accept/Deny buttons for receiver on pending trades
+            if (!isMine && isPending && !hasAcceptedTrade) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 32,
+                      child: OutlinedButton(
+                        onPressed: isProcessing ? null : () => _denyTrade(msg),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.white24),
+                          foregroundColor: Colors.white70,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child:
+                            const Text('Deny', style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 32,
+                      child: ElevatedButton(
+                        onPressed:
+                            isProcessing ? null : () => _acceptTrade(msg),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF02F8AE),
+                          foregroundColor: Colors.black,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Accept',
+                            style: TextStyle(fontSize: 12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 4),
             Align(
               alignment: Alignment.bottomRight,
