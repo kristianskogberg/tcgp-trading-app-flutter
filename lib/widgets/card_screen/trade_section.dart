@@ -5,7 +5,9 @@ import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/screens/chat_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/services/language_filter_service.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
+import 'package:tcgp_trading_app/utils/languages.dart';
 import 'package:tcgp_trading_app/widgets/shared/language_selector.dart';
 
 class TradeSection extends StatefulWidget {
@@ -21,12 +23,20 @@ class _TradeSectionState extends State<TradeSection>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
   final _userCardService = UserCardService();
+  final _langFilterService = LanguageFilterService();
   int _activeTab = 0;
   bool _isWishlisted = false;
   bool _isOwned = false;
   List<(PocketCard, TradeMatch)>? _wantMatches;
   List<(PocketCard, TradeMatch)>? _ownedMatches;
   bool _loadingMatches = false;
+  bool _trainersOnly = false;
+  final Set<String> _languages = languages.keys.toSet();
+  Set<String> _selectedLanguages = {...languages.keys};
+  Set<String> _appliedLanguages = {...languages.keys};
+
+  bool get _isFullArtSupporter =>
+      widget.card.rarity == '☆☆' && widget.card.type == 'Trainer';
 
   @override
   void initState() {
@@ -37,7 +47,31 @@ class _TradeSectionState extends State<TradeSection>
         setState(() => _activeTab = _tabController.index);
       }
     });
+    _loadLanguageFilter();
     _loadState();
+  }
+
+  Future<void> _loadLanguageFilter() async {
+    final saved = await _langFilterService.getSelectedLanguages();
+    if (!mounted) return;
+    setState(() {
+      _selectedLanguages = saved;
+      _appliedLanguages = {...saved};
+    });
+  }
+
+  void _updateLanguageFilter(Set<String> selected) {
+    setState(() => _selectedLanguages = selected);
+  }
+
+  void _applyLanguageFilter() {
+    setState(() {
+      _appliedLanguages = {..._selectedLanguages};
+      _wantMatches = null;
+      _ownedMatches = null;
+    });
+    _langFilterService.setSelectedLanguages(_selectedLanguages);
+    _fetchMatches();
   }
 
   @override
@@ -96,21 +130,19 @@ class _TradeSectionState extends State<TradeSection>
           ),
         ),
         const SizedBox(height: 8),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1E24),
-            borderRadius: BorderRadius.circular(12),
-          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           child: TabBar(
             controller: _tabController,
-            indicator: BoxDecoration(
-              color: const Color(0xFF02F8AE),
-              borderRadius: BorderRadius.circular(10),
+            indicator: const UnderlineTabIndicator(
+              borderSide: BorderSide(
+                color: Color(0xFF02F8AE),
+                width: 2,
+              ),
             ),
             indicatorSize: TabBarIndicatorSize.tab,
             dividerHeight: 0,
-            labelColor: Colors.black,
+            labelColor: const Color(0xFF02F8AE),
             unselectedLabelColor: Colors.white60,
             labelStyle: const TextStyle(
               fontWeight: FontWeight.w600,
@@ -175,6 +207,130 @@ class _TradeSectionState extends State<TradeSection>
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      FilterChip(
+                        label: const Text('All'),
+                        selected:
+                            _selectedLanguages.length == _languages.length,
+                        onSelected: (selected) {
+                          _updateLanguageFilter(
+                            selected ? {..._languages} : {},
+                          );
+                        },
+                        selectedColor: const Color(0xFF1E1E24),
+                        checkmarkColor: const Color(0xFF02F8AE),
+                        labelStyle: TextStyle(
+                          color: _selectedLanguages.length == _languages.length
+                              ? const Color(0xFF02F8AE)
+                              : Colors.white70,
+                          fontSize: 12,
+                        ),
+                        backgroundColor: const Color(0xFF1E1E24),
+                        side: BorderSide(
+                          color: _selectedLanguages.length == _languages.length
+                              ? const Color(0xFF02F8AE)
+                              : Colors.white24,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      ..._languages.map((lang) {
+                        final isSelected = _selectedLanguages.contains(lang);
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(lang),
+                            selected: isSelected,
+                            onSelected: (selected) {
+                              final updated = {..._selectedLanguages};
+                              if (selected) {
+                                updated.add(lang);
+                              } else {
+                                updated.remove(lang);
+                              }
+                              _updateLanguageFilter(updated);
+                            },
+                            selectedColor: const Color(0xFF1E1E24),
+                            checkmarkColor: const Color(0xFF02F8AE),
+                            labelStyle: TextStyle(
+                              color: isSelected
+                                  ? const Color(0xFF02F8AE)
+                                  : Colors.white70,
+                              fontSize: 12,
+                            ),
+                            backgroundColor: const Color(0xFF1E1E24),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? const Color(0xFF02F8AE)
+                                  : Colors.white24,
+                            ),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+              if (_selectedLanguages.length != _appliedLanguages.length ||
+                  !_selectedLanguages.containsAll(_appliedLanguages))
+                Padding(
+                  padding: const EdgeInsets.only(left: 6),
+                  child: SizedBox(
+                    height: 32,
+                    child: FilledButton.icon(
+                      onPressed: _applyLanguageFilter,
+                      icon: const Icon(Icons.check, size: 14),
+                      label:
+                          const Text('Apply', style: TextStyle(fontSize: 12)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF02F8AE),
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (_isFullArtSupporter)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 4, 6, 0),
+            child: Row(
+              children: [
+                const Text(
+                  'Full Art Supporters only',
+                  style: TextStyle(fontSize: 13, color: Colors.white70),
+                ),
+                SizedBox(width: 6),
+                SizedBox(
+                  height: 32,
+                  child: FittedBox(
+                    child: Switch(
+                      value: _trainersOnly,
+                      onChanged: (value) =>
+                          setState(() => _trainersOnly = value),
+                      activeColor: const Color(0xFF02F8AE),
+                      activeTrackColor:
+                          const Color(0xFF02F8AE).withOpacity(0.4),
+                      inactiveThumbColor: Colors.white38,
+                      inactiveTrackColor: Colors.white10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         _buildMatchGrid(),
         const SizedBox(height: 16),
       ],
@@ -182,7 +338,10 @@ class _TradeSectionState extends State<TradeSection>
   }
 
   Widget _buildMatchGrid() {
-    final matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
+    var matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
+    if (matches != null && _trainersOnly) {
+      matches = matches.where((pair) => pair.$1.type == 'Trainer').toList();
+    }
     if (_loadingMatches) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -212,7 +371,7 @@ class _TradeSectionState extends State<TradeSection>
           return Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: matches.map((match) {
+            children: matches!.map((match) {
               final (matchCard, tradeMatch) = match;
               return SizedBox(
                 width: itemWidth,
@@ -239,15 +398,35 @@ class _TradeSectionState extends State<TradeSection>
                                   color: Colors.white24),
                             ),
                           ),
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Text(
+                                tradeMatch.language,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ),
                           if (_userCardService.isWishlisted(matchCard.id) ||
                               _userCardService.isOwned(matchCard.id))
                             Positioned(
-                              top: 4,
+                              bottom: 4,
                               right: 4,
                               child: Container(
                                 padding: const EdgeInsets.all(3),
-                                decoration: const BoxDecoration(
-                                  color: Colors.black54,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.8),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
@@ -427,9 +606,12 @@ class _TradeSectionState extends State<TradeSection>
       final cardMap = CardService().getCardMap();
       final futures = <Future>[];
 
+      final langList = _appliedLanguages.toList();
+
       if (wantNeeded) {
-        futures.add(
-            _userCardService.getTradeMatchesForWanted(cardId).then((matches) {
+        futures.add(_userCardService
+            .getTradeMatchesForWanted(cardId, langList)
+            .then((matches) {
           _wantMatches = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
@@ -439,8 +621,9 @@ class _TradeSectionState extends State<TradeSection>
       }
 
       if (ownedNeeded) {
-        futures.add(
-            _userCardService.getTradeMatchesForOwned(cardId).then((matches) {
+        futures.add(_userCardService
+            .getTradeMatchesForOwned(cardId, langList)
+            .then((matches) {
           _ownedMatches = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))

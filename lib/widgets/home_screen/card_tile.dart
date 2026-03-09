@@ -22,7 +22,7 @@ class CardTile extends StatefulWidget {
     this.mode = HomeMode.browse,
     this.isPendingWishlist = false,
     this.isPendingOwned = false,
-    this.pendingLanguages = const {'ENG'},
+    this.pendingLanguages = const {'ANY'},
     this.onWishlistToggle,
     this.onOwnedToggle,
     this.onLanguagesChanged,
@@ -69,7 +69,7 @@ class _CardTileState extends State<CardTile> {
   bool get _hasPending => widget.isPendingWishlist || widget.isPendingOwned;
 
   String get _languageLabel {
-    if (_selectedLanguages.length == languages.length) return 'Any';
+    if (_selectedLanguages.contains('ANY')) return 'Any';
     if (_selectedLanguages.length == 1) {
       return languages[_selectedLanguages.first] ?? _selectedLanguages.first;
     }
@@ -83,8 +83,10 @@ class _CardTileState extends State<CardTile> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) =>
-          _LanguagePicker(selected: Set.from(_selectedLanguages)),
+      builder: (context) => _LanguagePicker(
+        selected: Set.from(_selectedLanguages),
+        showAny: widget.isPendingWishlist,
+      ),
     );
     if (result != null) {
       setState(() => _selectedLanguages = result);
@@ -153,9 +155,8 @@ class _CardTileState extends State<CardTile> {
                         padding: const EdgeInsets.symmetric(
                             vertical: 6, horizontal: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2A2A30),
+                          color: const Color(0xFF2A2A30).withOpacity(0.9),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.white24, width: 1.5),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -174,8 +175,7 @@ class _CardTileState extends State<CardTile> {
                                 _languageLabel,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
                                   color: widget.isPendingWishlist
                                       ? const Color(0xFF02F8AE)
                                       : widget.isPendingOwned
@@ -240,7 +240,7 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFF2A2A30),
+          color: const Color(0xFF2A2A30).withOpacity(0.9),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -255,8 +255,9 @@ class _ActionButton extends StatelessWidget {
 
 class _LanguagePicker extends StatefulWidget {
   final Set<String> selected;
+  final bool showAny;
 
-  const _LanguagePicker({required this.selected});
+  const _LanguagePicker({required this.selected, this.showAny = false});
 
   @override
   State<_LanguagePicker> createState() => _LanguagePickerState();
@@ -265,7 +266,7 @@ class _LanguagePicker extends StatefulWidget {
 class _LanguagePickerState extends State<_LanguagePicker> {
   late Set<String> _selected;
 
-  bool get _isAllSelected => _selected.length == languages.length;
+  bool get _isAnySelected => _selected.contains('ANY');
 
   @override
   void initState() {
@@ -273,18 +274,13 @@ class _LanguagePickerState extends State<_LanguagePicker> {
     _selected = Set.from(widget.selected);
   }
 
-  void _toggleAny() {
-    setState(() {
-      if (_isAllSelected) {
-        _selected.clear();
-      } else {
-        _selected = Set.from(languages.keys);
-      }
-    });
+  void _selectAny() {
+    setState(() => _selected = {'ANY'});
   }
 
   void _toggleLanguage(String key) {
     setState(() {
+      _selected.remove('ANY');
       if (_selected.contains(key)) {
         _selected.remove(key);
       } else {
@@ -313,7 +309,7 @@ class _LanguagePickerState extends State<_LanguagePicker> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Select languages',
+            'Select language',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -325,25 +321,29 @@ class _LanguagePickerState extends State<_LanguagePicker> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              FilterChip(
-                label: const Text('Any'),
-                selected: _isAllSelected,
-                onSelected: (_) => _toggleAny(),
-                selectedColor: const Color(0xFF02F8AE).withAlpha(51),
-                checkmarkColor: const Color(0xFF02F8AE),
-                labelStyle: TextStyle(
-                  color:
-                      _isAllSelected ? const Color(0xFF02F8AE) : Colors.white70,
-                  fontSize: 13,
+              if (widget.showAny)
+                FilterChip(
+                  label: const Text('Any'),
+                  selected: _isAnySelected,
+                  onSelected: (_) => _selectAny(),
+                  selectedColor: const Color(0xFF02F8AE).withAlpha(51),
+                  checkmarkColor: const Color(0xFF02F8AE),
+                  labelStyle: TextStyle(
+                    color: _isAnySelected
+                        ? const Color(0xFF02F8AE)
+                        : Colors.white70,
+                    fontSize: 13,
+                  ),
+                  backgroundColor: const Color(0xFF2A2A32),
+                  side: BorderSide(
+                    color: _isAnySelected
+                        ? const Color(0xFF02F8AE)
+                        : Colors.white24,
+                  ),
                 ),
-                backgroundColor: const Color(0xFF2A2A32),
-                side: BorderSide(
-                  color:
-                      _isAllSelected ? const Color(0xFF02F8AE) : Colors.white24,
-                ),
-              ),
               ...languages.entries.map((entry) {
-                final isSelected = _selected.contains(entry.key);
+                final isSelected =
+                    !_isAnySelected && _selected.contains(entry.key);
                 return FilterChip(
                   label: Text(entry.value),
                   selected: isSelected,

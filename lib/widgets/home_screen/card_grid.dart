@@ -65,10 +65,8 @@ class CardGrid extends StatelessWidget {
                   isPendingWishlist: effectiveWishlist(card.id),
                   isPendingOwned: effectiveOwned(card.id),
                   pendingLanguages: effectiveLanguages(card.id),
-                  onWishlistToggle: (langs) =>
-                      onWishlistToggle(card.id, langs),
-                  onOwnedToggle: (langs) =>
-                      onOwnedToggle(card.id, langs),
+                  onWishlistToggle: (langs) => onWishlistToggle(card.id, langs),
+                  onOwnedToggle: (langs) => onOwnedToggle(card.id, langs),
                   onLanguagesChanged: onLanguagesChanged,
                 );
               },
@@ -91,7 +89,7 @@ class CardGrid extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Submit ($pendingCount)',
+                'Save change${pendingCount == 1 ? '' : 's'} ($pendingCount)',
                 style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   fontSize: 16,

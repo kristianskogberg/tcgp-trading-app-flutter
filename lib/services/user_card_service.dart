@@ -15,8 +15,11 @@ class UserCardEntry {
 
   factory UserCardEntry.fromJson(Map<String, dynamic> json) => UserCardEntry(
         cardId: json['cardId'] as String,
-        language: json['language'] as String,
+        language: json['language'] as String? ?? 'ANY',
       );
+
+  /// Whether this entry represents "any language".
+  bool get isAny => language == 'ANY';
 }
 
 class UserCardService {
@@ -164,13 +167,15 @@ class UserCardService {
   }
 
   /// Find users who own [cardId], then return their wishlist cards with profile info.
-  Future<List<TradeMatch>> getTradeMatchesForWanted(String cardId) async {
+  Future<List<TradeMatch>> getTradeMatchesForWanted(
+      String cardId, List<String> languages) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
     final rows = await _client.rpc('get_trade_matches_for_wanted', params: {
       'p_card_id': cardId,
       'p_user_id': user.id,
+      'p_languages': languages,
     });
 
     return (rows as List)
@@ -179,13 +184,15 @@ class UserCardService {
   }
 
   /// Find users who want [cardId], then return their owned cards with profile info.
-  Future<List<TradeMatch>> getTradeMatchesForOwned(String cardId) async {
+  Future<List<TradeMatch>> getTradeMatchesForOwned(
+      String cardId, List<String> languages) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
     final rows = await _client.rpc('get_trade_matches_for_owned', params: {
       'p_card_id': cardId,
       'p_user_id': user.id,
+      'p_languages': languages,
     });
 
     return (rows as List)

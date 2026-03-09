@@ -6,7 +6,7 @@ class PendingCardEdit {
     required this.cardId,
     required this.type,
     Set<String>? languages,
-  }) : languages = languages ?? {'ENG'};
+  }) : languages = languages ?? {'ANY'};
 
   PendingCardEdit copyWith({Set<String>? languages}) => PendingCardEdit(
         cardId: cardId,

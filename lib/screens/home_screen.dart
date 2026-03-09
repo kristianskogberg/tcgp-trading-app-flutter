@@ -190,14 +190,14 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---------------------------------------------------------------------------
 
   bool _effectiveWishlist(String cardId) {
-    if (_pendingRemovals.contains('$cardId:wishlist')) return false;
     if (_pendingEdits.containsKey('$cardId:wishlist')) return true;
+    if (_pendingRemovals.contains('$cardId:wishlist')) return false;
     return _userCardService.isWishlisted(cardId);
   }
 
   bool _effectiveOwned(String cardId) {
-    if (_pendingRemovals.contains('$cardId:owned')) return false;
     if (_pendingEdits.containsKey('$cardId:owned')) return true;
+    if (_pendingRemovals.contains('$cardId:owned')) return false;
     return _userCardService.isOwned(cardId);
   }
 
@@ -256,10 +256,29 @@ class _HomeScreenState extends State<HomeScreen> {
         if (_pendingEdits.containsKey(key)) {
           _pendingEdits[key] =
               _pendingEdits[key]!.copyWith(languages: languages);
+        } else {
+          // Card already exists in DB — create a pending edit to update languages
+          final isExisting = type == 'wishlist'
+              ? _userCardService.isWishlisted(cardId)
+              : _userCardService.isOwned(cardId);
+          if (isExisting && !_pendingRemovals.contains(key)) {
+            final currentLangs = _userCardService.getLanguages(cardId, type);
+            if (!_setsEqual(currentLangs, languages)) {
+              _pendingRemovals.add(key);
+              _pendingEdits[key] = PendingCardEdit(
+                cardId: cardId,
+                type: type,
+                languages: languages,
+              );
+            }
+          }
         }
       }
     });
   }
+
+  bool _setsEqual(Set<String> a, Set<String> b) =>
+      a.length == b.length && a.containsAll(b);
 
   Future<void> _submitPendingEdits() async {
     final additions = Map<String, PendingCardEdit>.from(_pendingEdits);
@@ -297,11 +316,12 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _pendingEdits.clear();
       _pendingRemovals.clear();
+      _currentMode = HomeMode.browse;
     });
 
-    final message = failCount == 0
-        ? '$successCount card${successCount == 1 ? '' : 's'} saved'
-        : '$successCount saved, $failCount failed';
+    final message =
+        failCount == 0 ? 'Changes saved' : 'Some changes failed to save';
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
@@ -412,8 +432,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           scrollController: _scrollController,
                           mode: _currentMode,
                           hasPendingChanges: _hasPendingChanges,
-                          pendingCount:
-                              _pendingEdits.length + _pendingRemovals.length,
+                          pendingCount: _pendingEdits.length +
+                              _pendingRemovals
+                                  .where(
+                                      (key) => !_pendingEdits.containsKey(key))
+                                  .length,
                           effectiveWishlist: _effectiveWishlist,
                           effectiveOwned: _effectiveOwned,
                           effectiveLanguages: _effectiveLanguages,

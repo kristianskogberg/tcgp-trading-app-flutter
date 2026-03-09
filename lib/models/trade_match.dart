@@ -5,6 +5,7 @@ class TradeMatch {
   final String friendId;
   final String? icon;
   final DateTime? lastActiveAt;
+  final String language;
 
   const TradeMatch({
     required this.cardId,
@@ -13,6 +14,7 @@ class TradeMatch {
     required this.friendId,
     this.icon,
     this.lastActiveAt,
+    required this.language,
   });
 
   factory TradeMatch.fromJson(Map<String, dynamic> json) => TradeMatch(
@@ -24,5 +26,6 @@ class TradeMatch {
         lastActiveAt: json['last_active_at'] != null
             ? DateTime.parse(json['last_active_at'] as String)
             : null,
+        language: json['language'] as String? ?? 'ANY',
       );
 }
