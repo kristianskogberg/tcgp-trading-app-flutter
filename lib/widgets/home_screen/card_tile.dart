@@ -246,7 +246,11 @@ class _ActionButton extends StatelessWidget {
         child: Icon(
           icon,
           size: 18,
-          color: isActive ? activeColor : Colors.white38,
+          color: onTap == null
+              ? Colors.white12
+              : isActive
+                  ? activeColor
+                  : Colors.white38,
         ),
       ),
     );

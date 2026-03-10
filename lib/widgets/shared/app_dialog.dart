@@ -59,75 +59,93 @@ class AppDialog<T> extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: centerContent
-              ? CrossAxisAlignment.center
-              : CrossAxisAlignment.start,
-          children: [
-            if (title != null) ...[
-              Text(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: centerContent
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.start,
+        children: [
+          if (title != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Color(0xFF141418),
+                border: Border(
+                  bottom: BorderSide(color: Colors.white12),
+                ),
+              ),
+              child: Text(
                 title!,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
                 ),
+                textAlign: centerContent ? TextAlign.center : TextAlign.start,
               ),
-              const SizedBox(height: 12),
-            ],
-            DefaultTextStyle(
-              style: const TextStyle(fontSize: 14, color: Colors.white70),
-              child: content,
             ),
-            const SizedBox(height: 20),
-            Row(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: centerContent
+                  ? CrossAxisAlignment.center
+                  : CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.white24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: Text(cancelText),
-                  ),
+                DefaultTextStyle(
+                  style: const TextStyle(fontSize: 14, color: Colors.white70),
+                  child: content,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      if (onPrimaryPressed != null) {
-                        Navigator.pop(context, onPrimaryPressed!());
-                      } else if (onPrimaryAction != null) {
-                        Navigator.pop(context);
-                        onPrimaryAction!();
-                      } else {
-                        Navigator.pop(context);
-                      }
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor:
-                          primaryButtonColor ?? const Color(0xFF02F8AE),
-                      foregroundColor:
-                          primaryForegroundColor ?? Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.white24),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(cancelText),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: Text(primaryText),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          if (onPrimaryPressed != null) {
+                            Navigator.pop(context, onPrimaryPressed!());
+                          } else if (onPrimaryAction != null) {
+                            Navigator.pop(context);
+                            onPrimaryAction!();
+                          } else {
+                            Navigator.pop(context);
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor:
+                              primaryButtonColor ?? const Color(0xFF02F8AE),
+                          foregroundColor:
+                              primaryForegroundColor ?? Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(primaryText),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

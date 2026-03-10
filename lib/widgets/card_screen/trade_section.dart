@@ -284,7 +284,7 @@ class _TradeSectionState extends State<TradeSection>
                             ),
                             const TextSpan(
                                 text:
-                                    ' and you are willing to trade for it, these are the cards you could offer in return.'),
+                                    ', these are the cards you could offer for it.'),
                           ]
                         : [
                             const TextSpan(text: 'If you own '),
@@ -631,11 +631,21 @@ class _TradeSectionState extends State<TradeSection>
 
   String _formatLanguages(String cardId, String type) {
     final langs = _userCardService.getLanguages(cardId, type);
+
     if (langs.isEmpty) return 'no languages';
-    return langs
+
+    final formatted = langs
         .map((code) =>
             code == 'ANY' ? 'any language' : (languages[code] ?? code))
-        .join(', ');
+        .toList();
+
+    if (formatted.length == 1) {
+      return formatted.first;
+    } else if (formatted.length == 2) {
+      return '${formatted[0]} and ${formatted[1]}';
+    } else {
+      return '${formatted.sublist(0, formatted.length - 1).join(', ')} and ${formatted.last}';
+    }
   }
 
   void _loadState() {
@@ -729,6 +739,14 @@ class _TradeSectionState extends State<TradeSection>
       pendingOwned = !isWishlist;
     }
 
+    final isEditing = isWishlist ? _isWishlisted : _isOwned;
+    final hasOppositeEntry = isWishlist ? _isOwned : _isWishlisted;
+    final warningText = hasOppositeEntry
+        ? isWishlist
+            ? 'You have already listed this card for trade. Wishlisting it will remove your listing.'
+            : 'You have already wishlisted this card. Creating a listing will remove it from your wishlist.'
+        : null;
+
     final result = await showDialog<
         ({bool wishlisted, bool owned, Set<String> languages})?>(
       context: context,
@@ -738,6 +756,8 @@ class _TradeSectionState extends State<TradeSection>
         initialOwned: pendingOwned,
         initialLanguages: pendingLangs,
         type: type,
+        isEditing: isEditing,
+        warningText: warningText,
       ),
     );
 
@@ -788,6 +808,8 @@ class _EditCardDialog extends StatefulWidget {
   final bool initialOwned;
   final Set<String> initialLanguages;
   final String type;
+  final bool isEditing;
+  final String? warningText;
 
   const _EditCardDialog({
     required this.card,
@@ -795,6 +817,8 @@ class _EditCardDialog extends StatefulWidget {
     required this.initialOwned,
     required this.initialLanguages,
     required this.type,
+    required this.isEditing,
+    this.warningText,
   });
 
   @override
@@ -814,41 +838,76 @@ class _EditCardDialogState extends State<_EditCardDialog> {
     _languages = Set.from(widget.initialLanguages);
   }
 
+  String get dialogTitle {
+    if (widget.type == 'wishlist') {
+      return widget.isEditing ? 'Edit Wishlist' : 'Add to Wishlist';
+    }
+    return widget.isEditing ? 'Edit Listing' : 'Create a Listing';
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppDialog(
       centerContent: true,
-      content: SizedBox(
-        width: 140,
-        height: 200,
-        child: CardTile(
-          card: widget.card,
-          mode: HomeMode.edit,
-          isPendingWishlist: _wishlisted,
-          isPendingOwned: _owned,
-          pendingLanguages: _languages,
-          onWishlistToggle: (langs) {
-            setState(() {
-              _wishlisted = !_wishlisted;
-              if (_wishlisted) {
-                _owned = false;
-                _languages = langs;
-              }
-            });
-          },
-          onOwnedToggle: (langs) {
-            setState(() {
-              _owned = !_owned;
-              if (_owned) {
-                _wishlisted = false;
-                _languages = langs;
-              }
-            });
-          },
-          onLanguagesChanged: (_, langs) {
-            setState(() => _languages = langs);
-          },
-        ),
+      title: dialogTitle,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 140,
+            height: 200,
+            child: CardTile(
+              card: widget.card,
+              mode: HomeMode.edit,
+              isPendingWishlist: _wishlisted,
+              isPendingOwned: _owned,
+              pendingLanguages: _languages,
+              onWishlistToggle: widget.type == 'wishlist'
+                  ? (langs) {
+                      setState(() {
+                        _wishlisted = !_wishlisted;
+                        if (_wishlisted) {
+                          _owned = false;
+                          _languages = langs;
+                        }
+                      });
+                    }
+                  : null,
+              onOwnedToggle: widget.type == 'owned'
+                  ? (langs) {
+                      setState(() {
+                        _owned = !_owned;
+                        if (_owned) {
+                          _wishlisted = false;
+                          _languages = langs;
+                        }
+                      });
+                    }
+                  : null,
+              onLanguagesChanged: (_, langs) {
+                setState(() => _languages = langs);
+              },
+            ),
+          ),
+          if (widget.warningText != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline,
+                      size: 16, color: Colors.white38),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.warningText!,
+                      style:
+                          const TextStyle(fontSize: 12, color: Colors.white54),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
       onPrimaryPressed: () => (
         wishlisted: _wishlisted,
