@@ -30,52 +30,55 @@ class ChatFriendIdBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.all(10),
-        constraints: const BoxConstraints(maxWidth: 260),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1E1E24),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF02F8AE).withOpacity(0.3),
-            width: 1,
+      child: IntrinsicWidth(
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.all(10),
+          constraints: const BoxConstraints(maxWidth: 260),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E1E24),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: const Color(0xFF02F8AE).withOpacity(0.3),
+              width: 1,
+            ),
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              playerName,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    _formatFriendId(friendId),
-                    style: const TextStyle(fontSize: 16, color: Colors.white70),
-                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                playerName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(width: 8),
-                _CopyButton(friendId: friendId),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Text(
-                formatChatTime(createdAt.toLocal()),
-                style: const TextStyle(fontSize: 10, color: Colors.white38),
               ),
-            ),
-          ],
+              const SizedBox(height: 6),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      _formatFriendId(friendId),
+                      style:
+                          const TextStyle(fontSize: 16, color: Colors.white70),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _CopyButton(friendId: friendId),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Text(
+                  formatChatTime(createdAt.toLocal()),
+                  style: const TextStyle(fontSize: 10, color: Colors.white38),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

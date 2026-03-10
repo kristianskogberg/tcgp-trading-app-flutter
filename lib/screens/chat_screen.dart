@@ -12,6 +12,9 @@ import 'package:tcgp_trading_app/widgets/chat_screen/chat_message_area.dart';
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_text_bubble.dart';
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_trade_bubble.dart';
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_friend_id_bubble.dart';
+import 'package:tcgp_trading_app/widgets/chat_screen/chat_trade_result_bubble.dart';
+import 'package:tcgp_trading_app/widgets/chat_screen/chat_next_steps_bubble.dart';
+import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
   final PocketCard? contextCard;
@@ -209,11 +212,14 @@ class _ChatScreenState extends State<ChatScreen> {
         parts.add('accepted');
       }
       _onUpdatedMessage(msg.copyWith(content: parts.join(':')));
-      // Send confirmation text message
+      // Send trade result message
       if (_conversationId != null) {
+        final tradeParts = msg.content.split(':');
+        final offerCardId = tradeParts.length > 1 ? tradeParts[1] : '';
+        final receiveCardId = tradeParts.length > 3 ? tradeParts[3] : '';
         final confirmMsg = await _chatService.sendMessage(
           _conversationId!,
-          'Trade accepted',
+          'TRADERESULT:accepted:$_myPlayerName:$offerCardId:$receiveCardId',
         );
         if (mounted && !_messages.any((m) => m.id == confirmMsg.id)) {
           setState(() => _messages.insert(0, confirmMsg));
@@ -239,9 +245,12 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       _onUpdatedMessage(msg.copyWith(content: parts.join(':')));
       if (_conversationId != null) {
+        final tradeParts = msg.content.split(':');
+        final offerCardId = tradeParts.length > 1 ? tradeParts[1] : '';
+        final receiveCardId = tradeParts.length > 3 ? tradeParts[3] : '';
         final confirmMsg = await _chatService.sendMessage(
           _conversationId!,
-          'Trade denied',
+          'TRADERESULT:denied:$_myPlayerName:$offerCardId:$receiveCardId',
         );
         if (mounted && !_messages.any((m) => m.id == confirmMsg.id)) {
           setState(() => _messages.insert(0, confirmMsg));
@@ -393,6 +402,20 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  void _showConfirmTradeDialog() {
+    showAppDialog(
+      context: context,
+      title: 'Confirm trade',
+      content: const Text('Did you complete the trade in-game?'),
+      cancelText: 'Not yet',
+      primaryText: 'Confirm',
+      centerContent: true,
+      onPrimaryAction: () {
+        // TODO: handle trade confirmation
+      },
+    );
+  }
+
   String get _otherPlayerName =>
       widget.tradeMatch?.playerName ?? widget.otherPlayerName ?? 'Unknown';
 
@@ -462,6 +485,37 @@ class _ChatScreenState extends State<ChatScreen> {
         onAccept: () => _acceptTrade(msg),
         onDeny: () => _denyTrade(msg),
       );
+    }
+
+    if (msg.content.startsWith('TRADERESULT:')) {
+      final parts = msg.content.split(':');
+      final status = parts.length > 1 ? parts[1] : 'accepted';
+      final actorName = parts.length > 2 ? parts[2] : '';
+      final offerCardId = parts.length > 3 ? parts[3] : '';
+      final receiveCardId = parts.length > 4 ? parts[4] : '';
+
+      final resultBubble = ChatTradeResultBubble(
+        status: status,
+        actorPlayerName: actorName,
+        isMine: isMine,
+        offerCard: _cardMap[offerCardId],
+        receiveCard: _cardMap[receiveCardId],
+        createdAt: msg.createdAt,
+      );
+
+      if (status == 'accepted') {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            resultBubble,
+            ChatNextStepsBubble(
+              onConfirmTrade: () => _showConfirmTradeDialog(),
+            ),
+          ],
+        );
+      }
+
+      return resultBubble;
     }
 
     if (msg.content.startsWith('FRIENDID:')) {

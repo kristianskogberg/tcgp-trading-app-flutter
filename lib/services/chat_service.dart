@@ -53,6 +53,7 @@ class ChatService {
     if (trimmed.isEmpty) throw Exception('Message cannot be empty');
     if (!trimmed.startsWith('TRADE:') &&
         !trimmed.startsWith('FRIENDID:') &&
+        !trimmed.startsWith('TRADERESULT:') &&
         trimmed.length > 100) {
       throw Exception('Message too long');
     }
@@ -72,9 +73,13 @@ class ChatService {
         ? 'Trade proposal'
         : trimmed.startsWith('FRIENDID:')
             ? 'Shared Friend ID'
-            : (trimmed.length > 100
-                ? '${trimmed.substring(0, 100)}...'
-                : trimmed);
+            : trimmed.startsWith('TRADERESULT:')
+                ? (trimmed.contains(':accepted:')
+                    ? 'Trade accepted'
+                    : 'Trade denied')
+                : (trimmed.length > 100
+                    ? '${trimmed.substring(0, 100)}...'
+                    : trimmed);
     _client
         .from('conversations')
         .update({
