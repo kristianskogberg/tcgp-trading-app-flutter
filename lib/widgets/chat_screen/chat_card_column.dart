@@ -35,7 +35,7 @@ class ChatCardColumn extends StatelessWidget {
         Stack(
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(4),
               child: CachedNetworkImage(
                 imageUrl: card!.imageUrl,
                 height: 150,
@@ -53,7 +53,7 @@ class ChatCardColumn extends StatelessWidget {
             ),
             if (language.isNotEmpty)
               Positioned(
-                top: 0,
+                top: 6,
                 right: 0,
                 child: Container(
                   padding:

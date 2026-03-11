@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
+import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
-import 'package:tcgp_trading_app/auth/profile_service.dart';
+import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -14,10 +17,12 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with SingleTickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _friendIdController = TextEditingController();
   final _profileService = ProfileService();
+  final _userCardService = UserCardService();
 
   String? _usernameErrorMessage;
   String? _friendIdErrorMessage;
@@ -30,6 +35,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _savedUsername = '';
   String _savedFriendId = '';
   String? _savedIcon;
+
+  late final TabController _tabController;
+  List<PocketCard> _wishlistCards = [];
+  List<PocketCard> _listingCards = [];
+  bool _loadingCards = false;
 
   static const _profileIcons = [
     'pikachu.png',
@@ -56,6 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _usernameController.addListener(_onFieldChanged);
     _friendIdController.addListener(_onFieldChanged);
     _loadProfile();
@@ -87,10 +98,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+    if (!_editing) _loadCards();
+  }
+
+  Future<void> _loadCards() async {
+    setState(() => _loadingCards = true);
+    await _userCardService.loadMyCards();
+    final allCards = await CardService().getAllCards();
+    final wishlistIds = _userCardService.wishlistCardIds;
+    final ownedIds = _userCardService.ownedCardIds;
+    if (!mounted) return;
+    setState(() {
+      _wishlistCards =
+          allCards.where((c) => wishlistIds.contains(c.id)).toList();
+      _listingCards = allCards.where((c) => ownedIds.contains(c.id)).toList();
+      _loadingCards = false;
+    });
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _usernameController.dispose();
     _friendIdController.dispose();
     super.dispose();
@@ -139,6 +167,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile saved')),
         );
+        _loadCards();
       }
     } catch (e) {
       if (mounted) {
@@ -298,16 +327,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.only(top: 8),
               child: _editing
-                  ? _buildEditMode(formValid)
-                  : Center(child: _buildViewMode()),
+                  ? Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _buildEditMode(formValid),
+                    )
+                  : Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildProfileHeader(),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildCardTabs(),
+                      ],
+                    ),
             ),
     );
   }
 
-  Widget _buildViewMode() {
+  Widget _buildProfileHeader() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CircleAvatar(
           radius: 48,
@@ -335,6 +377,107 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: TextStyle(color: Colors.grey[600]),
         ),
       ],
+    );
+  }
+
+  Widget _buildCardTabs() {
+    return Expanded(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: TabBar(
+              controller: _tabController,
+              indicator: const UnderlineTabIndicator(
+                borderSide: BorderSide(color: Color(0xFF02F8AE), width: 2),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerHeight: 0,
+              labelColor: const Color(0xFF02F8AE),
+              unselectedLabelColor: Colors.white60,
+              labelStyle:
+                  const TextStyle(fontWeight: FontWeight.w400, fontSize: 14),
+              unselectedLabelStyle:
+                  const TextStyle(fontWeight: FontWeight.w400, fontSize: 14),
+              splashFactory: NoSplash.splashFactory,
+              overlayColor: WidgetStateProperty.all(Colors.transparent),
+              tabs: [
+                Tab(
+                  height: 36,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.favorite_border, size: 16),
+                      SizedBox(width: 6),
+                      Text('Wishlist'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  height: 36,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Icon(Icons.check_circle_outline, size: 16),
+                      SizedBox(width: 6),
+                      Text('Listings'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: _loadingCards
+                ? const Center(child: CircularProgressIndicator())
+                : TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildCardGrid(_wishlistCards, 'wishlist'),
+                      _buildCardGrid(_listingCards, 'listings'),
+                    ],
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCardGrid(List<PocketCard> cards, String type) {
+    if (cards.isEmpty) {
+      return Center(
+        child: Text(
+          type == 'wishlist' ? 'No wishlisted cards' : 'No listed cards',
+          style: const TextStyle(color: Colors.white38),
+        ),
+      );
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = (constraints.maxWidth ~/ 180).clamp(3, 4);
+        return GridView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: 0.7,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+          ),
+          itemCount: cards.length,
+          itemBuilder: (context, index) => CardTile(
+              card: cards[index],
+              mode: HomeMode.browse,
+              isPendingWishlist: false,
+              isPendingOwned: false,
+              pendingLanguages: const {},
+              heroTag: 'profile-card-hero-${cards[index].id}',
+              onWishlistToggle: (_) {},
+              onOwnedToggle: (_) {},
+              onLanguagesChanged: (_, __) {},
+            ),
+        );
+      },
     );
   }
 

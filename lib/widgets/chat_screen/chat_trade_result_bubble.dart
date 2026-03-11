@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 
 class ChatTradeResultBubble extends StatelessWidget {
   final String status; // 'accepted' or 'denied'
@@ -32,8 +33,10 @@ class ChatTradeResultBubble extends StatelessWidget {
 
     return Center(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(
+            horizontal: ChatConstants.messageMarginHorizontal,
+            vertical: ChatConstants.messageMarginVertical),
+        padding: const EdgeInsets.all(ChatConstants.messagePadding),
         decoration: BoxDecoration(
           color: accentColor.withOpacity(0.08),
           borderRadius: BorderRadius.circular(12),

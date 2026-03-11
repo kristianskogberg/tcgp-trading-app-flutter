@@ -255,9 +255,12 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       for (final type in ['wishlist', 'owned']) {
         final key = '$cardId:$type';
+        final effectiveLangs = type == 'owned' && languages.length > 1
+            ? {languages.where((l) => l != 'ANY').firstOrNull ?? 'ENG'}
+            : languages;
         if (_pendingEdits.containsKey(key)) {
           _pendingEdits[key] =
-              _pendingEdits[key]!.copyWith(languages: languages);
+              _pendingEdits[key]!.copyWith(languages: effectiveLangs);
         } else {
           // Card already exists in DB — create a pending edit to update languages
           final isExisting = type == 'wishlist'
@@ -265,12 +268,12 @@ class _HomeScreenState extends State<HomeScreen> {
               : _userCardService.isOwned(cardId);
           if (isExisting && !_pendingRemovals.contains(key)) {
             final currentLangs = _userCardService.getLanguages(cardId, type);
-            if (!_setsEqual(currentLangs, languages)) {
+            if (!_setsEqual(currentLangs, effectiveLangs)) {
               _pendingRemovals.add(key);
               _pendingEdits[key] = PendingCardEdit(
                 cardId: cardId,
                 type: type,
-                languages: languages,
+                languages: effectiveLangs,
               );
             }
           }
@@ -288,6 +291,15 @@ class _HomeScreenState extends State<HomeScreen> {
     int successCount = 0;
     int failCount = 0;
 
+    // Capture languages to remove BEFORE mutating the cache
+    final removalLangs = <String, Set<String>>{};
+    for (final key in removals) {
+      final lastColon = key.lastIndexOf(':');
+      final cardId = key.substring(0, lastColon);
+      final type = key.substring(lastColon + 1);
+      removalLangs[key] = _userCardService.getLanguages(cardId, type);
+    }
+
     // Update in-memory cache immediately so UI reflects changes
     _userCardService.applyBulkEditsToCache(
       additions: additions,
@@ -298,8 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final lastColon = key.lastIndexOf(':');
       final cardId = key.substring(0, lastColon);
       final type = key.substring(lastColon + 1);
-      final existingLangs = _userCardService.getLanguages(cardId, type);
-      for (final lang in existingLangs) {
+      for (final lang in removalLangs[key]!) {
         try {
           await _userCardService.removeCard(cardId, type, lang);
           successCount++;

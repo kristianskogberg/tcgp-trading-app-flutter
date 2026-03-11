@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_card_column.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 
 class ChatTradeBubble extends StatelessWidget {
   final bool isMine;
@@ -44,8 +45,10 @@ class ChatTradeBubble extends StatelessWidget {
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.all(10),
+        margin: const EdgeInsets.symmetric(
+            horizontal: ChatConstants.messageMarginHorizontal,
+            vertical: ChatConstants.messageMarginVertical),
+        padding: const EdgeInsets.all(ChatConstants.messagePadding),
         constraints: const BoxConstraints(maxWidth: 260),
         decoration: BoxDecoration(
           color: isAccepted
@@ -143,7 +146,8 @@ class ChatTradeBubble extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: const Text('Deny', style: TextStyle(fontSize: 12)),
+                        child:
+                            const Text('Deny', style: TextStyle(fontSize: 12)),
                       ),
                     ),
                   ),
@@ -161,8 +165,8 @@ class ChatTradeBubble extends StatelessWidget {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child:
-                            const Text('Accept', style: TextStyle(fontSize: 12)),
+                        child: const Text('Accept',
+                            style: TextStyle(fontSize: 12)),
                       ),
                     ),
                   ),

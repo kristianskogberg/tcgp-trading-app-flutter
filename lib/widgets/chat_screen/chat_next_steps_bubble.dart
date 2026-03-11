@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 
 class ChatNextStepsBubble extends StatelessWidget {
   final VoidCallback? onConfirmTrade;
@@ -9,8 +10,10 @@ class ChatNextStepsBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.symmetric(
+            horizontal: ChatConstants.messageMarginHorizontal,
+            vertical: ChatConstants.messageMarginVertical),
+        padding: const EdgeInsets.all(ChatConstants.messagePadding),
         decoration: BoxDecoration(
           color: const Color(0xFF1E1E24),
           borderRadius: BorderRadius.circular(12),

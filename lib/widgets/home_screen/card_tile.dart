@@ -15,6 +15,7 @@ class CardTile extends StatefulWidget {
   final void Function(Set<String> languages)? onWishlistToggle;
   final void Function(Set<String> languages)? onOwnedToggle;
   final void Function(String cardId, Set<String> languages)? onLanguagesChanged;
+  final String? heroTag;
 
   const CardTile({
     super.key,
@@ -26,6 +27,7 @@ class CardTile extends StatefulWidget {
     this.onWishlistToggle,
     this.onOwnedToggle,
     this.onLanguagesChanged,
+    this.heroTag,
   });
 
   @override
@@ -58,7 +60,7 @@ class _CardTileState extends State<CardTile> {
         transitionDuration: const Duration(milliseconds: 300),
         reverseTransitionDuration: const Duration(milliseconds: 300),
         pageBuilder: (context, animation, secondaryAnimation) =>
-            CardScreen(card: widget.card),
+            CardScreen(card: widget.card, heroTag: widget.heroTag),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -86,6 +88,7 @@ class _CardTileState extends State<CardTile> {
       builder: (context) => _LanguagePicker(
         selected: Set.from(_selectedLanguages),
         showAny: widget.isPendingWishlist,
+        multiSelect: !widget.isPendingOwned,
       ),
     );
     if (result != null) {
@@ -119,7 +122,7 @@ class _CardTileState extends State<CardTile> {
     return GestureDetector(
       onTap: () => _navigateToCard(context),
       child: Hero(
-        tag: 'card-hero-${widget.card.id}',
+        tag: widget.heroTag ?? 'card-hero-${widget.card.id}',
         createRectTween: (begin, end) => RectTween(begin: begin, end: end),
         child: _buildCardImage(),
       ),
@@ -206,8 +209,19 @@ class _CardTileState extends State<CardTile> {
                         icon: Icons.check_circle,
                         isActive: widget.isPendingOwned,
                         activeColor: Colors.redAccent,
-                        onTap: () =>
-                            widget.onOwnedToggle?.call(_selectedLanguages),
+                        onTap: () {
+                          if (_selectedLanguages.contains('ANY') ||
+                              _selectedLanguages.length > 1) {
+                            final firstValid = _selectedLanguages
+                                .where((l) => l != 'ANY')
+                                .firstOrNull;
+                            final reset = {firstValid ?? 'ENG'};
+                            setState(() => _selectedLanguages = reset);
+                            widget.onLanguagesChanged
+                                ?.call(widget.card.id, reset);
+                          }
+                          widget.onOwnedToggle?.call(_selectedLanguages);
+                        },
                       ),
                     ),
                   ],
@@ -260,8 +274,13 @@ class _ActionButton extends StatelessWidget {
 class _LanguagePicker extends StatefulWidget {
   final Set<String> selected;
   final bool showAny;
+  final bool multiSelect;
 
-  const _LanguagePicker({required this.selected, this.showAny = false});
+  const _LanguagePicker({
+    required this.selected,
+    this.showAny = false,
+    this.multiSelect = true,
+  });
 
   @override
   State<_LanguagePicker> createState() => _LanguagePickerState();
@@ -284,11 +303,15 @@ class _LanguagePickerState extends State<_LanguagePicker> {
 
   void _toggleLanguage(String key) {
     setState(() {
-      _selected.remove('ANY');
-      if (_selected.contains(key)) {
-        _selected.remove(key);
+      if (widget.multiSelect) {
+        _selected.remove('ANY');
+        if (_selected.contains(key)) {
+          _selected.remove(key);
+        } else {
+          _selected.add(key);
+        }
       } else {
-        _selected.add(key);
+        _selected = {key};
       }
     });
   }

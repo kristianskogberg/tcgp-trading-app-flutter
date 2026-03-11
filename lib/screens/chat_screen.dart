@@ -15,6 +15,7 @@ import 'package:tcgp_trading_app/widgets/chat_screen/chat_friend_id_bubble.dart'
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_trade_result_bubble.dart';
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_next_steps_bubble.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 
 class ChatScreen extends StatefulWidget {
   final PocketCard? contextCard;
@@ -350,7 +351,8 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       builder: (context) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(
+              vertical: ChatConstants.messageMarginVertical),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

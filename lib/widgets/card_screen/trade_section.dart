@@ -480,14 +480,14 @@ class _TradeSectionState extends State<TradeSection>
                       Stack(
                         children: [
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(2),
                             child: CachedNetworkImage(
                               imageUrl: matchCard.imageUrl,
                               fit: BoxFit.contain,
                               placeholder: (context, url) => Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white10,
-                                  borderRadius: BorderRadius.circular(10),
+                                  borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
                               errorWidget: (context, url, error) => const Icon(
@@ -734,7 +734,7 @@ class _TradeSectionState extends State<TradeSection>
     bool pendingOwned = !isWishlist && _isOwned;
     Set<String> pendingLangs = _userCardService.getLanguages(cardId, type);
     if (pendingLangs.isEmpty) {
-      pendingLangs = {'ANY'};
+      pendingLangs = isWishlist ? {'ANY'} : {'ENG'};
       pendingWishlist = isWishlist;
       pendingOwned = !isWishlist;
     }

@@ -116,6 +116,11 @@ class UserCardService {
     await _persistCache();
   }
 
+  Set<String> get wishlistCardIds =>
+      _wishlist.values.map((e) => e.cardId).toSet();
+
+  Set<String> get ownedCardIds => _owned.values.map((e) => e.cardId).toSet();
+
   bool isWishlisted(String cardId) =>
       _wishlist.values.any((e) => e.cardId == cardId);
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 
 class ChatFriendIdBubble extends StatelessWidget {
   final String playerName;
@@ -32,8 +33,10 @@ class ChatFriendIdBubble extends StatelessWidget {
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: IntrinsicWidth(
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.symmetric(
+              horizontal: ChatConstants.messageMarginHorizontal,
+              vertical: ChatConstants.messageMarginVertical),
+          padding: const EdgeInsets.all(ChatConstants.messagePadding),
           constraints: const BoxConstraints(maxWidth: 260),
           decoration: BoxDecoration(
             color: const Color(0xFF1E1E24),

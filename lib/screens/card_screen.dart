@@ -6,7 +6,8 @@ import 'package:tcgp_trading_app/widgets/card_screen/trade_section.dart';
 
 class CardScreen extends StatelessWidget {
   final PocketCard card;
-  const CardScreen({super.key, required this.card});
+  final String? heroTag;
+  const CardScreen({super.key, required this.card, this.heroTag});
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +21,7 @@ class CardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CardDetailHeader(card: card),
+            CardDetailHeader(card: card, heroTag: heroTag),
             if (isUntradable)
               Container(
                 width: double.infinity,

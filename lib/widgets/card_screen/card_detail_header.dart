@@ -5,8 +5,9 @@ import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 
 class CardDetailHeader extends StatelessWidget {
   final PocketCard card;
+  final String? heroTag;
 
-  const CardDetailHeader({super.key, required this.card});
+  const CardDetailHeader({super.key, required this.card, this.heroTag});
 
   Widget _buildTradeCost(String rarity, String pack) {
     final cost = getTradeCost(rarity, pack: pack);
@@ -31,7 +32,7 @@ class CardDetailHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Hero(
-            tag: 'card-hero-${card.id}',
+            tag: heroTag ?? 'card-hero-${card.id}',
             createRectTween: (begin, end) => RectTween(begin: begin, end: end),
             child: CachedNetworkImage(
               imageUrl: card.imageUrl,
