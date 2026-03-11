@@ -64,6 +64,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _hasPendingChanges =>
       _pendingEdits.isNotEmpty || _pendingRemovals.isNotEmpty;
 
+  bool _isSaving = false;
+
   @override
   void initState() {
     super.initState();
@@ -286,6 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
       a.length == b.length && a.containsAll(b);
 
   Future<void> _submitPendingEdits() async {
+    setState(() => _isSaving = true);
     final additions = Map<String, PendingCardEdit>.from(_pendingEdits);
     final removals = Set<String>.from(_pendingRemovals);
     int successCount = 0;
@@ -333,6 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted) return;
     setState(() {
+      _isSaving = false;
       _pendingEdits.clear();
       _pendingRemovals.clear();
       _currentMode = HomeMode.browse;
@@ -385,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _applyFilters();
         },
         isEditMode: _currentMode == HomeMode.edit,
-        onToggleEditMode: _toggleEditMode,
+        onToggleEditMode: _isSaving ? null : _toggleEditMode,
         hasActiveFilters: _hasActiveFilters,
         hasCards: _allCards.isNotEmpty,
         onOpenFilterSheet: _openFilterSheet,
@@ -463,11 +467,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           scrollController: _scrollController,
                           mode: _currentMode,
                           hasPendingChanges: _hasPendingChanges,
-                          pendingCount: _pendingEdits.length +
-                              _pendingRemovals
-                                  .where(
-                                      (key) => !_pendingEdits.containsKey(key))
-                                  .length,
+                          isSaving: _isSaving,
                           effectiveWishlist: _effectiveWishlist,
                           effectiveOwned: _effectiveOwned,
                           effectiveLanguages: _effectiveLanguages,

@@ -8,7 +8,7 @@ class CardGrid extends StatelessWidget {
   final ScrollController scrollController;
   final HomeMode mode;
   final bool hasPendingChanges;
-  final int pendingCount;
+  final bool isSaving;
   final bool Function(String) effectiveWishlist;
   final bool Function(String) effectiveOwned;
   final Set<String> Function(String) effectiveLanguages;
@@ -23,7 +23,7 @@ class CardGrid extends StatelessWidget {
     required this.scrollController,
     required this.mode,
     required this.hasPendingChanges,
-    required this.pendingCount,
+    required this.isSaving,
     required this.effectiveWishlist,
     required this.effectiveOwned,
     required this.effectiveLanguages,
@@ -65,36 +65,47 @@ class CardGrid extends StatelessWidget {
                   isPendingWishlist: effectiveWishlist(card.id),
                   isPendingOwned: effectiveOwned(card.id),
                   pendingLanguages: effectiveLanguages(card.id),
-                  onWishlistToggle: (langs) => onWishlistToggle(card.id, langs),
-                  onOwnedToggle: (langs) => onOwnedToggle(card.id, langs),
-                  onLanguagesChanged: onLanguagesChanged,
+                  onWishlistToggle: isSaving ? null : (langs) => onWishlistToggle(card.id, langs),
+                  onOwnedToggle: isSaving ? null : (langs) => onOwnedToggle(card.id, langs),
+                  onLanguagesChanged: isSaving ? null : onLanguagesChanged,
                 );
               },
             );
           },
         ),
-        if (isEditMode && hasPendingChanges)
+        if (isEditMode && (hasPendingChanges || isSaving))
           Positioned(
             left: 16,
             right: 16,
             bottom: 12,
             child: ElevatedButton(
-              onPressed: onSubmit,
+              onPressed: isSaving ? null : onSubmit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF02F8AE),
                 foregroundColor: Colors.black,
+                disabledBackgroundColor: const Color(0xFF02F8AE),
+                disabledForegroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: Text(
-                'Save change${pendingCount == 1 ? '' : 's'} ($pendingCount)',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
+              child: isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation(Colors.black),
+                      ),
+                    )
+                  : const Text(
+                      'Save changes',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
             ),
           ),
       ],

@@ -5,7 +5,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onClearSearch;
   final bool isEditMode;
-  final VoidCallback onToggleEditMode;
+  final VoidCallback? onToggleEditMode;
   final bool hasActiveFilters;
   final bool hasCards;
   final VoidCallback onOpenFilterSheet;
@@ -16,7 +16,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onSearchChanged,
     required this.onClearSearch,
     required this.isEditMode,
-    required this.onToggleEditMode,
+    this.onToggleEditMode,
     required this.hasActiveFilters,
     required this.hasCards,
     required this.onOpenFilterSheet,

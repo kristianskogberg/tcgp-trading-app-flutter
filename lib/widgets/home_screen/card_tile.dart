@@ -78,6 +78,14 @@ class _CardTileState extends State<CardTile> {
     return 'Mixed...';
   }
 
+  String get _languageLabelCompact {
+    if (_selectedLanguages.contains('ANY')) return 'ANY';
+    if (_selectedLanguages.length == 1) return _selectedLanguages.first;
+    final langs = _selectedLanguages.toList();
+    if (langs.length == 2) return '${langs[0]}, ${langs[1]}';
+    return '${langs[0]}, +${langs.length - 1}';
+  }
+
   Future<void> _showLanguagePicker() async {
     final result = await showModalBottomSheet<Set<String>>(
       context: context,
@@ -132,6 +140,12 @@ class _CardTileState extends State<CardTile> {
   Widget _buildEditTile(BuildContext context) {
     final untradable = isCardUntradable(widget.card.rarity, widget.card.pack);
 
+    final chipColor = widget.isPendingWishlist
+        ? const Color(0xFF02F8AE)
+        : widget.isPendingOwned
+            ? Colors.redAccent
+            : Colors.white38;
+
     return Stack(
       children: [
         Positioned.fill(
@@ -148,55 +162,39 @@ class _CardTileState extends State<CardTile> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_hasPending)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: GestureDetector(
-                      onTap: _showLanguagePicker,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 6, horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2A2A30).withOpacity(0.9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.language,
-                                size: 14,
-                                color: widget.isPendingWishlist
-                                    ? const Color(0xFF02F8AE)
-                                    : widget.isPendingOwned
-                                        ? Colors.redAccent
-                                        : Colors.white),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                _languageLabel,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: widget.isPendingWishlist
-                                      ? const Color(0xFF02F8AE)
-                                      : widget.isPendingOwned
-                                          ? Colors.redAccent
-                                          : Colors.white,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: GestureDetector(
+                    onTap: _hasPending ? _showLanguagePicker : null,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 6, horizontal: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A2A30).withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.language, size: 14, color: chipColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            _languageLabelCompact,
+                            style: TextStyle(fontSize: 12, color: chipColor),
+                          ),
+                        ],
                       ),
                     ),
                   ),
+                ),
                 Row(
                   children: [
                     Expanded(
                       child: _ActionButton(
                         icon: Icons.favorite,
+                        label: 'Want',
                         isActive: widget.isPendingWishlist,
                         activeColor: const Color(0xFF02F8AE),
                         onTap: () =>
@@ -207,6 +205,7 @@ class _CardTileState extends State<CardTile> {
                     Expanded(
                       child: _ActionButton(
                         icon: Icons.check_circle,
+                        label: 'Have',
                         isActive: widget.isPendingOwned,
                         activeColor: Colors.redAccent,
                         onTap: () {
@@ -236,12 +235,14 @@ class _CardTileState extends State<CardTile> {
 
 class _ActionButton extends StatelessWidget {
   final IconData icon;
+  final String? label;
   final bool isActive;
   final Color activeColor;
   final VoidCallback? onTap;
 
   const _ActionButton({
     required this.icon,
+    this.label,
     required this.isActive,
     required this.activeColor,
     this.onTap,
@@ -249,6 +250,12 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveColor = onTap == null
+        ? Colors.white12
+        : isActive
+            ? activeColor
+            : Colors.white38;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -257,14 +264,20 @@ class _ActionButton extends StatelessWidget {
           color: const Color(0xFF2A2A30).withOpacity(0.9),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: onTap == null
-              ? Colors.white12
-              : isActive
-                  ? activeColor
-                  : Colors.white38,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: effectiveColor),
+            if (label != null) ...[
+              const SizedBox(height: 2),
+              Text(label!,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: effectiveColor,
+                  )),
+            ],
+          ],
         ),
       ),
     );
@@ -370,7 +383,7 @@ class _LanguagePickerState extends State<_LanguagePicker> {
                 ),
               ...languages.entries.map((entry) {
                 final isSelected =
-                    !_isAnySelected && _selected.contains(entry.key);
+                    _isAnySelected || _selected.contains(entry.key);
                 return FilterChip(
                   label: Text(entry.value),
                   selected: isSelected,
