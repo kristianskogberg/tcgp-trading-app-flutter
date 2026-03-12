@@ -227,6 +227,16 @@ class UserCardService {
         .toList();
   }
 
+  /// Returns a set of "userId:offerCardId:receiveCardId" keys for all
+  /// pending trade proposals sent by the current user.
+  Future<Set<String>> getMyPendingProposals() async {
+    final rows = await _client.rpc('get_my_pending_proposals');
+    return (rows as List).map((r) {
+      final m = r as Map<String, dynamic>;
+      return '${m['other_user_id']}:${m['offer_card_id']}:${m['receive_card_id']}';
+    }).toSet();
+  }
+
   void applyBulkEditsToCache({
     required Map<String, PendingCardEdit> additions,
     required Set<String> removals,

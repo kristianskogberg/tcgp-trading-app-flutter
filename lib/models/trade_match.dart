@@ -6,6 +6,7 @@ class TradeMatch {
   final String? icon;
   final DateTime? lastActiveAt;
   final String language;
+  final bool hasMutualMatch;
 
   const TradeMatch({
     required this.cardId,
@@ -15,6 +16,7 @@ class TradeMatch {
     this.icon,
     this.lastActiveAt,
     required this.language,
+    this.hasMutualMatch = false,
   });
 
   factory TradeMatch.fromJson(Map<String, dynamic> json) => TradeMatch(
@@ -27,5 +29,6 @@ class TradeMatch {
             ? DateTime.parse(json['last_active_at'] as String)
             : null,
         language: json['language'] as String? ?? 'ANY',
+        hasMutualMatch: json['has_mutual_match'] as bool? ?? false,
       );
 }

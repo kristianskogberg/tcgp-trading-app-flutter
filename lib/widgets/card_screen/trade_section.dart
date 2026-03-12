@@ -36,11 +36,29 @@ class _TradeSectionState extends State<TradeSection>
   List<(PocketCard, TradeMatch)>? _ownedMatches;
   bool _loadingMatches = false;
   bool _trainersOnly = false;
+  Set<String> _pendingProposals = {};
   final Set<String> _languages = languages.keys.toSet();
   Set<String> _selectedLanguages = {...languages.keys};
   Set<String> _appliedLanguages = {...languages.keys};
 
   bool get _isFullArtSupporter => widget.card.fullart;
+
+  /// Check if the current user has a pending trade proposal for this match.
+  bool _hasProposal(PocketCard matchCard, TradeMatch tradeMatch) {
+    final String offerCardId;
+    final String receiveCardId;
+    if (_activeTab == 0) {
+      // "I want this card" → user offers matchCard, receives contextCard
+      offerCardId = matchCard.id;
+      receiveCardId = widget.card.id;
+    } else {
+      // "I have this card" → user offers contextCard, receives matchCard
+      offerCardId = widget.card.id;
+      receiveCardId = matchCard.id;
+    }
+    return _pendingProposals
+        .contains('${tradeMatch.userId}:$offerCardId:$receiveCardId');
+  }
 
   @override
   void initState() {
@@ -546,32 +564,23 @@ class _TradeSectionState extends State<TradeSection>
                                 ),
                               ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: activityColor(tradeMatch.lastActiveAt),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              tradeMatch.playerName,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: Colors.white54,
+                          if (_hasProposal(matchCard, tradeMatch))
+                            Positioned(
+                              bottom: 4,
+                              left: 4,
+                              child: Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.8),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.swap_horiz,
+                                  size: 14,
+                                  color: Color(0xFF02F8AE),
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
                             ),
-                          ),
                         ],
                       ),
                     ],
@@ -585,25 +594,32 @@ class _TradeSectionState extends State<TradeSection>
     );
   }
 
-  void _navigateToChat(PocketCard matchCard, TradeMatch tradeMatch) {
+  Future<void> _navigateToChat(
+      PocketCard matchCard, TradeMatch tradeMatch) async {
     // Determine languages for the trade message
     final String offerLanguage;
     final String receiveLanguage;
+    final String offerCardId;
+    final String receiveCardId;
     if (_activeTab == 0) {
       // "I want this card" tab: offerCard=matchCard, receiveCard=contextCard
+      offerCardId = matchCard.id;
+      receiveCardId = widget.card.id;
       offerLanguage = tradeMatch.language;
       final contextLangs =
           _userCardService.getLanguages(widget.card.id, 'wishlist');
       receiveLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
     } else {
       // "I have this card" tab: offerCard=contextCard, receiveCard=matchCard
+      offerCardId = widget.card.id;
+      receiveCardId = matchCard.id;
       final contextLangs =
           _userCardService.getLanguages(widget.card.id, 'owned');
       offerLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
       receiveLanguage = tradeMatch.language;
     }
 
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => ChatScreen(
@@ -616,6 +632,12 @@ class _TradeSectionState extends State<TradeSection>
         ),
       ),
     );
+
+    // Trade proposal is auto-sent when ChatScreen opens, so mark it locally
+    if (!mounted) return;
+    setState(() {
+      _pendingProposals.add('${tradeMatch.userId}:$offerCardId:$receiveCardId');
+    });
   }
 
   void _onMatchTapped(PocketCard matchCard, TradeMatch tradeMatch) {
@@ -629,18 +651,279 @@ class _TradeSectionState extends State<TradeSection>
             language: tradeMatch.language,
           );
 
-    if (!needsWarning) {
-      _navigateToChat(matchCard, tradeMatch);
-      return;
+    // Determine which card the user sends vs receives, and their languages
+    final PocketCard sendCard;
+    final PocketCard receiveCard;
+    final String sendLanguage;
+    final String receiveLanguage;
+    if (_activeTab == 0) {
+      // "I want this card" → user sends matchCard, receives contextCard
+      sendCard = matchCard;
+      receiveCard = widget.card;
+      sendLanguage = tradeMatch.language;
+      final contextLangs =
+          _userCardService.getLanguages(widget.card.id, 'wishlist');
+      receiveLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
+    } else {
+      // "I have this card" → user sends contextCard, receives matchCard
+      sendCard = widget.card;
+      receiveCard = matchCard;
+      final contextLangs =
+          _userCardService.getLanguages(widget.card.id, 'owned');
+      sendLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
+      receiveLanguage = tradeMatch.language;
     }
 
-    final action = _activeTab == 0 ? 'listed' : 'added';
-    final listName = _activeTab == 0 ? 'for trade' : 'to your wishlist';
+    final bool showWarning = needsWarning;
 
     showAppDialog<void>(
       context: context,
-      title: 'Heads up',
-      content: Text('You have not $action ${matchCard.name} $listName.'),
+      title: 'Trade Preview',
+      centerContent: true,
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: const Color(0xFF2A2A30),
+                backgroundImage: tradeMatch.icon != null
+                    ? AssetImage('images/profile/${tradeMatch.icon}')
+                    : null,
+                child: tradeMatch.icon == null
+                    ? Text(
+                        tradeMatch.playerName.isNotEmpty
+                            ? tradeMatch.playerName[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                            fontSize: 18, color: Colors.white70),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tradeMatch.playerName,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: activityColor(tradeMatch.lastActiveAt),
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        activityLabel(tradeMatch.lastActiveAt),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.white38,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    const Text(
+                      'You send',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white38,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: OptimizedCardImage(
+                            imageUrl: sendCard.imageUrl,
+                            isThumbnail: true,
+                          ),
+                        ),
+                        if (sendLanguage.isNotEmpty)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Text(
+                                sendLanguage,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      sendCard.name,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  Icons.swap_horiz,
+                  color: Color(0xFF02F8AE),
+                  size: 28,
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    const Text(
+                      'You receive',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white38,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: OptimizedCardImage(
+                            imageUrl: receiveCard.imageUrl,
+                            isThumbnail: true,
+                          ),
+                        ),
+                        if (receiveLanguage.isNotEmpty)
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Text(
+                                receiveLanguage,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      receiveCard.name,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (showWarning)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded,
+                      size: 16, color: Colors.amber),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.amber),
+                        children: [
+                          TextSpan(
+                            text: _activeTab == 0
+                                ? 'You have not listed '
+                                : 'You have not added ',
+                          ),
+                          TextSpan(
+                            text: '${matchCard.name} ',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                              child: Text(
+                                tradeMatch.language,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white70,
+                                ),
+                              ),
+                            ),
+                          ),
+                          TextSpan(
+                            text: _activeTab == 0
+                                ? ' for trade'
+                                : ' to your wishlist',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
       primaryText: 'Continue',
       onPrimaryAction: () => _navigateToChat(matchCard, tradeMatch),
     );
@@ -697,6 +980,10 @@ class _TradeSectionState extends State<TradeSection>
     try {
       final cardMap = CardService().getCardMap();
       final futures = <Future>[];
+
+      futures.add(_userCardService.getMyPendingProposals().then((proposals) {
+        _pendingProposals = proposals;
+      }));
 
       final langList = _appliedLanguages.toList();
 
@@ -763,7 +1050,7 @@ class _TradeSectionState extends State<TradeSection>
     final hasOppositeEntry = isWishlist ? _isOwned : _isWishlisted;
     final warningText = hasOppositeEntry
         ? isWishlist
-            ? 'You have already listed this card for trade. Wishlisting it will remove your listing.'
+            ? 'You have already listed this card for trade. Adding it to your wishlist will remove your listing.'
             : 'You have already wishlisted this card. Creating a listing will remove it from your wishlist.'
         : null;
 
@@ -914,14 +1201,13 @@ class _EditCardDialogState extends State<_EditCardDialog> {
               padding: const EdgeInsets.only(top: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.info_outline,
-                      size: 16, color: Colors.white38),
+                  const Icon(Icons.warning_amber_rounded,
+                      size: 16, color: Colors.amber),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       widget.warningText!,
-                      style:
-                          const TextStyle(fontSize: 12, color: Colors.white54),
+                      style: const TextStyle(fontSize: 12, color: Colors.amber),
                     ),
                   ),
                 ],
