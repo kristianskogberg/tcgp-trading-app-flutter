@@ -3,7 +3,9 @@ import 'package:tcgp_trading_app/screens/chat_screen.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
 
 class ConversationsScreen extends StatefulWidget {
-  const ConversationsScreen({super.key});
+  const ConversationsScreen({super.key, this.refreshNotifier});
+
+  final ValueNotifier<int>? refreshNotifier;
 
   @override
   State<ConversationsScreen> createState() => _ConversationsScreenState();
@@ -17,6 +19,17 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   @override
   void initState() {
     super.initState();
+    _loadConversations();
+    widget.refreshNotifier?.addListener(_onRefresh);
+  }
+
+  @override
+  void dispose() {
+    widget.refreshNotifier?.removeListener(_onRefresh);
+    super.dispose();
+  }
+
+  void _onRefresh() {
     _loadConversations();
   }
 

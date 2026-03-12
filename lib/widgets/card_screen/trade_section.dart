@@ -641,6 +641,15 @@ class _TradeSectionState extends State<TradeSection>
   }
 
   void _onMatchTapped(PocketCard matchCard, TradeMatch tradeMatch) {
+    if (_hasProposal(matchCard, tradeMatch)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You already sent a trade proposal to this user'),
+        ),
+      );
+      return;
+    }
+
     final needsWarning = _activeTab == 0
         ? !_userCardService.isOwned(
             matchCard.id,

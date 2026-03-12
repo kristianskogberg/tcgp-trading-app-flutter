@@ -16,6 +16,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentScreenIndex = 0;
   bool _isBottomBarVisible = true;
+  final _conversationsRefresh = ValueNotifier<int>(0);
 
   @override
   void initState() {
@@ -26,6 +27,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    _conversationsRefresh.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -57,7 +59,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           index: _currentScreenIndex,
           children: [
             const HomeScreen(),
-            const ConversationsScreen(),
+            ConversationsScreen(refreshNotifier: _conversationsRefresh),
             ProfileScreen(
               onProfileSaved: () => setState(() => _currentScreenIndex = 0),
             ),
@@ -76,6 +78,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           indicatorColor: Colors.transparent,
           selectedIndex: _currentScreenIndex,
           onDestinationSelected: (index) {
+            if (index == 1) {
+              _conversationsRefresh.value++;
+            }
             setState(() => _currentScreenIndex = index);
           },
           destinations: [
