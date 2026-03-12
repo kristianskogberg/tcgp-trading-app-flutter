@@ -1,6 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
 class CardThumbnail extends StatelessWidget {
   final PocketCard card;
@@ -15,8 +15,9 @@ class CardThumbnail extends StatelessWidget {
         Positioned.fill(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: CachedNetworkImage(
+            child: OptimizedCardImage(
               imageUrl: card.imageUrl,
+              isThumbnail: true,
               fit: BoxFit.cover,
               errorWidget: (context, url, error) =>
                   const Center(child: Icon(Icons.broken_image, size: 20)),
@@ -36,7 +37,7 @@ class CardThumbnail extends StatelessWidget {
               lang,
               style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: 10,
                   fontWeight: FontWeight.w400),
             ),
           ),

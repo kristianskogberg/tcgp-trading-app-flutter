@@ -121,10 +121,29 @@ class UserCardService {
 
   Set<String> get ownedCardIds => _owned.values.map((e) => e.cardId).toSet();
 
-  bool isWishlisted(String cardId) =>
-      _wishlist.values.any((e) => e.cardId == cardId);
+  /// Check if a card is wishlisted. If [language] is provided, respects language/ANY semantics.
+  bool isWishlisted(String cardId, {String? language}) {
+    if (language == null) {
+      // Backwards-compatible: any language counts.
+      return _wishlist.values.any((e) => e.cardId == cardId);
+    }
+    return _wishlist.values.any(
+      (e) =>
+          e.cardId == cardId && (e.language == 'ANY' || e.language == language),
+    );
+  }
 
-  bool isOwned(String cardId) => _owned.values.any((e) => e.cardId == cardId);
+  /// Check if a card is owned. If [language] is provided, respects language/ANY semantics.
+  bool isOwned(String cardId, {String? language}) {
+    if (language == null) {
+      // Backwards-compatible: any language counts.
+      return _owned.values.any((e) => e.cardId == cardId);
+    }
+    return _owned.values.any(
+      (e) =>
+          e.cardId == cardId && (e.language == 'ANY' || e.language == language),
+    );
+  }
 
   /// Returns the set of languages for which the user has this card in the given type.
   Set<String> getLanguages(String cardId, String type) {
@@ -142,9 +161,7 @@ class UserCardService {
     final entry = UserCardEntry(cardId: cardId, language: language);
     final map = type == 'wishlist' ? _wishlist : _owned;
 
-    if (map.containsKey(entry.key)) return;
-
-    await _client.from('user_cards').insert({
+    await _client.from('user_cards').upsert({
       'user_id': user.id,
       'card_id': cardId,
       'type': type,
@@ -174,7 +191,8 @@ class UserCardService {
 
   /// Find users who own [cardId], then return their wishlist cards with profile info.
   Future<List<TradeMatch>> getTradeMatchesForWanted(
-      String cardId, List<String> languages) async {
+      String cardId, List<String> languages,
+      {bool fullartOnly = false}) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
@@ -182,6 +200,7 @@ class UserCardService {
       'p_card_id': cardId,
       'p_user_id': user.id,
       'p_languages': languages,
+      'p_fullart_only': fullartOnly,
     });
 
     return (rows as List)
@@ -191,7 +210,8 @@ class UserCardService {
 
   /// Find users who want [cardId], then return their owned cards with profile info.
   Future<List<TradeMatch>> getTradeMatchesForOwned(
-      String cardId, List<String> languages) async {
+      String cardId, List<String> languages,
+      {bool fullartOnly = false}) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
@@ -199,6 +219,7 @@ class UserCardService {
       'p_card_id': cardId,
       'p_user_id': user.id,
       'p_languages': languages,
+      'p_fullart_only': fullartOnly,
     });
 
     return (rows as List)

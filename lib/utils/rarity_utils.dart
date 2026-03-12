@@ -6,6 +6,8 @@ const rarityAssets = <String, String>{
   '◊◊◊◊': 'images/rarities/4-diamond.png',
   '☆': 'images/rarities/1-star.png',
   '☆☆': 'images/rarities/2-star.png',
+  '✦': 'images/rarities/1-star-shiny.png',
+  '✦✦': 'images/rarities/2-star-shiny.png',
   '☆☆☆': 'images/rarities/3-star.png',
   '♕': 'images/rarities/crown.png',
 };
@@ -21,6 +23,8 @@ const tradeCosts = <String, String>{
   '◊◊◊◊': '5000',
   '☆': '10,000',
   '☆☆': '25,000',
+  '✦': '10,000',
+  '✦✦': '25,000',
 };
 
 /// Returns the trade cost for a rarity, or null if not tradeable/mapped.

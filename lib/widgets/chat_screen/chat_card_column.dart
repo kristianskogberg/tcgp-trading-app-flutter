@@ -1,6 +1,6 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
 class ChatCardColumn extends StatelessWidget {
   final PocketCard? card;
@@ -36,10 +36,10 @@ class ChatCardColumn extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: CachedNetworkImage(
+              child: OptimizedCardImage(
                 imageUrl: card!.imageUrl,
+                isThumbnail: true,
                 height: 150,
-                fit: BoxFit.contain,
                 placeholder: (context, url) => Container(
                   height: 150,
                   decoration: BoxDecoration(
@@ -53,7 +53,7 @@ class ChatCardColumn extends StatelessWidget {
             ),
             if (language.isNotEmpty)
               Positioned(
-                top: 6,
+                top: 0,
                 right: 0,
                 child: Container(
                   padding:
@@ -65,7 +65,7 @@ class ChatCardColumn extends StatelessWidget {
                   child: Text(
                     language,
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: FontWeight.w500,
                       color: Colors.white70,
                     ),

@@ -1,7 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
+import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
 class CardDetailHeader extends StatelessWidget {
   final PocketCard card;
@@ -34,10 +34,10 @@ class CardDetailHeader extends StatelessWidget {
           Hero(
             tag: heroTag ?? 'card-hero-${card.id}',
             createRectTween: (begin, end) => RectTween(begin: begin, end: end),
-            child: CachedNetworkImage(
+            child: OptimizedCardImage(
               imageUrl: card.imageUrl,
+              isThumbnail: false,
               height: 220,
-              fit: BoxFit.contain,
               errorWidget: (context, url, error) =>
                   const Icon(Icons.broken_image, size: 100),
             ),

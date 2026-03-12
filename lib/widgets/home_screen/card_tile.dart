@@ -1,10 +1,10 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/screens/card_screen.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
+import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
 class CardTile extends StatefulWidget {
   final PocketCard card;
@@ -116,9 +116,9 @@ class _CardTileState extends State<CardTile> {
   Widget _buildCardImage() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: CachedNetworkImage(
+      child: OptimizedCardImage(
         imageUrl: widget.card.imageUrl,
-        fit: BoxFit.contain,
+        isThumbnail: true,
         placeholder: (context, url) => const _CardSkeleton(),
         errorWidget: (context, url, error) =>
             const Icon(Icons.broken_image, color: Colors.white24),

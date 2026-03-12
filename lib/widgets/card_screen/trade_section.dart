@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
@@ -8,6 +7,7 @@ import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/services/language_filter_service.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
+import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
@@ -40,8 +40,7 @@ class _TradeSectionState extends State<TradeSection>
   Set<String> _selectedLanguages = {...languages.keys};
   Set<String> _appliedLanguages = {...languages.keys};
 
-  bool get _isFullArtSupporter =>
-      widget.card.rarity == '☆☆' && widget.card.type == 'Trainer';
+  bool get _isFullArtSupporter => widget.card.fullart;
 
   @override
   void initState() {
@@ -415,8 +414,14 @@ class _TradeSectionState extends State<TradeSection>
                   child: FittedBox(
                     child: Switch(
                       value: _trainersOnly,
-                      onChanged: (value) =>
-                          setState(() => _trainersOnly = value),
+                      onChanged: (value) {
+                        setState(() {
+                          _trainersOnly = value;
+                          _wantMatches = null;
+                          _ownedMatches = null;
+                        });
+                        _fetchMatches();
+                      },
                       activeColor: const Color(0xFF02F8AE),
                       activeTrackColor:
                           const Color(0xFF02F8AE).withOpacity(0.4),
@@ -435,10 +440,7 @@ class _TradeSectionState extends State<TradeSection>
   }
 
   Widget _buildMatchGrid() {
-    var matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
-    if (matches != null && _trainersOnly) {
-      matches = matches.where((pair) => pair.$1.type == 'Trainer').toList();
-    }
+    final matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
     if (_loadingMatches) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -468,7 +470,7 @@ class _TradeSectionState extends State<TradeSection>
           return Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: matches!.map((match) {
+            children: matches.map((match) {
               final (matchCard, tradeMatch) = match;
               return SizedBox(
                 width: itemWidth,
@@ -481,9 +483,9 @@ class _TradeSectionState extends State<TradeSection>
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(2),
-                            child: CachedNetworkImage(
+                            child: OptimizedCardImage(
                               imageUrl: matchCard.imageUrl,
-                              fit: BoxFit.contain,
+                              isThumbnail: true,
                               placeholder: (context, url) => Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white10,
@@ -508,15 +510,21 @@ class _TradeSectionState extends State<TradeSection>
                               child: Text(
                                 tradeMatch.language,
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                   color: Colors.white70,
                                 ),
                               ),
                             ),
                           ),
-                          if (_userCardService.isWishlisted(matchCard.id) ||
-                              _userCardService.isOwned(matchCard.id))
+                          if (_userCardService.isWishlisted(
+                                matchCard.id,
+                                language: tradeMatch.language,
+                              ) ||
+                              _userCardService.isOwned(
+                                matchCard.id,
+                                language: tradeMatch.language,
+                              ))
                             Positioned(
                               bottom: 4,
                               right: 4,
@@ -527,7 +535,10 @@ class _TradeSectionState extends State<TradeSection>
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
-                                  _userCardService.isOwned(matchCard.id)
+                                  _userCardService.isOwned(
+                                    matchCard.id,
+                                    language: tradeMatch.language,
+                                  )
                                       ? Icons.check_circle
                                       : Icons.favorite,
                                   size: 14,
@@ -609,8 +620,14 @@ class _TradeSectionState extends State<TradeSection>
 
   void _onMatchTapped(PocketCard matchCard, TradeMatch tradeMatch) {
     final needsWarning = _activeTab == 0
-        ? !_userCardService.isOwned(matchCard.id)
-        : !_userCardService.isWishlisted(matchCard.id);
+        ? !_userCardService.isOwned(
+            matchCard.id,
+            language: tradeMatch.language,
+          )
+        : !_userCardService.isWishlisted(
+            matchCard.id,
+            language: tradeMatch.language,
+          );
 
     if (!needsWarning) {
       _navigateToChat(matchCard, tradeMatch);
@@ -683,9 +700,12 @@ class _TradeSectionState extends State<TradeSection>
 
       final langList = _appliedLanguages.toList();
 
+      final fullartOnly = _trainersOnly && _isFullArtSupporter;
+
       if (wantNeeded) {
         futures.add(_userCardService
-            .getTradeMatchesForWanted(cardId, langList)
+            .getTradeMatchesForWanted(cardId, langList,
+                fullartOnly: fullartOnly)
             .then((matches) {
           _wantMatches = matches
               .where((m) => cardMap.containsKey(m.cardId))
@@ -697,7 +717,7 @@ class _TradeSectionState extends State<TradeSection>
 
       if (ownedNeeded) {
         futures.add(_userCardService
-            .getTradeMatchesForOwned(cardId, langList)
+            .getTradeMatchesForOwned(cardId, langList, fullartOnly: fullartOnly)
             .then((matches) {
           _ownedMatches = matches
               .where((m) => cardMap.containsKey(m.cardId))

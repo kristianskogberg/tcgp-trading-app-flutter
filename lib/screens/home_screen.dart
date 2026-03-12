@@ -110,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _availablePacks = packs.toList()..sort();
         _filteredCards = List.of(cards)..sort((a, b) => a.id.compareTo(b.id));
       });
+      CardService().precacheCardImages();
     });
   }
 
