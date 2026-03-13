@@ -41,6 +41,7 @@ dependencies:
   flutter_cache_manager: ^3.4.1
   package_info_plus: ^8.1.1
   flutter_launcher_icons: ^0.14.4
+  cloudflare_turnstile: ^1.2.1
 
 dev_dependencies:
   flutter_test:

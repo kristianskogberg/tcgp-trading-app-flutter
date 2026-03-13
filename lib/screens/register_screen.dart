@@ -1,4 +1,6 @@
+import 'package:cloudflare_turnstile/cloudflare_turnstile.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
@@ -19,6 +21,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   final _playerNameController = TextEditingController();
   final _friendIdController = TextEditingController();
+  final _turnstileController = TurnstileController();
+
+  String? _captchaToken;
 
   @override
   void dispose() {
@@ -27,6 +32,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _confirmPasswordController.dispose();
     _playerNameController.dispose();
     _friendIdController.dispose();
+    _turnstileController.dispose();
     super.dispose();
   }
 
@@ -71,7 +77,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (playerName.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Player Name must be at least 2 characters')),
+        const SnackBar(
+            content: Text('Player Name must be at least 2 characters')),
       );
       return;
     }
@@ -83,8 +90,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (_captchaToken == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please complete the CAPTCHA')),
+      );
+      return;
+    }
+
     try {
-      await _authService.signUpWithEmailPassword(email, password);
+      await _authService.signUpWithEmailPassword(email, password,
+          captchaToken: _captchaToken);
       try {
         await _profileService.saveProfile(
           playerName: playerName,
@@ -99,12 +114,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Sign up failed. Please try again.')),
         );
+        _turnstileController.refreshToken();
+        setState(() => _captchaToken = null);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final siteKey = dotenv.env['TURNSTILE_SITE_KEY'] ?? '';
+
     return Scaffold(
         appBar: AppBar(
           title: const Text('Register'),
@@ -125,6 +144,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
             const SizedBox(height: 10),
             FriendIdField(controller: _friendIdController),
             const SizedBox(height: 20),
+            Center(
+              child: SizedBox(
+                width: 300,
+                child: CloudFlareTurnstile(
+                  siteKey: siteKey,
+                  controller: _turnstileController,
+                  onTokenRecived: (token) {
+                    setState(() => _captchaToken = token);
+                  },
+                  onTokenExpired: () {
+                    setState(() => _captchaToken = null);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
             ElevatedButton(
               onPressed: signUp,
               child: const Text('Sign Up'),
