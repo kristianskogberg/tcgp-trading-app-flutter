@@ -53,11 +53,11 @@ class CardDetailHeader extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Image.network(
-                        'https://nsqcktpyuedsjcjkllll.supabase.co/storage/v1/object/public/tcgp_icons/${card.set.toLowerCase()}.webp',
+                        'https://s3.limitlesstcg.com/pocket/sets/${card.set}.webp',
                         height: 24,
                         fit: BoxFit.contain,
                         errorBuilder: (context, error, stackTrace) =>
-                            const SizedBox.shrink(),
+                            Text(card.set),
                       ),
                     ],
                   ),
@@ -77,8 +77,7 @@ class CardDetailHeader extends StatelessWidget {
                 const SizedBox(height: 12),
                 _InfoRow(
                   label: 'Pack',
-                  child: Text(card.pack.isNotEmpty ? card.pack : '—',
-                      style: const TextStyle(color: Colors.white)),
+                  child: _PackInfo(set: card.set, pack: card.pack),
                 ),
                 const SizedBox(height: 12),
                 _InfoRow(
@@ -90,6 +89,59 @@ class CardDetailHeader extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PackInfo extends StatelessWidget {
+  final String set;
+  final String pack;
+
+  const _PackInfo({required this.set, required this.pack});
+
+  void _showPackImage(BuildContext context) {
+    final imageUrl =
+        'https://raw.githubusercontent.com/chase-manning/pokemon-tcg-pocket-cards/main/images/packs/$set-${pack.toLowerCase()}.png';
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.network(
+              imageUrl,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Image not available',
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final displayName = pack.isNotEmpty ? pack : '—';
+    final canShowImage = pack.isNotEmpty && pack != 'Any';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(displayName, style: const TextStyle(color: Colors.white)),
+        if (canShowImage) ...[
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: () => _showPackImage(context),
+            child:
+                const Icon(Icons.info_outline, size: 16, color: Colors.white54),
+          ),
+        ],
+      ],
     );
   }
 }

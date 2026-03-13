@@ -24,7 +24,7 @@ class PocketCard {
 
   static String _extractSet(String id) {
     final dashIndex = id.lastIndexOf('-');
-    return dashIndex >= 0 ? id.substring(0, dashIndex).toUpperCase() : id;
+    return dashIndex >= 0 ? id.substring(0, dashIndex) : id;
   }
 
   static int _extractNumber(String id) {

@@ -103,7 +103,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                   maxLength: 500,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                    hintText: 'Describe your feedback in detail...',
+                    hintText: 'Describe your feedback...',
+                    hintStyle: const TextStyle(color: Colors.white54),
                     filled: true,
                     fillColor: Theme.of(context).colorScheme.surface,
                     contentPadding: const EdgeInsets.symmetric(
