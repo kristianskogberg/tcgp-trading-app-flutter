@@ -262,6 +262,12 @@ class UserCardService {
     _persistCache(); // single persist
   }
 
+  Future<void> deleteAllUserCards() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+    await _client.from('user_cards').delete().eq('user_id', user.id);
+  }
+
   Future<void> clearCache() async {
     _wishlist = {};
     _owned = {};

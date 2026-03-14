@@ -188,28 +188,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     });
   }
 
-  Future<void> _signOut() async {
-    final confirmed = await showAppDialog<bool>(
-      context: context,
-      title: 'Sign out',
-      content: const Text('Are you sure you want to sign out?'),
-      primaryText: 'Sign out',
-      onPrimaryPressed: () => true,
-    );
-    if (confirmed != true) return;
-    try {
-      await UserCardService().clearCache();
-      await ProfileService().clearProfileCache();
-      await AuthService().signOut();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to sign out')),
-        );
-      }
-    }
-  }
-
   void _cancelEdit() {
     setState(() {
       _usernameController.text = _savedUsername;
@@ -318,10 +296,6 @@ class _ProfileScreenState extends State<ProfileScreen>
               icon: const Icon(Icons.edit),
               onPressed: _enterEditMode,
             ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
-          ),
         ],
       ),
       body: _loading
@@ -466,16 +440,16 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           itemCount: cards.length,
           itemBuilder: (context, index) => CardTile(
-              card: cards[index],
-              mode: HomeMode.browse,
-              isPendingWishlist: false,
-              isPendingOwned: false,
-              pendingLanguages: const {},
-              heroTag: 'profile-card-hero-${cards[index].id}',
-              onWishlistToggle: (_) {},
-              onOwnedToggle: (_) {},
-              onLanguagesChanged: (_, __) {},
-            ),
+            card: cards[index],
+            mode: HomeMode.browse,
+            isPendingWishlist: false,
+            isPendingOwned: false,
+            pendingLanguages: const {},
+            heroTag: 'profile-card-hero-${cards[index].id}',
+            onWishlistToggle: (_) {},
+            onOwnedToggle: (_) {},
+            onLanguagesChanged: (_, __) {},
+          ),
         );
       },
     );

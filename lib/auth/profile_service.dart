@@ -66,6 +66,9 @@ class ProfileService {
       'icon': icon,
     };
 
+    // Pre-populate cache synchronously so ProfileGate never races the DB write.
+    _cachedProfile = payload;
+
     final saved = await _client
         .from('profiles')
         .upsert(payload, onConflict: 'user_id')
@@ -84,6 +87,12 @@ class ProfileService {
     }
     await _client.rpc('update_last_active');
     _lastActiveUpdate = DateTime.now();
+  }
+
+  Future<void> deleteProfile() async {
+    final user = _client.auth.currentUser;
+    if (user == null) return;
+    await _client.from('profiles').delete().eq('user_id', user.id);
   }
 
   Future<void> clearProfileCache() async {
