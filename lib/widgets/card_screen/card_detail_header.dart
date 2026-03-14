@@ -54,7 +54,7 @@ class CardDetailHeader extends StatelessWidget {
                     children: [
                       Image.network(
                         'https://s3.limitlesstcg.com/pocket/sets/${card.set}.webp',
-                        height: 24,
+                        height: 30,
                         fit: BoxFit.contain,
                         errorBuilder: (context, error, stackTrace) =>
                             Text(card.set),

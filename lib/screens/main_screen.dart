@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/conversations_screen.dart';
 import 'package:tcgp_trading_app/screens/home_screen.dart';
 import 'package:tcgp_trading_app/screens/profile_screen.dart';
 import 'package:tcgp_trading_app/screens/settings_screen.dart';
+import 'package:tcgp_trading_app/services/chat_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -17,16 +19,26 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentScreenIndex = 0;
   bool _isBottomBarVisible = true;
   final _conversationsRefresh = ValueNotifier<int>(0);
+  final _chatService = ChatService();
+  bool _hasUnread = false;
+  RealtimeChannel? _conversationsChannel;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ProfileService().updateLastActive();
+    _checkUnread();
+    _conversationsChannel = _chatService.subscribeToNewMessages(() {
+      _checkUnread();
+    });
   }
 
   @override
   void dispose() {
+    if (_conversationsChannel != null) {
+      _chatService.unsubscribe(_conversationsChannel!);
+    }
     _conversationsRefresh.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -36,7 +48,16 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       ProfileService().updateLastActive();
+      _checkUnread();
     }
+  }
+
+  Future<void> _checkUnread() async {
+    try {
+      final count = await _chatService.getTotalUnreadCount();
+      if (!mounted) return;
+      setState(() => _hasUnread = count > 0);
+    } catch (_) {}
   }
 
   @override
@@ -59,7 +80,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           index: _currentScreenIndex,
           children: [
             const HomeScreen(),
-            ConversationsScreen(refreshNotifier: _conversationsRefresh),
+            ConversationsScreen(
+              refreshNotifier: _conversationsRefresh,
+              onUnreadChanged: _checkUnread,
+            ),
             ProfileScreen(
               onProfileSaved: () => setState(() => _currentScreenIndex = 0),
             ),
@@ -82,6 +106,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               _conversationsRefresh.value++;
             }
             setState(() => _currentScreenIndex = index);
+            // Re-check badge when switching tabs (user may have read messages)
+            _checkUnread();
           },
           destinations: [
             NavigationDestination(
@@ -90,9 +116,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
               label: 'Home',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.chat_bubble_outline),
-              selectedIcon:
-                  const Icon(Icons.chat_bubble, color: Color(0xFF02F8AE)),
+              icon: Badge(
+                isLabelVisible: _hasUnread,
+                smallSize: 10,
+                backgroundColor: const Color(0xFF02F8AE),
+                child: const Icon(Icons.chat_bubble_outline),
+              ),
+              selectedIcon: Badge(
+                isLabelVisible: _hasUnread,
+                smallSize: 10,
+                backgroundColor: const Color(0xFF02F8AE),
+                child:
+                    const Icon(Icons.chat_bubble, color: Color(0xFF02F8AE)),
+              ),
               label: 'Messages',
             ),
             NavigationDestination(

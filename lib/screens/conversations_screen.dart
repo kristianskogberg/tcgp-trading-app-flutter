@@ -3,9 +3,14 @@ import 'package:tcgp_trading_app/screens/chat_screen.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
 
 class ConversationsScreen extends StatefulWidget {
-  const ConversationsScreen({super.key, this.refreshNotifier});
+  const ConversationsScreen({
+    super.key,
+    this.refreshNotifier,
+    this.onUnreadChanged,
+  });
 
   final ValueNotifier<int>? refreshNotifier;
+  final VoidCallback? onUnreadChanged;
 
   @override
   State<ConversationsScreen> createState() => _ConversationsScreenState();
@@ -66,6 +71,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     );
     if (!mounted) return;
     _loadConversations();
+    widget.onUnreadChanged?.call();
   }
 
   @override
@@ -124,6 +130,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     final lastMessageAt = conversation['last_message_at'] != null
         ? DateTime.parse(conversation['last_message_at'] as String)
         : null;
+    final unreadCount = conversation['unread_count'] as int? ?? 0;
+    final hasUnread = unreadCount > 0;
 
     return ListTile(
       leading: CircleAvatar(
@@ -140,26 +148,51 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
       ),
       title: Text(
         playerName,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 15,
-          fontWeight: FontWeight.w600,
+          fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
         ),
         overflow: TextOverflow.ellipsis,
       ),
       subtitle: lastMessage != null
           ? Text(
               lastMessage,
-              style: const TextStyle(fontSize: 13, color: Colors.white54),
+              style: TextStyle(
+                fontSize: 13,
+                color: hasUnread ? Colors.white : Colors.white54,
+                fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             )
           : null,
-      trailing: lastMessageAt != null
-          ? Text(
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (lastMessageAt != null)
+            Text(
               _formatRelativeTime(lastMessageAt.toLocal()),
-              style: const TextStyle(fontSize: 11, color: Colors.white38),
-            )
-          : null,
+              style: TextStyle(
+                fontSize: 11,
+                color: hasUnread
+                    ? const Color(0xFF02F8AE)
+                    : Colors.white38,
+              ),
+            ),
+          if (hasUnread) ...[
+            const SizedBox(height: 4),
+            Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                color: Color(0xFF02F8AE),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ],
+        ],
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       onTap: () {
         try {

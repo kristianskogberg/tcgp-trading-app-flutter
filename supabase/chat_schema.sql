@@ -113,3 +113,30 @@ $$;
 -- IMPORTANT: After running this SQL, enable Realtime replication
 -- on the "messages" table in Supabase Dashboard:
 -- Database > Replication > enable "messages"
+
+  -- Add unread count columns to conversations
+  ALTER TABLE conversations
+    ADD COLUMN IF NOT EXISTS unread_count_a int DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS unread_count_b int DEFAULT 0;
+
+  -- Trigger function: auto-increment the OTHER user's unread count on new message
+  CREATE OR REPLACE FUNCTION increment_unread_count()
+  RETURNS TRIGGER AS $$
+  BEGIN
+    IF NEW.sender_id = (SELECT user_a FROM conversations WHERE id = NEW.conversation_id) THEN
+      UPDATE conversations SET unread_count_b = unread_count_b + 1 WHERE id =
+  NEW.conversation_id;
+    ELSE
+      UPDATE conversations SET unread_count_a = unread_count_a + 1 WHERE id =
+  NEW.conversation_id;
+    END IF;
+    RETURN NEW;
+  END;
+  $$ LANGUAGE plpgsql;
+
+  -- Create trigger on messages table
+  DROP TRIGGER IF EXISTS on_new_message_increment_unread ON messages;
+  CREATE TRIGGER on_new_message_increment_unread
+    AFTER INSERT ON messages
+    FOR EACH ROW
+    EXECUTE FUNCTION increment_unread_count();

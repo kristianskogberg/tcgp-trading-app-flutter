@@ -182,15 +182,68 @@ class ChatService {
     }
 
     return rows.map((r) {
-      final otherUserId = r['user_a'] == userId ? r['user_b'] : r['user_a'];
+      final isUserA = r['user_a'] == userId;
+      final otherUserId = isUserA ? r['user_b'] : r['user_a'];
       final profile = profileMap[otherUserId];
+      final unreadCount =
+          (isUserA ? r['unread_count_a'] : r['unread_count_b']) as int? ?? 0;
       return {
         ...r,
         'other_user_id': otherUserId,
         'other_player_name': profile?['player_name'] as String? ?? 'Unknown',
         'other_icon': profile?['icon'] as String?,
+        'unread_count': unreadCount,
       };
     }).toList();
+  }
+
+  Future<void> markConversationAsRead(String conversationId) async {
+    final userId = _client.auth.currentUser!.id;
+    final row = await _client
+        .from('conversations')
+        .select('user_a')
+        .eq('id', conversationId)
+        .single();
+
+    final isUserA = row['user_a'] == userId;
+    await _client.from('conversations').update({
+      if (isUserA) 'unread_count_a': 0 else 'unread_count_b': 0,
+    }).eq('id', conversationId);
+  }
+
+  Future<int> getTotalUnreadCount() async {
+    final userId = _client.auth.currentUser!.id;
+    final rows = await _client
+        .from('conversations')
+        .select('user_a, unread_count_a, unread_count_b')
+        .or('user_a.eq.$userId,user_b.eq.$userId');
+
+    int total = 0;
+    for (final row in rows) {
+      final isUserA = row['user_a'] == userId;
+      total += (isUserA ? row['unread_count_a'] : row['unread_count_b']) as int;
+    }
+    return total;
+  }
+
+  RealtimeChannel subscribeToNewMessages(
+    void Function() onNewMessage,
+  ) {
+    final userId = _client.auth.currentUser!.id;
+    return _client
+        .channel('all_messages:$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) {
+            // Only react to messages from other users
+            if (payload.newRecord['sender_id'] != userId) {
+              onNewMessage();
+            }
+          },
+        )
+        .subscribe();
   }
 
   void unsubscribe(RealtimeChannel channel) {

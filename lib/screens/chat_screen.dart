@@ -139,6 +139,9 @@ class _ChatScreenState extends State<ChatScreen> {
         _loading = false;
       });
 
+      // Mark conversation as read
+      _chatService.markConversationAsRead(conversationId).catchError((_) {});
+
       // Auto-send trade message when opened from trade section
       if (widget.conversationId == null) {
         final offerCard =
