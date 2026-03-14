@@ -6,6 +6,7 @@ import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
+import 'package:tcgp_trading_app/services/notification_service.dart';
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_app_bar.dart';
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_input_bar.dart';
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_message_area.dart';
@@ -75,7 +76,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String? _error;
   final Set<String> _processingTradeIds = {};
 
-  late final Map<String, PocketCard> _cardMap;
+  Map<String, PocketCard> _cardMap = {};
   String _myPlayerName = '';
   String _myFriendId = '';
 
@@ -84,7 +85,6 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    _cardMap = CardService().getCardMap();
     _scrollController.addListener(_onScroll);
     _loadMyPlayerName();
     _initChat();
@@ -101,6 +101,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    // Clear active conversation tracking
+    if (NotificationService().activeConversationId == _conversationId) {
+      NotificationService().activeConversationId = null;
+    }
     if (_channel != null) _chatService.unsubscribe(_channel!);
     _textController.dispose();
     _scrollController.dispose();
@@ -109,6 +113,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _initChat() async {
     try {
+      // Ensure cards are loaded (needed for cold start from notification)
+      await CardService().getAllCards();
+      if (!mounted) return;
+      _cardMap = CardService().getCardMap();
+
       String conversationId;
 
       if (widget.conversationId != null) {
@@ -119,10 +128,10 @@ class _ChatScreenState extends State<ChatScreen> {
         conversationId = await _chatService.getOrCreateConversation(
           widget.tradeMatch!.userId,
         );
+        if (!mounted) return;
       }
 
       final messages = await _chatService.getMessages(conversationId);
-
       if (!mounted) return;
 
       final channel = _chatService.subscribeToMessages(
@@ -131,6 +140,12 @@ class _ChatScreenState extends State<ChatScreen> {
         onUpdate: _onUpdatedMessage,
       );
 
+      // If disposed between subscribe and setState, clean up the channel
+      if (!mounted) {
+        _chatService.unsubscribe(channel);
+        return;
+      }
+
       setState(() {
         _conversationId = conversationId;
         _messages = messages;
@@ -138,6 +153,9 @@ class _ChatScreenState extends State<ChatScreen> {
         _hasMore = messages.length >= 30;
         _loading = false;
       });
+
+      // Track active conversation to prevent duplicate notification pushes
+      NotificationService().activeConversationId = conversationId;
 
       // Mark conversation as read
       _chatService.markConversationAsRead(conversationId).catchError((_) {});
@@ -208,6 +226,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _processingTradeIds.add(msg.id));
     try {
       await _chatService.updateTradeStatus(msg.id, 'accepted');
+      if (!mounted) return;
       // Update locally immediately
       final parts = msg.content.split(':');
       if (parts.length > 5) {
@@ -241,6 +260,7 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _processingTradeIds.add(msg.id));
     try {
       await _chatService.updateTradeStatus(msg.id, 'denied');
+      if (!mounted) return;
       final parts = msg.content.split(':');
       if (parts.length > 5) {
         parts[5] = 'denied';
@@ -271,7 +291,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_loadingMore || !_hasMore || _conversationId == null) return;
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 100) {
-      _loadMore();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadMore();
+      });
     }
   }
 

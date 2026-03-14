@@ -7,6 +7,7 @@ import 'package:tcgp_trading_app/screens/home_screen.dart';
 import 'package:tcgp_trading_app/screens/profile_screen.dart';
 import 'package:tcgp_trading_app/screens/settings_screen.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
+import 'package:tcgp_trading_app/services/notification_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -28,6 +29,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     ProfileService().updateLastActive();
+    NotificationService().initialize();
     _checkUnread();
     _conversationsChannel = _chatService.subscribeToNewMessages(() {
       _checkUnread();

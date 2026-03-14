@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tcgp_trading_app/services/notification_service.dart';
 
 class AuthService {
   final SupabaseClient _client = Supabase.instance.client;
@@ -46,6 +47,7 @@ class AuthService {
   Future<void> deleteAccount() async {
     // Deletes app data first (while still authenticated so RLS permits it),
     // then removes the auth user via a SECURITY DEFINER RPC, then signs out.
+    await NotificationService().removeToken();
     await Supabase.instance.client.from('user_cards').delete().eq(
           'user_id',
           _client.auth.currentUser!.id,

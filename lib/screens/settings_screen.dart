@@ -5,6 +5,7 @@ import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/feedback_screen.dart';
 import 'package:tcgp_trading_app/screens/change_credentials_screen.dart';
 import 'package:tcgp_trading_app/screens/link_account_screen.dart';
+import 'package:tcgp_trading_app/services/notification_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
@@ -47,6 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         await UserCardService().deleteAllUserCards();
         await ProfileService().deleteProfile();
       }
+      await NotificationService().removeToken();
       await UserCardService().clearCache();
       await ProfileService().clearProfileCache();
       await AuthService().signOut();
