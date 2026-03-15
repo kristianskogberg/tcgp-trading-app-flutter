@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 
 class ActiveFilterChips extends StatelessWidget {
   final Set<String> selectedSets;
@@ -37,14 +38,34 @@ class ActiveFilterChips extends StatelessWidget {
     );
   }
 
+  Widget _buildChipLabel(String label, String type) {
+    if (type == 'rarity') {
+      final asset = getRarityAsset(label);
+      if (asset != null) {
+        return Image.asset(asset, height: 16);
+      }
+    }
+    if (type == 'set') {
+      return Image.network(
+        'https://s3.limitlesstcg.com/pocket/sets/$label.webp',
+        height: 20,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => Text(label,
+            style: const TextStyle(color: Colors.white, fontSize: 12)),
+      );
+    }
+    return Text(label);
+  }
+
   Widget _buildDismissibleChip(String label, String type) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
-        label: Text(label),
+        label: _buildChipLabel(label, type),
         selected: true,
         onSelected: (_) => onRemoveFilter(type, label),
-        selectedColor: const Color(0xFF02F8AE),
+        selectedColor: const Color(0xFF1E1E24),
+        checkmarkColor: const Color(0xFF02F8AE),
         deleteIcon: const Icon(Icons.close, size: 16),
         onDeleted: () => onRemoveFilter(type, label),
         deleteIconColor: Colors.white70,

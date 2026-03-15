@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
-import 'package:tcgp_trading_app/widgets/chat_screen/chat_card_column.dart';
+import 'package:tcgp_trading_app/widgets/shared/trade_card_pair.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
 
 class ChatTradeBubble extends StatelessWidget {
@@ -108,24 +108,16 @@ class ChatTradeBubble extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                    child: ChatCardColumn(
-                        card: offerCard,
-                        label: isMine ? myPlayerName : displayName,
-                        language: offerLanguage)),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 2),
-                  child: Icon(Icons.swap_horiz,
-                      size: 32, color: Color(0xFF02F8AE)),
-                ),
-                Expanded(
-                    child: ChatCardColumn(
-                        card: receiveCard,
-                        label: isMine ? displayName : myPlayerName,
-                        language: receiveLanguage)),
-              ],
+            TradeCardPair(
+              leftCard: offerCard,
+              rightCard: receiveCard,
+              leftTopLabel: isMine ? myPlayerName : displayName,
+              rightTopLabel: isMine ? displayName : myPlayerName,
+              leftBottomLabel: offerCard?.name,
+              rightBottomLabel: receiveCard?.name,
+              leftLanguage: offerLanguage,
+              rightLanguage: receiveLanguage,
+              cardHeight: 150,
             ),
             if (!isMine && isPending) ...[
               const SizedBox(height: 8),

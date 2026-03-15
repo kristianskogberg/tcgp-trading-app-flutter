@@ -8,6 +8,7 @@ import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/services/language_filter_service.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
+import 'package:tcgp_trading_app/widgets/shared/trade_card_pair.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
@@ -693,7 +694,8 @@ class _TradeSectionState extends State<TradeSection>
     if (_hasProposal(matchCard, tradeMatch)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('You already sent a trade proposal to this user'),
+          content: Text(
+              'You already sent a trade proposal to this user for this card'),
         ),
       );
       return;
@@ -741,190 +743,16 @@ class _TradeSectionState extends State<TradeSection>
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: const Color(0xFF2A2A30),
-                backgroundImage: tradeMatch.icon != null
-                    ? AssetImage('images/profile/${tradeMatch.icon}')
-                    : null,
-                child: tradeMatch.icon == null
-                    ? Text(
-                        tradeMatch.playerName.isNotEmpty
-                            ? tradeMatch.playerName[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                            fontSize: 18, color: Colors.white70),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tradeMatch.playerName,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: activityColor(tradeMatch.lastActiveAt),
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        activityLabel(tradeMatch.lastActiveAt),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.white38,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    const Text(
-                      'You send',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white38,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: OptimizedCardImage(
-                            imageUrl: sendCard.imageUrl,
-                            isThumbnail: true,
-                          ),
-                        ),
-                        if (sendLanguage.isNotEmpty)
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                              child: Text(
-                                sendLanguage,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      sendCard.name,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(
-                  Icons.swap_horiz,
-                  color: Color(0xFF02F8AE),
-                  size: 28,
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    const Text(
-                      'You receive',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white38,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: OptimizedCardImage(
-                            imageUrl: receiveCard.imageUrl,
-                            isThumbnail: true,
-                          ),
-                        ),
-                        if (receiveLanguage.isNotEmpty)
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.8),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                              child: Text(
-                                receiveLanguage,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      receiveCard.name,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          TradeCardPair(
+            leftCard: sendCard,
+            rightCard: receiveCard,
+            leftTopLabel: 'You send',
+            rightTopLabel: '${tradeMatch.playerName} sends',
+            leftBottomLabel: sendCard.name,
+            rightBottomLabel: receiveCard.name,
+            leftLanguage: sendLanguage,
+            rightLanguage: receiveLanguage,
+            rightActivityColor: activityColor(tradeMatch.lastActiveAt),
           ),
           if (showWarning)
             Padding(

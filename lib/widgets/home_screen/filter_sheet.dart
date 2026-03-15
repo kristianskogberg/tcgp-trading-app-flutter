@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 
 void openFilterSheet({
   required BuildContext context,
@@ -75,6 +76,15 @@ void openFilterSheet({
                                   ? draftSets.remove(val)
                                   : draftSets.add(val);
                             }),
+                            iconBuilder: (option) => Image.network(
+                              'https://s3.limitlesstcg.com/pocket/sets/$option.webp',
+                              height: 20,
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Text(option,
+                                      style: const TextStyle(
+                                          fontSize: 13, color: Colors.white70)),
+                            ),
                           ),
                           const SizedBox(height: 16),
                           _FilterSection(
@@ -86,6 +96,14 @@ void openFilterSheet({
                                   ? draftRarities.remove(val)
                                   : draftRarities.add(val);
                             }),
+                            iconBuilder: (option) {
+                              final asset = getRarityAsset(option);
+                              if (asset == null) return null;
+                              return Image.asset(
+                                asset,
+                                height: 16,
+                              );
+                            },
                           ),
                           const SizedBox(height: 16),
                           _FilterSection(
@@ -170,12 +188,14 @@ class _FilterSection extends StatelessWidget {
   final List<String> options;
   final Set<String> selected;
   final void Function(String) onToggle;
+  final Widget? Function(String)? iconBuilder;
 
   const _FilterSection({
     required this.title,
     required this.options,
     required this.selected,
     required this.onToggle,
+    this.iconBuilder,
   });
 
   @override
@@ -197,12 +217,13 @@ class _FilterSection extends StatelessWidget {
           runSpacing: 8,
           children: options.map((option) {
             final isSelected = selected.contains(option);
+            final icon = iconBuilder?.call(option);
             return FilterChip(
-              label: Text(option),
+              label: icon ?? Text(option),
               selected: isSelected,
               onSelected: (_) => onToggle(option),
-              selectedColor: const Color(0xFF02F8AE),
-              checkmarkColor: Colors.white,
+              selectedColor: const Color(0xFF1E1E24),
+              checkmarkColor: const Color(0xFF02F8AE),
               backgroundColor: const Color(0xFF1E1E24),
               labelStyle: TextStyle(
                 color: isSelected ? Colors.white : Colors.white70,
