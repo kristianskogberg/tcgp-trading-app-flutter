@@ -81,6 +81,7 @@ flutter:
     - images/rarities/1-star-shiny.png
     - images/rarities/2-star-shiny.png
     - images/rarities/crown.png
+    - images/rarities/promo.png
     - images/shinedust.png
     - images/profile/
 

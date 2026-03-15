@@ -10,6 +10,7 @@ const rarityAssets = <String, String>{
   '✦✦': 'images/rarities/2-star-shiny.png',
   '☆☆☆': 'images/rarities/3-star.png',
   '♕': 'images/rarities/crown.png',
+  'Promo': 'images/rarities/promo.png',
 };
 
 /// Returns the local asset path for a rarity symbol, or null if not mapped.
