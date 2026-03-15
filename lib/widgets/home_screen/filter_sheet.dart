@@ -228,7 +228,7 @@ class _FilterSection extends StatelessWidget {
               checkmarkColor: const Color(0xFF02F8AE),
               backgroundColor: const Color(0xFF1E1E24),
               labelStyle: TextStyle(
-                color: isSelected ? Colors.white : Colors.white70,
+                color: isSelected ? const Color(0xFF02F8AE) : Colors.white70,
                 fontSize: 13,
               ),
               shape: RoundedRectangleBorder(

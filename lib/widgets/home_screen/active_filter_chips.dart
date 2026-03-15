@@ -53,7 +53,7 @@ class ActiveFilterChips extends StatelessWidget {
         height: 20,
         fit: BoxFit.contain,
         errorWidget: (context, url, error) => Text(label,
-            style: const TextStyle(color: Colors.white, fontSize: 12)),
+            style: const TextStyle(color: Color(0xFF02F8AE), fontSize: 12)),
       );
     }
     return Text(label);
@@ -71,7 +71,7 @@ class ActiveFilterChips extends StatelessWidget {
         deleteIcon: const Icon(Icons.close, size: 16),
         onDeleted: () => onRemoveFilter(type, label),
         deleteIconColor: Colors.white70,
-        labelStyle: const TextStyle(color: Colors.white, fontSize: 12),
+        labelStyle: const TextStyle(color: Color(0xFF02F8AE), fontSize: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
           side: const BorderSide(color: Color(0xFF02F8AE)),

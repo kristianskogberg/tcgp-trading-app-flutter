@@ -78,7 +78,8 @@ class CardDetailHeader extends StatelessWidget {
                 const SizedBox(height: 12),
                 _InfoRow(
                   label: 'Pack',
-                  child: _PackInfo(set: card.set, pack: card.pack),
+                  child: Text(card.pack,
+                      style: const TextStyle(color: Colors.white)),
                 ),
                 const SizedBox(height: 12),
                 _InfoRow(
@@ -90,59 +91,6 @@ class CardDetailHeader extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _PackInfo extends StatelessWidget {
-  final String set;
-  final String pack;
-
-  const _PackInfo({required this.set, required this.pack});
-
-  void _showPackImage(BuildContext context) {
-    final imageUrl =
-        'https://raw.githubusercontent.com/chase-manning/pokemon-tcg-pocket-cards/main/images/packs/$set-${pack.toLowerCase()}.png';
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.network(
-              imageUrl,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Image not available',
-                    style: TextStyle(color: Colors.white)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final displayName = pack.isNotEmpty ? pack : '—';
-    final canShowImage = pack.isNotEmpty && pack != 'Any';
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(displayName, style: const TextStyle(color: Colors.white)),
-        if (canShowImage) ...[
-          const SizedBox(width: 4),
-          GestureDetector(
-            onTap: () => _showPackImage(context),
-            child:
-                const Icon(Icons.info_outline, size: 16, color: Colors.white54),
-          ),
-        ],
-      ],
     );
   }
 }
