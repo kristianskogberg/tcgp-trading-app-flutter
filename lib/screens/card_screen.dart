@@ -15,7 +15,26 @@ class CardScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(card.name),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                card.name,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${card.set} | #${card.number}',
+              style: const TextStyle(
+                color: Colors.white38,
+                fontSize: 14,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
       body: SingleChildScrollView(
         child: Column(

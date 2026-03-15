@@ -1,5 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
+import 'package:tcgp_trading_app/utils/set_image_url.dart';
 
 void openFilterSheet({
   required BuildContext context,
@@ -76,11 +78,11 @@ void openFilterSheet({
                                   ? draftSets.remove(val)
                                   : draftSets.add(val);
                             }),
-                            iconBuilder: (option) => Image.network(
-                              'https://s3.limitlesstcg.com/pocket/sets/$option.webp',
+                            iconBuilder: (option) => CachedNetworkImage(
+                              imageUrl: setImageUrl(option),
                               height: 20,
                               fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) =>
+                              errorWidget: (context, url, error) =>
                                   Text(option,
                                       style: const TextStyle(
                                           fontSize: 13, color: Colors.white70)),

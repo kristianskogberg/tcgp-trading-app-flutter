@@ -1,5 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
+import 'package:tcgp_trading_app/utils/set_image_url.dart';
 
 class ActiveFilterChips extends StatelessWidget {
   final Set<String> selectedSets;
@@ -46,11 +48,11 @@ class ActiveFilterChips extends StatelessWidget {
       }
     }
     if (type == 'set') {
-      return Image.network(
-        'https://s3.limitlesstcg.com/pocket/sets/$label.webp',
+      return CachedNetworkImage(
+        imageUrl: setImageUrl(label),
         height: 20,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => Text(label,
+        errorWidget: (context, url, error) => Text(label,
             style: const TextStyle(color: Colors.white, fontSize: 12)),
       );
     }

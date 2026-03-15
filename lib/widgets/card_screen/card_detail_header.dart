@@ -1,6 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
+import 'package:tcgp_trading_app/utils/set_image_url.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
 class CardDetailHeader extends StatelessWidget {
@@ -52,12 +54,11 @@ class CardDetailHeader extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Image.network(
-                        'https://s3.limitlesstcg.com/pocket/sets/${card.set}.webp',
+                      CachedNetworkImage(
+                        imageUrl: setImageUrl(card.set),
                         height: 30,
                         fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) =>
-                            Text(card.set),
+                        errorWidget: (context, url, error) => Text(card.set),
                       ),
                     ],
                   ),

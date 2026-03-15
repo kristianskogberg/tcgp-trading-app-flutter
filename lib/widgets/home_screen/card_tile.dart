@@ -120,8 +120,22 @@ class _CardTileState extends State<CardTile> {
         imageUrl: widget.card.imageUrl,
         isThumbnail: true,
         placeholder: (context, url) => const _CardSkeleton(),
-        errorWidget: (context, url, error) =>
-            const Icon(Icons.broken_image, color: Colors.white24),
+        errorWidget: (context, url, error) => Container(
+              color: const Color(0xFF1A1A1E),
+              padding: const EdgeInsets.all(8),
+              alignment: Alignment.center,
+              child: Text(
+                widget.card.name,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: widget.card.name.length > 20 ? 10 : 12,
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
       ),
     );
   }

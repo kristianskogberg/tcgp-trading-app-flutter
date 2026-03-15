@@ -100,7 +100,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final packs = <String>{};
       for (final card in cards) {
         sets.add(card.set);
-        rarities.add(card.rarity);
+        // do not show promo rarity in filters
+        if (card.rarity.toLowerCase() != "promo") {
+          rarities.add(card.rarity);
+        }
+
         if (card.pack.isNotEmpty) packs.add(card.pack);
       }
       setState(() {
