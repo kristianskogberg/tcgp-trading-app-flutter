@@ -36,6 +36,8 @@ class _TradeSectionState extends State<TradeSection>
   List<(PocketCard, TradeMatch)>? _ownedMatches;
   bool _loadingMatches = false;
   bool _trainersOnly = false;
+  bool _myListedOnly = false;
+  bool _myWishlistedOnly = false;
   Set<String> _pendingProposals = {};
   final Set<String> _languages = languages.keys.toSet();
   Set<String> _selectedLanguages = {...languages.keys};
@@ -451,6 +453,39 @@ class _TradeSectionState extends State<TradeSection>
               ],
             ),
           ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 4, 6, 0),
+          child: Row(
+            children: [
+              Text(
+                _activeTab == 0 ? 'My listings only' : 'My wishlist only',
+                style: const TextStyle(fontSize: 13, color: Colors.white70),
+              ),
+              const SizedBox(width: 6),
+              SizedBox(
+                height: 32,
+                child: FittedBox(
+                  child: Switch(
+                    value: _activeTab == 0 ? _myListedOnly : _myWishlistedOnly,
+                    onChanged: (value) {
+                      setState(() {
+                        if (_activeTab == 0) {
+                          _myListedOnly = value;
+                        } else {
+                          _myWishlistedOnly = value;
+                        }
+                      });
+                    },
+                    activeColor: const Color(0xFF02F8AE),
+                    activeTrackColor: const Color(0xFF02F8AE).withOpacity(0.4),
+                    inactiveThumbColor: Colors.white38,
+                    inactiveTrackColor: Colors.white10,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         _buildMatchGrid(),
         const SizedBox(height: 16),
       ],
@@ -458,7 +493,7 @@ class _TradeSectionState extends State<TradeSection>
   }
 
   Widget _buildMatchGrid() {
-    final matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
+    var matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
     if (_loadingMatches) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -467,6 +502,20 @@ class _TradeSectionState extends State<TradeSection>
     }
 
     if (matches == null) return const SizedBox.shrink();
+
+    // Apply client-side filter: "My listings only" / "My wishlist only"
+    // Uses language-aware check (same logic as the checkmark icon overlay).
+    if (_activeTab == 0 && _myListedOnly) {
+      matches = matches
+          .where(
+              (m) => _userCardService.isOwned(m.$1.id, language: m.$2.language))
+          .toList();
+    } else if (_activeTab == 1 && _myWishlistedOnly) {
+      matches = matches
+          .where((m) =>
+              _userCardService.isWishlisted(m.$1.id, language: m.$2.language))
+          .toList();
+    }
 
     if (matches.isEmpty) {
       return const Padding(
@@ -488,7 +537,7 @@ class _TradeSectionState extends State<TradeSection>
           return Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: matches.map((match) {
+            children: matches!.map((match) {
               final (matchCard, tradeMatch) = match;
               return SizedBox(
                 width: itemWidth,

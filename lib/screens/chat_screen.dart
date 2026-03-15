@@ -513,10 +513,6 @@ class _ChatScreenState extends State<ChatScreen> {
       final receiveCardId = parts.length > 3 ? parts[3] : '';
       final receiveLang = parts.length > 4 ? parts[4] : '';
       final status = parts.length > 5 ? parts[5] : 'pending';
-      final hasAcceptedTrade = _messages.any((m) =>
-          m.content.startsWith('TRADE:') &&
-          m.content.split(':').length > 5 &&
-          m.content.split(':')[5] == 'accepted');
 
       return ChatTradeBubble(
         isMine: isMine,
@@ -528,7 +524,6 @@ class _ChatScreenState extends State<ChatScreen> {
         receiveLanguage: receiveLang,
         status: status,
         isProcessing: _processingTradeIds.contains(msg.id),
-        hasAcceptedTrade: hasAcceptedTrade,
         createdAt: msg.createdAt,
         onAccept: () => _acceptTrade(msg),
         onDeny: () => _denyTrade(msg),

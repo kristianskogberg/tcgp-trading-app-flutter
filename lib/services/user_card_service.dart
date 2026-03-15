@@ -129,7 +129,8 @@ class UserCardService {
     }
     return _wishlist.values.any(
       (e) =>
-          e.cardId == cardId && (e.language == 'ANY' || e.language == language),
+          e.cardId == cardId &&
+          (e.language == 'ANY' || language == 'ANY' || e.language == language),
     );
   }
 
@@ -141,7 +142,8 @@ class UserCardService {
     }
     return _owned.values.any(
       (e) =>
-          e.cardId == cardId && (e.language == 'ANY' || e.language == language),
+          e.cardId == cardId &&
+          (e.language == 'ANY' || language == 'ANY' || e.language == language),
     );
   }
 

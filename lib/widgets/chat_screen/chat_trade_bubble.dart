@@ -14,7 +14,6 @@ class ChatTradeBubble extends StatelessWidget {
   final String receiveLanguage;
   final String status;
   final bool isProcessing;
-  final bool hasAcceptedTrade;
   final DateTime createdAt;
   final VoidCallback onAccept;
   final VoidCallback onDeny;
@@ -30,7 +29,6 @@ class ChatTradeBubble extends StatelessWidget {
     this.receiveLanguage = '',
     required this.status,
     required this.isProcessing,
-    required this.hasAcceptedTrade,
     required this.createdAt,
     required this.onAccept,
     required this.onDeny,
@@ -129,7 +127,7 @@ class ChatTradeBubble extends StatelessWidget {
                         language: receiveLanguage)),
               ],
             ),
-            if (!isMine && isPending && !hasAcceptedTrade) ...[
+            if (!isMine && isPending) ...[
               const SizedBox(height: 8),
               Row(
                 children: [
