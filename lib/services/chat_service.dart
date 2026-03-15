@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/models/message.dart';
+import 'package:safe_text/safe_text.dart';
 
 class ChatService {
   static final ChatService _instance = ChatService._internal();
@@ -51,11 +52,15 @@ class ChatService {
     final userId = _client.auth.currentUser!.id;
     final trimmed = content.trim();
     if (trimmed.isEmpty) throw Exception('Message cannot be empty');
-    if (!trimmed.startsWith('TRADE:') &&
-        !trimmed.startsWith('FRIENDID:') &&
-        !trimmed.startsWith('TRADERESULT:') &&
-        trimmed.length > 100) {
+    final isSpecial = trimmed.startsWith('TRADE:') ||
+        trimmed.startsWith('FRIENDID:') ||
+        trimmed.startsWith('TRADERESULT:');
+    if (!isSpecial && trimmed.length > 100) {
       throw Exception('Message too long');
+    }
+    if (!isSpecial && await SafeTextFilter.containsBadWord(text: trimmed)) {
+      throw Exception(
+          'Message contains inappropriate language. Please rephrase.');
     }
 
     final row = await _client

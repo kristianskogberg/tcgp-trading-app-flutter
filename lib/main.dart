@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:safe_text/safe_text.dart';
 import 'package:tcgp_trading_app/auth/auth_gate.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -23,6 +24,9 @@ void main() async {
   await Supabase.initialize(
       url: dotenv.env['SUPABASE_URL'] ?? '',
       anonKey: dotenv.env['SUPABASE_API_KEY'] ?? '');
+
+  await SafeTextFilter.init(language: Language.english);
+
   runApp(const MyApp());
 }
 
@@ -33,7 +37,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
-      title: 'Pocket Trading',
+      title: 'PocketTrading',
       scrollBehavior: const MaterialScrollBehavior().copyWith(
         overscroll: false,
       ),

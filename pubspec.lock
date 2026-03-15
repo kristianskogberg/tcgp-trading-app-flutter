@@ -600,6 +600,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.28.0"
+  safe_text:
+    dependency: "direct main"
+    description:
+      name: safe_text
+      sha256: f12f9d6cae7de277bc0e3f58aa33fe483804c9089d5b0060bed6d357092ef0c1
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0"
   shared_preferences:
     dependency: "direct main"
     description:

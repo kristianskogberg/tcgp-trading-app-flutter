@@ -335,8 +335,11 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       if (!mounted) return;
+      final errorMsg = e is Exception
+          ? e.toString().replaceFirst('Exception: ', '')
+          : 'Failed to send message';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to send message')),
+        SnackBar(content: Text(errorMsg)),
       );
     }
   }
