@@ -95,6 +95,33 @@ class ProfileService {
     await _client.from('profiles').delete().eq('user_id', user.id);
   }
 
+  Future<Map<String, dynamic>?> getOtherUserProfile(String userId) async {
+    final data = await _client
+        .from('profiles')
+        .select('user_id, player_name, icon')
+        .eq('user_id', userId)
+        .maybeSingle();
+    return data;
+  }
+
+  Future<Map<String, List<String>>> getOtherUserCards(String userId) async {
+    final rows = await _client
+        .from('user_cards')
+        .select('card_id, type')
+        .eq('user_id', userId);
+
+    final wishlist = <String>[];
+    final owned = <String>[];
+    for (final row in rows) {
+      if (row['type'] == 'wishlist') {
+        wishlist.add(row['card_id'] as String);
+      } else if (row['type'] == 'owned') {
+        owned.add(row['card_id'] as String);
+      }
+    }
+    return {'wishlist': wishlist, 'owned': owned};
+  }
+
   Future<void> clearProfileCache() async {
     _cachedProfile = null;
     final prefs = await SharedPreferences.getInstance();

@@ -17,6 +17,7 @@ import 'package:tcgp_trading_app/widgets/chat_screen/chat_trade_result_bubble.da
 import 'package:tcgp_trading_app/widgets/chat_screen/chat_next_steps_bubble.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
+import 'package:tcgp_trading_app/screens/profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final PocketCard? contextCard;
@@ -448,6 +449,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
   String? get _displayIcon => widget.tradeMatch?.icon ?? widget.otherIcon;
 
+  String get _otherUserId =>
+      widget.tradeMatch?.userId ?? widget.otherUserId ?? '';
+
+  void _viewOtherProfile() {
+    if (_otherUserId.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen.otherUser(
+          userId: _otherUserId,
+          playerName: _otherPlayerName,
+          icon: _displayIcon,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -455,6 +472,7 @@ class _ChatScreenState extends State<ChatScreen> {
         displayName: _otherPlayerName,
         displayIcon: _displayIcon,
         lastActiveAt: widget.tradeMatch?.lastActiveAt,
+        onViewProfile: _viewOtherProfile,
       ),
       body: Column(
         children: [

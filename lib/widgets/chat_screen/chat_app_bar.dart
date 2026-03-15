@@ -5,12 +5,14 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String displayName;
   final String? displayIcon;
   final DateTime? lastActiveAt;
+  final VoidCallback? onViewProfile;
 
   const ChatAppBar({
     super.key,
     required this.displayName,
     this.displayIcon,
     this.lastActiveAt,
+    this.onViewProfile,
   });
 
   @override
@@ -30,7 +32,11 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           position: PopupMenuPosition.under,
-          onSelected: (_) {},
+          onSelected: (value) {
+            if (value == 'view_profile') {
+              onViewProfile?.call();
+            }
+          },
           itemBuilder: (context) => [
             const PopupMenuItem(
               height: 44,

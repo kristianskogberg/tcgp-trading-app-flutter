@@ -11,7 +11,25 @@ import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onProfileSaved;
-  const ProfileScreen({super.key, this.onProfileSaved});
+
+  /// When non-null, shows another user's profile in read-only mode.
+  final String? userId;
+  final String? playerName;
+  final String? icon;
+
+  const ProfileScreen({super.key, this.onProfileSaved})
+      : userId = null,
+        playerName = null,
+        icon = null;
+
+  const ProfileScreen.otherUser({
+    super.key,
+    required String this.userId,
+    this.playerName,
+    this.icon,
+  }) : onProfileSaved = null;
+
+  bool get isOtherUser => userId != null;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -67,9 +85,13 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _usernameController.addListener(_onFieldChanged);
-    _friendIdController.addListener(_onFieldChanged);
-    _loadProfile();
+    if (widget.isOtherUser) {
+      _loadOtherProfile();
+    } else {
+      _usernameController.addListener(_onFieldChanged);
+      _friendIdController.addListener(_onFieldChanged);
+      _loadProfile();
+    }
   }
 
   void _onFieldChanged() {
@@ -114,6 +136,49 @@ class _ProfileScreenState extends State<ProfileScreen>
       _listingCards = allCards.where((c) => ownedIds.contains(c.id)).toList();
       _loadingCards = false;
     });
+  }
+
+  Future<void> _loadOtherProfile() async {
+    try {
+      final profile =
+          await _profileService.getOtherUserProfile(widget.userId!);
+      if (profile != null && mounted) {
+        _usernameController.text = profile['player_name'] ?? '';
+        _selectedIcon = profile['icon'] as String?;
+      } else if (mounted) {
+        _usernameController.text = widget.playerName ?? 'Unknown';
+        _selectedIcon = widget.icon;
+      }
+    } catch (e) {
+      if (mounted) {
+        _usernameController.text = widget.playerName ?? 'Unknown';
+        _selectedIcon = widget.icon;
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+    _loadOtherCards();
+  }
+
+  Future<void> _loadOtherCards() async {
+    setState(() => _loadingCards = true);
+    try {
+      final cardMap =
+          await _profileService.getOtherUserCards(widget.userId!);
+      final allCards = await CardService().getAllCards();
+      final wishlistIds = cardMap['wishlist']?.toSet() ?? {};
+      final ownedIds = cardMap['owned']?.toSet() ?? {};
+      if (!mounted) return;
+      setState(() {
+        _wishlistCards =
+            allCards.where((c) => wishlistIds.contains(c.id)).toList();
+        _listingCards =
+            allCards.where((c) => ownedIds.contains(c.id)).toList();
+        _loadingCards = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _loadingCards = false);
+    }
   }
 
   @override
@@ -288,10 +353,10 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('Profile'),
+        automaticallyImplyLeading: widget.isOtherUser,
+        title: Text(widget.isOtherUser ? 'Player Profile' : 'Profile'),
         actions: [
-          if (!_loading && !_editing)
+          if (!widget.isOtherUser && !_loading && !_editing)
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: _enterEditMode,
@@ -345,11 +410,13 @@ class _ProfileScreenState extends State<ProfileScreen>
           _usernameController.text,
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 8),
-        Text(
-          '${_friendIdController.text.substring(0, 4)}-${_friendIdController.text.substring(4, 8)}-${_friendIdController.text.substring(8, 12)}',
-          style: TextStyle(color: Colors.grey[600]),
-        ),
+        if (!widget.isOtherUser && _friendIdController.text.length == 12) ...[
+          const SizedBox(height: 8),
+          Text(
+            '${_friendIdController.text.substring(0, 4)}-${_friendIdController.text.substring(4, 8)}-${_friendIdController.text.substring(8, 12)}',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+        ],
       ],
     );
   }
