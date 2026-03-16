@@ -2,6 +2,7 @@ import 'package:cloudflare_turnstile/cloudflare_turnstile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
+import 'package:tcgp_trading_app/auth/profile_gate.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/login_screen.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
@@ -56,8 +57,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     if (name.isEmpty) {
       nameErr = 'Player Name cannot be empty.';
-    } else if (name.length < 2) {
-      nameErr = 'Min 2 characters.';
     } else if (name.length > 14) {
       nameErr = 'Max 14 characters.';
     }
@@ -79,6 +78,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _getStarted() async {
     if (!_validate()) return;
     setState(() => _loading = true);
+    // Set before sign-in so ProfileGate sees it when auth stream fires
+    ProfileGate.showLinkPrompt = true;
     try {
       await _authService
           .signInAnonymously(captchaToken: _captchaToken)
@@ -91,6 +92,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           .timeout(const Duration(seconds: 15));
       // AuthGate stream fires automatically — no Navigator.push needed
     } catch (e) {
+      ProfileGate.showLinkPrompt = false;
       debugPrint('OnboardingScreen error: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

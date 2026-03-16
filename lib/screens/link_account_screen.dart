@@ -4,7 +4,9 @@ import 'package:tcgp_trading_app/screens/email_verification_screen.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
 
 class LinkAccountScreen extends StatefulWidget {
-  const LinkAccountScreen({super.key});
+  final bool fromOnboarding;
+
+  const LinkAccountScreen({super.key, this.fromOnboarding = false});
 
   @override
   State<LinkAccountScreen> createState() => _LinkAccountScreenState();
@@ -62,12 +64,25 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
     try {
       await _authService.linkEmail(email, password);
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => EmailVerificationScreen(email: email),
-          ),
-        );
+        if (widget.fromOnboarding) {
+          final verified = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EmailVerificationScreen(
+                email: email,
+                fromOnboarding: true,
+              ),
+            ),
+          );
+          if (mounted) Navigator.pop(context, verified ?? false);
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EmailVerificationScreen(email: email),
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

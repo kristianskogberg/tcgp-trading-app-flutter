@@ -8,8 +8,13 @@ import 'package:tcgp_trading_app/auth/auth_service.dart';
 
 class EmailVerificationScreen extends StatefulWidget {
   final String email;
+  final bool fromOnboarding;
 
-  const EmailVerificationScreen({super.key, required this.email});
+  const EmailVerificationScreen({
+    super.key,
+    required this.email,
+    this.fromOnboarding = false,
+  });
 
   @override
   State<EmailVerificationScreen> createState() =>
@@ -60,10 +65,12 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     if (!mounted) return;
     await Supabase.instance.client.auth.refreshSession();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Email verified — account linked!')),
-    );
-    Navigator.pop(context);
+    if (!widget.fromOnboarding) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Email verified — account linked!')),
+      );
+    }
+    Navigator.pop(context, true);
   }
 
   Future<void> _checkManually() async {

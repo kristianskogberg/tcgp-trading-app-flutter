@@ -140,8 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _loadOtherProfile() async {
     try {
-      final profile =
-          await _profileService.getOtherUserProfile(widget.userId!);
+      final profile = await _profileService.getOtherUserProfile(widget.userId!);
       if (profile != null && mounted) {
         _usernameController.text = profile['player_name'] ?? '';
         _selectedIcon = profile['icon'] as String?;
@@ -163,8 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _loadOtherCards() async {
     setState(() => _loadingCards = true);
     try {
-      final cardMap =
-          await _profileService.getOtherUserCards(widget.userId!);
+      final cardMap = await _profileService.getOtherUserCards(widget.userId!);
       final allCards = await CardService().getAllCards();
       final wishlistIds = cardMap['wishlist']?.toSet() ?? {};
       final ownedIds = cardMap['owned']?.toSet() ?? {};
@@ -172,8 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       setState(() {
         _wishlistCards =
             allCards.where((c) => wishlistIds.contains(c.id)).toList();
-        _listingCards =
-            allCards.where((c) => ownedIds.contains(c.id)).toList();
+        _listingCards = allCards.where((c) => ownedIds.contains(c.id)).toList();
         _loadingCards = false;
       });
     } catch (e) {
@@ -198,8 +195,6 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     if (username.isEmpty) {
       usernameErr = "Player Name cannot be empty.";
-    } else if (username.length < 2) {
-      usernameErr = "Min 2 characters.";
     } else if (username.length > 14) {
       usernameErr = "Max 14 characters.";
     }

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/main_screen.dart';
+import 'package:tcgp_trading_app/screens/optional_link_screen.dart';
 import 'package:tcgp_trading_app/screens/profile_screen.dart';
 
 class ProfileGate extends StatefulWidget {
+  static bool showLinkPrompt = false;
+
   const ProfileGate({super.key});
 
   @override
@@ -14,6 +17,7 @@ class _ProfileGateState extends State<ProfileGate> {
   final _profileService = ProfileService();
   bool _loading = true;
   bool _hasProfile = false;
+  bool _showLinkPrompt = false;
 
   @override
   void initState() {
@@ -27,6 +31,7 @@ class _ProfileGateState extends State<ProfileGate> {
       if (mounted) {
         setState(() {
           _hasProfile = profile != null;
+          _showLinkPrompt = ProfileGate.showLinkPrompt;
           _loading = false;
         });
       }
@@ -35,6 +40,11 @@ class _ProfileGateState extends State<ProfileGate> {
         setState(() => _loading = false);
       }
     }
+  }
+
+  void _onLinkPromptDone() {
+    ProfileGate.showLinkPrompt = false;
+    if (mounted) setState(() => _showLinkPrompt = false);
   }
 
   Future<void> _navigateToProfile() async {
@@ -51,6 +61,10 @@ class _ProfileGateState extends State<ProfileGate> {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
+    }
+
+    if (_hasProfile && _showLinkPrompt) {
+      return OptionalLinkScreen(onContinue: _onLinkPromptDone);
     }
 
     if (_hasProfile) {
