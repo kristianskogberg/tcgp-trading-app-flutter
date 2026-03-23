@@ -20,16 +20,21 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   final _chatService = ChatService();
   List<Map<String, dynamic>>? _conversations;
   bool _loading = true;
+  late final AppLifecycleListener _lifecycleListener;
 
   @override
   void initState() {
     super.initState();
+    _lifecycleListener = AppLifecycleListener(
+      onResume: _onRefresh,
+    );
     _loadConversations();
     widget.refreshNotifier?.addListener(_onRefresh);
   }
 
   @override
   void dispose() {
+    _lifecycleListener.dispose();
     widget.refreshNotifier?.removeListener(_onRefresh);
     super.dispose();
   }
@@ -175,9 +180,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               _formatRelativeTime(lastMessageAt.toLocal()),
               style: TextStyle(
                 fontSize: 11,
-                color: hasUnread
-                    ? const Color(0xFF02F8AE)
-                    : Colors.white38,
+                color: hasUnread ? const Color(0xFF02F8AE) : Colors.white38,
               ),
             ),
           if (hasUnread) ...[

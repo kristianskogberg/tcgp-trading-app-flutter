@@ -80,13 +80,19 @@ class _ChatScreenState extends State<ChatScreen> {
   Map<String, PocketCard> _cardMap = {};
   String _myPlayerName = '';
   String _myFriendId = '';
+  bool _otherUserDeleted = false;
 
   String get _currentUserId => Supabase.instance.client.auth.currentUser!.id;
+
+  late final AppLifecycleListener _lifecycleListener;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _lifecycleListener = AppLifecycleListener(
+      onResume: _onAppResumed,
+    );
     _loadMyPlayerName();
     _initChat();
   }
@@ -106,6 +112,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (NotificationService().activeConversationId == _conversationId) {
       NotificationService().activeConversationId = null;
     }
+    _lifecycleListener.dispose();
     if (_channel != null) _chatService.unsubscribe(_channel!);
     _textController.dispose();
     _scrollController.dispose();
@@ -132,16 +139,19 @@ class _ChatScreenState extends State<ChatScreen> {
         if (!mounted) return;
       }
 
-      final messages = await _chatService.getMessages(conversationId);
-      if (!mounted) return;
-
+      // Subscribe first so no messages are missed between fetch and subscribe
       final channel = _chatService.subscribeToMessages(
         conversationId,
         _onNewMessage,
         onUpdate: _onUpdatedMessage,
       );
 
-      // If disposed between subscribe and setState, clean up the channel
+      if (!mounted) {
+        _chatService.unsubscribe(channel);
+        return;
+      }
+
+      final messages = await _chatService.getMessages(conversationId);
       if (!mounted) {
         _chatService.unsubscribe(channel);
         return;
@@ -184,6 +194,45 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _checkOtherUserExists() async {
+    try {
+      await Supabase.instance.client
+          .from('profiles')
+          .select('user_id')
+          .eq('user_id', _otherUserId)
+          .single();
+    } on PostgrestException {
+      if (!mounted) return;
+      setState(() => _otherUserDeleted = true);
+    }
+  }
+
+  /// Re-fetch recent messages when the app resumes from background,
+  /// since the realtime subscription may have missed messages.
+  Future<void> _onAppResumed() async {
+    if (_conversationId == null) return;
+    try {
+      final fresh = await _chatService.getMessages(_conversationId!);
+      if (!mounted) return;
+      // Batch-merge any messages we don't already have
+      final toAdd = <Message>[];
+      for (final msg in fresh) {
+        if (!_messages.any((m) => m.id == msg.id)) {
+          toAdd.add(msg);
+        }
+      }
+      if (toAdd.isNotEmpty) {
+        setState(() => _messages.insertAll(0, toAdd));
+      }
+      // Also mark as read since the user is looking at the chat
+      _chatService.markConversationAsRead(_conversationId!).catchError((_) {});
+      // Check if the other user still exists
+      if (!_otherUserDeleted) await _checkOtherUserExists();
+    } catch (e) {
+      debugPrint('Failed to refresh messages on resume: $e');
+    }
+  }
+
   Future<void> _sendTradeMessage(
     String offerCardId,
     String offerLanguage,
@@ -222,67 +271,39 @@ class _ChatScreenState extends State<ChatScreen> {
     setState(() => _messages[index] = message);
   }
 
-  Future<void> _acceptTrade(Message msg) async {
+  Future<void> _respondToTrade(Message msg, String status) async {
     if (_processingTradeIds.contains(msg.id)) return;
     setState(() => _processingTradeIds.add(msg.id));
     try {
-      await _chatService.updateTradeStatus(msg.id, 'accepted');
+      await _chatService.updateTradeStatus(msg.id, status);
       if (!mounted) return;
-      // Update locally immediately
+      // Only update locally after server confirms success
       final parts = msg.content.split(':');
       if (parts.length > 5) {
-        parts[5] = 'accepted';
+        parts[5] = status;
       } else {
-        parts.add('accepted');
+        parts.add(status);
       }
       _onUpdatedMessage(msg.copyWith(content: parts.join(':')));
       // Send trade result message
       if (_conversationId != null) {
-        final tradeParts = msg.content.split(':');
-        final offerCardId = tradeParts.length > 1 ? tradeParts[1] : '';
-        final receiveCardId = tradeParts.length > 3 ? tradeParts[3] : '';
+        final offerCardId = parts.length > 1 ? parts[1] : '';
+        final receiveCardId = parts.length > 3 ? parts[3] : '';
         final confirmMsg = await _chatService.sendMessage(
           _conversationId!,
-          'TRADERESULT:accepted:$_myPlayerName:$offerCardId:$receiveCardId',
+          'TRADERESULT:$status:$_myPlayerName:$offerCardId:$receiveCardId',
         );
         if (mounted && !_messages.any((m) => m.id == confirmMsg.id)) {
           setState(() => _messages.insert(0, confirmMsg));
         }
       }
     } catch (e) {
-      debugPrint('Failed to accept trade: $e');
-    } finally {
-      if (mounted) setState(() => _processingTradeIds.remove(msg.id));
-    }
-  }
-
-  Future<void> _denyTrade(Message msg) async {
-    if (_processingTradeIds.contains(msg.id)) return;
-    setState(() => _processingTradeIds.add(msg.id));
-    try {
-      await _chatService.updateTradeStatus(msg.id, 'denied');
-      if (!mounted) return;
-      final parts = msg.content.split(':');
-      if (parts.length > 5) {
-        parts[5] = 'denied';
-      } else {
-        parts.add('denied');
-      }
-      _onUpdatedMessage(msg.copyWith(content: parts.join(':')));
-      if (_conversationId != null) {
-        final tradeParts = msg.content.split(':');
-        final offerCardId = tradeParts.length > 1 ? tradeParts[1] : '';
-        final receiveCardId = tradeParts.length > 3 ? tradeParts[3] : '';
-        final confirmMsg = await _chatService.sendMessage(
-          _conversationId!,
-          'TRADERESULT:denied:$_myPlayerName:$offerCardId:$receiveCardId',
+      debugPrint('Failed to $status trade: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to $status trade. Please try again.')),
         );
-        if (mounted && !_messages.any((m) => m.id == confirmMsg.id)) {
-          setState(() => _messages.insert(0, confirmMsg));
-        }
       }
-    } catch (e) {
-      debugPrint('Failed to deny trade: $e');
     } finally {
       if (mounted) setState(() => _processingTradeIds.remove(msg.id));
     }
@@ -293,7 +314,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 100) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loadMore();
+        if (mounted && !_loadingMore) _loadMore();
       });
     }
   }
@@ -490,14 +511,26 @@ class _ChatScreenState extends State<ChatScreen> {
               onLoadMore: _loadMore,
             ),
           ),
-          ChatInputBar(
-            textController: _textController,
-            enabled: !_loading && _error == null,
-            hasFriendId: _myFriendId.isNotEmpty,
-            onSend: _sendMessage,
-            onSendFriendId: _sendFriendIdMessage,
-            onShowQuickMessages: _showQuickMessages,
-          ),
+          if (_otherUserDeleted)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: const Color(0xFF2A2A30),
+              child: const Text(
+                'This user is no longer available',
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+            )
+          else
+            ChatInputBar(
+              textController: _textController,
+              enabled: !_loading && _error == null,
+              hasFriendId: _myFriendId.isNotEmpty,
+              onSend: _sendMessage,
+              onSendFriendId: _sendFriendIdMessage,
+              onShowQuickMessages: _showQuickMessages,
+            ),
         ],
       ),
     );
@@ -525,8 +558,8 @@ class _ChatScreenState extends State<ChatScreen> {
         status: status,
         isProcessing: _processingTradeIds.contains(msg.id),
         createdAt: msg.createdAt,
-        onAccept: () => _acceptTrade(msg),
-        onDeny: () => _denyTrade(msg),
+        onAccept: () => _respondToTrade(msg, 'accepted'),
+        onDeny: () => _respondToTrade(msg, 'denied'),
       );
     }
 

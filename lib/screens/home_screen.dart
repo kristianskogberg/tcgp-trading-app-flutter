@@ -95,27 +95,39 @@ class _HomeScreenState extends State<HomeScreen> {
   void _populateCards(List<PocketCard> cards) {
     if (_allCards.isNotEmpty) return; // already populated
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final sets = <String>{};
-      final rarities = <String>{};
-      final packs = <String>{};
-      for (final card in cards) {
-        sets.add(card.set);
-        // do not show promo rarity in filters
-        if (card.rarity.toLowerCase() != "promo") {
-          rarities.add(card.rarity);
-        }
-
-        if (card.pack.isNotEmpty) packs.add(card.pack);
-      }
-      setState(() {
-        _allCards = cards;
-        _availableSets = sets.toList()..sort();
-        _availableRarities = rarities.toList()..sort();
-        _availablePacks = packs.toList()..sort();
-        _filteredCards = List.of(cards)..sort((a, b) => a.id.compareTo(b.id));
-      });
+      _applyCardData(cards);
       CardService().precacheCardImages();
     });
+  }
+
+  void _applyCardData(List<PocketCard> cards) {
+    final sets = <String>{};
+    final rarities = <String>{};
+    final packs = <String>{};
+    for (final card in cards) {
+      sets.add(card.set);
+      if (card.rarity.toLowerCase() != "promo") {
+        rarities.add(card.rarity);
+      }
+      if (card.pack.isNotEmpty) packs.add(card.pack);
+    }
+    setState(() {
+      _allCards = cards;
+      _availableSets = sets.toList()..sort();
+      _availableRarities = rarities.toList()..sort();
+      _availablePacks = packs.toList()..sort();
+    });
+    _applyFilters();
+  }
+
+  Future<void> _refreshCards() async {
+    try {
+      final cards = await CardService().getAllCards(forceRefresh: true);
+      if (!mounted || cards.isEmpty) return;
+      _applyCardData(cards);
+    } catch (e) {
+      debugPrint('Failed to refresh cards: $e');
+    }
   }
 
   void _applyFilters() {
@@ -451,38 +463,51 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 Expanded(
-                  child: displayCards.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
+                  child: RefreshIndicator(
+                    onRefresh: _refreshCards,
+                    child: displayCards.isEmpty
+                        ? ListView(
+                            physics: const AlwaysScrollableScrollPhysics(),
                             children: [
-                              Icon(Icons.search_off,
-                                  size: 64, color: Colors.white24),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'No cards match',
-                                style: TextStyle(
-                                    color: Colors.white38, fontSize: 16),
+                              SizedBox(
+                                height:
+                                    MediaQuery.of(context).size.height * 0.5,
+                                child: Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.search_off,
+                                          size: 64, color: Colors.white24),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'No cards match',
+                                        style: TextStyle(
+                                            color: Colors.white38,
+                                            fontSize: 16),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ],
+                          )
+                        : CardGrid(
+                            cards: displayCards,
+                            scrollController: _scrollController,
+                            mode: _currentMode,
+                            hasPendingChanges: _hasPendingChanges,
+                            isSaving: _isSaving,
+                            effectiveWishlist: _effectiveWishlist,
+                            effectiveOwned: _effectiveOwned,
+                            effectiveLanguages: _effectiveLanguages,
+                            onWishlistToggle: (cardId, langs) =>
+                                _togglePending(cardId, 'wishlist', langs),
+                            onOwnedToggle: (cardId, langs) =>
+                                _togglePending(cardId, 'owned', langs),
+                            onLanguagesChanged: _updatePendingLanguages,
+                            onSubmit: _submitPendingEdits,
                           ),
-                        )
-                      : CardGrid(
-                          cards: displayCards,
-                          scrollController: _scrollController,
-                          mode: _currentMode,
-                          hasPendingChanges: _hasPendingChanges,
-                          isSaving: _isSaving,
-                          effectiveWishlist: _effectiveWishlist,
-                          effectiveOwned: _effectiveOwned,
-                          effectiveLanguages: _effectiveLanguages,
-                          onWishlistToggle: (cardId, langs) =>
-                              _togglePending(cardId, 'wishlist', langs),
-                          onOwnedToggle: (cardId, langs) =>
-                              _togglePending(cardId, 'owned', langs),
-                          onLanguagesChanged: _updatePendingLanguages,
-                          onSubmit: _submitPendingEdits,
-                        ),
+                  ),
                 ),
               ],
             );

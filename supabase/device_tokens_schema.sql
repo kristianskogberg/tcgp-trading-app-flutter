@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS device_tokens (
   token text NOT NULL,
   platform text DEFAULT 'android',
   created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
   UNIQUE(user_id, token)
 );
 

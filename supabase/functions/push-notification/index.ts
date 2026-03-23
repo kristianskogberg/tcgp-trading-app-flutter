@@ -1,11 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const serviceAccount = JSON.parse(Deno.env.get("FCM_SERVICE_ACCOUNT")!);
+
+// Cache OAuth2 token across invocations (Deno isolate stays warm)
+let cachedToken: string | null = null;
+let tokenExpiry = 0;
+
 // Get a short-lived OAuth2 access token from a service account JSON
 async function getAccessToken(): Promise<string> {
-  const serviceAccount = JSON.parse(Deno.env.get("FCM_SERVICE_ACCOUNT")!);
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedToken && now < tokenExpiry - 60) {
+    return cachedToken;
+  }
 
   const header = { alg: "RS256", typ: "JWT" };
-  const now = Math.floor(Date.now() / 1000);
   const claimSet = {
     iss: serviceAccount.client_email,
     scope: "https://www.googleapis.com/auth/firebase.messaging",
@@ -59,23 +67,27 @@ async function getAccessToken(): Promise<string> {
   if (!tokenData.access_token) {
     throw new Error(`Failed to get access token: ${JSON.stringify(tokenData)}`);
   }
-  return tokenData.access_token;
+
+  cachedToken = tokenData.access_token;
+  tokenExpiry = now + 3600;
+  return cachedToken!;
 }
 
 Deno.serve(async (req) => {
   try {
     const payload = await req.json();
-    console.log("Received payload:", JSON.stringify(payload));
 
     // Supabase Database Webhooks send: { type, table, record, schema, old_record }
     const record = payload.record;
     if (!record || !record.conversation_id || !record.sender_id) {
       console.error("Invalid payload - missing record fields");
       return new Response(
-        JSON.stringify({ error: "Invalid payload", payload }),
+        JSON.stringify({ error: "Invalid payload" }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
+
+    console.log("Received message for conversation:", record.conversation_id);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -92,7 +104,7 @@ Deno.serve(async (req) => {
     if (convError || !conversation) {
       console.error("Conversation error:", convError);
       return new Response(
-        JSON.stringify({ error: "Conversation not found", detail: convError }),
+        JSON.stringify({ error: "Conversation not found" }),
         { status: 404, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -102,11 +114,19 @@ Deno.serve(async (req) => {
         ? conversation.user_b
         : conversation.user_a;
 
-    // Get recipient's device tokens
-    const { data: tokens, error: tokenError } = await supabase
-      .from("device_tokens")
-      .select("token")
-      .eq("user_id", recipientId);
+    // Fetch device tokens and sender profile in parallel
+    const [{ data: tokens, error: tokenError }, { data: senderProfile }] =
+      await Promise.all([
+        supabase
+          .from("device_tokens")
+          .select("token")
+          .eq("user_id", recipientId),
+        supabase
+          .from("profiles")
+          .select("player_name")
+          .eq("user_id", record.sender_id)
+          .single(),
+      ]);
 
     if (tokenError) {
       console.error("Token fetch error:", tokenError);
@@ -119,13 +139,6 @@ Deno.serve(async (req) => {
         headers: { "Content-Type": "application/json" },
       });
     }
-
-    // Get sender's profile name
-    const { data: senderProfile } = await supabase
-      .from("profiles")
-      .select("player_name")
-      .eq("user_id", record.sender_id)
-      .single();
 
     const senderName = senderProfile?.player_name ?? "Someone";
 
@@ -147,10 +160,9 @@ Deno.serve(async (req) => {
 
     // Get FCM v1 access token
     const accessToken = await getAccessToken();
-    const serviceAccount = JSON.parse(Deno.env.get("FCM_SERVICE_ACCOUNT")!);
     const projectId = serviceAccount.project_id;
 
-    console.log("Sending to", tokens.length, "device(s) for project:", projectId);
+    console.log("Sending to", tokens.length, "device(s)");
 
     // Send to each device token
     const results = await Promise.all(
@@ -176,13 +188,34 @@ Deno.serve(async (req) => {
                 },
                 android: {
                   priority: "high",
+                  notification: {
+                    channel_id: "messages",
+                  },
                 },
               },
             }),
           }
         );
         const result = await res.json();
-        console.log("FCM response:", JSON.stringify(result));
+
+        // Clean up stale tokens that FCM reports as unregistered
+        if (result.error) {
+          const details = result.error.details ?? [];
+          const isStale =
+            details.some(
+              (d: { errorCode?: string }) => d.errorCode === "UNREGISTERED"
+            ) || result.error.code === 404;
+          if (isStale) {
+            console.log("Removing stale token for recipient:", recipientId);
+            await supabase
+              .from("device_tokens")
+              .delete()
+              .eq("token", t.token);
+          } else {
+            console.error("FCM error for token:", JSON.stringify(result.error));
+          }
+        }
+
         return result;
       })
     );
@@ -193,7 +226,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Function error:", error);
     return new Response(
-      JSON.stringify({ error: String(error), stack: (error as Error).stack }),
+      JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -15,7 +17,13 @@ class NotificationService {
   /// Track which conversation is currently open to prevent duplicate pushes
   String? activeConversationId;
 
+  bool _initialized = false;
+  StreamSubscription<String>? _tokenRefreshSub;
+
   Future<void> initialize() async {
+    if (_initialized) return;
+    _initialized = true;
+
     final settings = await _messaging.requestPermission();
     if (settings.authorizationStatus != AuthorizationStatus.authorized) {
       debugPrint('Notification permission denied');
@@ -27,7 +35,10 @@ class NotificationService {
       await _saveToken(token);
     }
 
-    _messaging.onTokenRefresh.listen(_saveToken);
+    _tokenRefreshSub = _messaging.onTokenRefresh.listen(
+      _saveToken,
+      onError: (e) => debugPrint('Token refresh error: $e'),
+    );
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
@@ -96,6 +107,7 @@ class NotificationService {
           'user_id': userId,
           'token': token,
           'platform': 'android',
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         },
         onConflict: 'user_id, token',
       );
@@ -129,5 +141,10 @@ class NotificationService {
     } catch (e) {
       debugPrint('Failed to remove FCM token: $e');
     }
+
+    // Cancel subscription and allow re-initialization on next login
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
+    _initialized = false;
   }
 }

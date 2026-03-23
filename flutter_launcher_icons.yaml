@@ -8,7 +8,7 @@ flutter_launcher_icons:
   adaptive_icon_background: "images/icon/background.png"
   adaptive_icon_foreground: "images/icon/foreground.png"
   adaptive_icon_foreground_inset:
-    18
+    22
     # adaptive_icon_monochrome: "assets/icon/monochrome.png"
 
   ios: true

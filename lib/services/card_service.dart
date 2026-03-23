@@ -7,6 +7,8 @@ import 'package:tcgp_trading_app/services/card_image_cache_manager.dart';
 class CardService {
   static const _cacheKey = 'cached_cards_json';
   static const _staleEtagKey = 'cached_cards_etag';
+  static const _cacheTimestampKey = 'cached_cards_timestamp';
+  static const _cacheTtl = Duration(hours: 6);
 
   static final CardService _instance = CardService._();
   factory CardService() => _instance;
@@ -16,10 +18,17 @@ class CardService {
 
   List<PocketCard>? _cards;
   Map<String, PocketCard>? _cardMap;
+  DateTime? _cachedAt;
 
   /// Load cards from Supabase. Falls back to cache if offline.
-  Future<List<PocketCard>> getAllCards() async {
-    if (_cards != null) return _cards!;
+  ///
+  /// Uses a 6-hour TTL: if the cached data is older than that, a fresh
+  /// fetch from Supabase is attempted. On network failure the stale cache
+  /// is still returned so the app remains usable offline.
+  Future<List<PocketCard>> getAllCards({bool forceRefresh = false}) async {
+    final isExpired =
+        _cachedAt != null && DateTime.now().difference(_cachedAt!) > _cacheTtl;
+    if (_cards != null && !forceRefresh && !isExpired) return _cards!;
 
     final prefs = await SharedPreferences.getInstance();
 
@@ -44,6 +53,9 @@ class CardService {
 
       // Cache for offline fallback
       await prefs.setString(_cacheKey, json.encode(data));
+      _cachedAt = DateTime.now();
+      await prefs.setInt(
+          _cacheTimestampKey, _cachedAt!.millisecondsSinceEpoch);
 
       // Clean up stale ETag key from previous GitHub-based implementation
       if (prefs.containsKey(_staleEtagKey)) {
@@ -60,6 +72,10 @@ class CardService {
     if (cached != null) {
       final List<dynamic> jsonList = json.decode(cached);
       _cards = jsonList.map((e) => PocketCard.fromJson(e)).toList();
+      final timestamp = prefs.getInt(_cacheTimestampKey);
+      if (timestamp != null) {
+        _cachedAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      }
       return _cards!;
     }
 
@@ -103,9 +119,13 @@ class CardService {
     }
   }
 
-  /// Clear in-memory cache (e.g. for pull-to-refresh).
-  void clearCache() {
+  /// Clear all cached card data (in-memory and persisted).
+  Future<void> clearCache() async {
     _cards = null;
     _cardMap = null;
+    _cachedAt = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_cacheKey);
+    await prefs.remove(_cacheTimestampKey);
   }
 }

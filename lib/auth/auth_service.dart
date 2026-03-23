@@ -47,15 +47,15 @@ class AuthService {
   Future<void> deleteAccount() async {
     // Deletes app data first (while still authenticated so RLS permits it),
     // then removes the auth user via a SECURITY DEFINER RPC, then signs out.
+    final userId = _client.auth.currentUser!.id;
     await NotificationService().removeToken();
-    await Supabase.instance.client.from('user_cards').delete().eq(
-          'user_id',
-          _client.auth.currentUser!.id,
-        );
-    await Supabase.instance.client.from('profiles').delete().eq(
-          'user_id',
-          _client.auth.currentUser!.id,
-        );
+    await _client.from('user_cards').delete().eq('user_id', userId);
+    // Delete conversations (messages cascade via ON DELETE CASCADE on conversation_id)
+    await _client
+        .from('conversations')
+        .delete()
+        .or('user_a.eq.$userId,user_b.eq.$userId');
+    await _client.from('profiles').delete().eq('user_id', userId);
     await _client.rpc('delete_user');
     await _client.auth.signOut();
   }

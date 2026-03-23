@@ -186,20 +186,24 @@ class ChatService {
       profileMap[p['user_id'] as String] = p;
     }
 
-    return rows.map((r) {
+    final result = <Map<String, dynamic>>[];
+    for (final r in rows) {
       final isUserA = r['user_a'] == userId;
       final otherUserId = isUserA ? r['user_b'] : r['user_a'];
       final profile = profileMap[otherUserId];
+      // Skip conversations where the other user's profile no longer exists
+      if (profile == null) continue;
       final unreadCount =
           (isUserA ? r['unread_count_a'] : r['unread_count_b']) as int? ?? 0;
-      return {
+      result.add({
         ...r,
         'other_user_id': otherUserId,
-        'other_player_name': profile?['player_name'] as String? ?? 'Unknown',
-        'other_icon': profile?['icon'] as String?,
+        'other_player_name': profile['player_name'] as String? ?? 'Unknown',
+        'other_icon': profile['icon'] as String?,
         'unread_count': unreadCount,
-      };
-    }).toList();
+      });
+    }
+    return result;
   }
 
   Future<void> markConversationAsRead(String conversationId) async {
