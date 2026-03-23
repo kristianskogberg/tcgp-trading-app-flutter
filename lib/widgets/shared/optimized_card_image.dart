@@ -9,6 +9,7 @@ class OptimizedCardImage extends StatelessWidget {
   final BoxFit fit;
   final Widget Function(BuildContext, String)? placeholder;
   final Widget Function(BuildContext, String, Object)? errorWidget;
+  final Duration fadeInDuration;
 
   const OptimizedCardImage({
     super.key,
@@ -18,6 +19,7 @@ class OptimizedCardImage extends StatelessWidget {
     this.fit = BoxFit.contain,
     this.placeholder,
     this.errorWidget,
+    this.fadeInDuration = const Duration(milliseconds: 150),
   });
 
   @override
@@ -29,7 +31,7 @@ class OptimizedCardImage extends StatelessWidget {
       fit: fit,
       memCacheWidth: isThumbnail ? 200 : null,
       memCacheHeight: isThumbnail ? 300 : null,
-      fadeInDuration: const Duration(milliseconds: 150),
+      fadeInDuration: fadeInDuration,
       placeholder: placeholder,
       errorWidget: errorWidget,
     );

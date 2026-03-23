@@ -6,9 +6,10 @@ import 'package:tcgp_trading_app/services/card_image_cache_manager.dart';
 
 class CardService {
   static const _cacheKey = 'cached_cards_json';
-  static const _staleEtagKey = 'cached_cards_etag';
   static const _cacheTimestampKey = 'cached_cards_timestamp';
+  static const _lastSyncKey = 'cached_cards_last_sync';
   static const _cacheTtl = Duration(hours: 6);
+  static const _batchSize = 1000;
 
   static final CardService _instance = CardService._();
   factory CardService() => _instance;
@@ -22,9 +23,9 @@ class CardService {
 
   /// Load cards from Supabase. Falls back to cache if offline.
   ///
-  /// Uses a 6-hour TTL: if the cached data is older than that, a fresh
-  /// fetch from Supabase is attempted. On network failure the stale cache
-  /// is still returned so the app remains usable offline.
+  /// Uses a 6-hour TTL. On refresh, performs an incremental sync
+  /// (only fetches cards updated since the last sync) when a local
+  /// cache exists, or a full parallel fetch for cold starts.
   Future<List<PocketCard>> getAllCards({bool forceRefresh = false}) async {
     final isExpired =
         _cachedAt != null && DateTime.now().difference(_cachedAt!) > _cacheTtl;
@@ -33,53 +34,146 @@ class CardService {
     final prefs = await SharedPreferences.getInstance();
 
     try {
-      final List<dynamic> allData = [];
-      const batchSize = 1000;
-      int offset = 0;
-      while (true) {
-        final batch = await _client
-            .from('cards')
-            .select()
-            .range(offset, offset + batchSize - 1)
-            .timeout(const Duration(seconds: 10));
-        allData.addAll(batch);
-        if (batch.length < batchSize) break;
-        offset += batchSize;
+      // Try incremental sync first if we have a cache
+      final lastSync = prefs.getString(_lastSyncKey);
+      if (lastSync != null && _cards != null && _cards!.isNotEmpty) {
+        final updated = await _fetchUpdatedCards(lastSync);
+        if (updated != null) {
+          _mergeUpdatedCards(updated);
+          await _persistCache(prefs);
+          return _cards!;
+        }
       }
 
-      final data = allData;
-      final List<dynamic> jsonList = data;
-      _cards = jsonList.map((e) => PocketCard.fromJson(e)).toList();
-
-      // Cache for offline fallback
-      await prefs.setString(_cacheKey, json.encode(data));
-      _cachedAt = DateTime.now();
-      await prefs.setInt(
-          _cacheTimestampKey, _cachedAt!.millisecondsSinceEpoch);
-
-      // Clean up stale ETag key from previous GitHub-based implementation
-      if (prefs.containsKey(_staleEtagKey)) {
-        await prefs.remove(_staleEtagKey);
+      // Load from disk cache if in-memory is empty
+      if (_cards == null || _cards!.isEmpty) {
+        _loadFromDiskCache(prefs);
       }
 
+      // Try incremental sync with disk cache
+      final diskLastSync = prefs.getString(_lastSyncKey);
+      if (diskLastSync != null && _cards != null && _cards!.isNotEmpty) {
+        final updated = await _fetchUpdatedCards(diskLastSync);
+        if (updated != null) {
+          _mergeUpdatedCards(updated);
+          await _persistCache(prefs);
+          return _cards!;
+        }
+      }
+
+      // Full fetch — parallel batches
+      final allData = await _fetchAllCardsParallel();
+      _cards = allData.map((e) => PocketCard.fromJson(e)).toList();
+      _cardMap = null;
+      await _persistCache(prefs, rawData: allData);
       return _cards!;
     } catch (_) {
       // Fall through to cache
     }
 
-    // Fallback: load from cache
+    // Fallback: load from disk cache
+    if (_cards == null || _cards!.isEmpty) {
+      _loadFromDiskCache(prefs);
+    }
+    return _cards ?? [];
+  }
+
+  /// Fetch all cards in parallel batches.
+  Future<List<dynamic>> _fetchAllCardsParallel() async {
+    // First batch to determine total count
+    final firstBatch = await _client
+        .from('cards')
+        .select()
+        .order('id')
+        .range(0, _batchSize - 1)
+        .timeout(const Duration(seconds: 10));
+
+    if (firstBatch.length < _batchSize) return firstBatch;
+
+    // Fetch remaining batches in parallel
+    // Estimate ~3 batches for ~3000 cards; fetch up to 5 to be safe
+    final futures = <Future<List<dynamic>>>[];
+    for (int offset = _batchSize; offset < _batchSize * 5; offset += _batchSize) {
+      futures.add(
+        _client
+            .from('cards')
+            .select()
+            .order('id')
+            .range(offset, offset + _batchSize - 1)
+            .timeout(const Duration(seconds: 10)),
+      );
+    }
+
+    final batches = await Future.wait(futures);
+    final allData = <dynamic>[...firstBatch];
+    for (final batch in batches) {
+      if (batch.isEmpty) break;
+      allData.addAll(batch);
+      if (batch.length < _batchSize) break;
+    }
+    return allData;
+  }
+
+  /// Fetch only cards updated since [lastSync].
+  /// Returns null if the fetch fails (caller falls back to full fetch).
+  Future<List<dynamic>?> _fetchUpdatedCards(String lastSync) async {
+    try {
+      final data = await _client
+          .from('cards')
+          .select()
+          .gt('updated_at', lastSync)
+          .timeout(const Duration(seconds: 10));
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Merge updated/new cards into the in-memory list.
+  void _mergeUpdatedCards(List<dynamic> updated) {
+    if (updated.isEmpty) {
+      // No changes — just refresh the timestamp
+      _cachedAt = DateTime.now();
+      return;
+    }
+
+    final updatedCards =
+        updated.map((e) => PocketCard.fromJson(e as Map<String, dynamic>)).toList();
+    final cardMap = <String, PocketCard>{};
+    for (final c in _cards!) {
+      cardMap[c.id] = c;
+    }
+    for (final c in updatedCards) {
+      cardMap[c.id] = c;
+    }
+    _cards = cardMap.values.toList();
+    _cardMap = null;
+    _cachedAt = DateTime.now();
+  }
+
+  /// Persist current cards to SharedPreferences.
+  Future<void> _persistCache(SharedPreferences prefs, {List<dynamic>? rawData}) async {
+    final data = rawData ?? _cards!.map((c) => c.toJson()).toList();
+    await prefs.setString(_cacheKey, json.encode(data));
+    _cachedAt ??= DateTime.now();
+    await prefs.setInt(_cacheTimestampKey, _cachedAt!.millisecondsSinceEpoch);
+    await prefs.setString(_lastSyncKey, DateTime.now().toUtc().toIso8601String());
+  }
+
+  /// Load cards from SharedPreferences disk cache into memory.
+  void _loadFromDiskCache(SharedPreferences prefs) {
     final cached = prefs.getString(_cacheKey);
     if (cached != null) {
       final List<dynamic> jsonList = json.decode(cached);
-      _cards = jsonList.map((e) => PocketCard.fromJson(e)).toList();
+      _cards = jsonList
+          .map((e) => PocketCard.fromJson(e as Map<String, dynamic>))
+          .toList();
+      _cardMap = null;
       final timestamp = prefs.getInt(_cacheTimestampKey);
       if (timestamp != null) {
         _cachedAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
       }
-      return _cards!;
     }
-
-    return [];
   }
 
   /// Get cards filtered by set.
@@ -127,5 +221,6 @@ class CardService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_cacheKey);
     await prefs.remove(_cacheTimestampKey);
+    await prefs.remove(_lastSyncKey);
   }
 }

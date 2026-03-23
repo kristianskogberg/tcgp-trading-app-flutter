@@ -36,10 +36,16 @@ class CardDetailHeader extends StatelessWidget {
           Hero(
             tag: heroTag ?? 'card-hero-${card.id}',
             createRectTween: (begin, end) => RectTween(begin: begin, end: end),
+            // Use the source widget during flight so the thumbnail
+            // animates smoothly even before the full-res image loads.
+            flightShuttleBuilder: (flightContext, animation, direction,
+                    fromContext, toContext) =>
+                fromContext.widget,
             child: OptimizedCardImage(
               imageUrl: card.imageUrl,
               isThumbnail: false,
               height: 220,
+              fadeInDuration: Duration.zero,
               errorWidget: (context, url, error) =>
                   const Icon(Icons.broken_image, size: 100),
             ),
