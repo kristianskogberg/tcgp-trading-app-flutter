@@ -41,17 +41,17 @@ async function getAccessToken(): Promise<string> {
     binaryKey,
     { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
 
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5",
     cryptoKey,
-    new TextEncoder().encode(unsignedToken)
+    new TextEncoder().encode(unsignedToken),
   );
 
   const signedToken = `${unsignedToken}.${btoa(
-    String.fromCharCode(...new Uint8Array(signature))
+    String.fromCharCode(...new Uint8Array(signature)),
   )
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
@@ -81,17 +81,17 @@ Deno.serve(async (req) => {
     const record = payload.record;
     if (!record || !record.conversation_id || !record.sender_id) {
       console.error("Invalid payload - missing record fields");
-      return new Response(
-        JSON.stringify({ error: "Invalid payload" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid payload" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     console.log("Received message for conversation:", record.conversation_id);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
     // Get the conversation to find the recipient
@@ -103,10 +103,10 @@ Deno.serve(async (req) => {
 
     if (convError || !conversation) {
       console.error("Conversation error:", convError);
-      return new Response(
-        JSON.stringify({ error: "Conversation not found" }),
-        { status: 404, headers: { "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Conversation not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const recipientId =
@@ -154,7 +154,8 @@ Deno.serve(async (req) => {
     } else if (content.startsWith("FRIENDID:")) {
       body = `${senderName} shared their Friend ID`;
     } else {
-      const text = content.length > 80 ? content.substring(0, 80) + "..." : content;
+      const text =
+        content.length > 80 ? content.substring(0, 80) + "..." : content;
       body = `${senderName}: ${text}`;
     }
 
@@ -179,7 +180,7 @@ Deno.serve(async (req) => {
               message: {
                 token: t.token,
                 notification: {
-                  title: "Pocket Trading",
+                  title: "PocketTrade",
                   body: body,
                 },
                 data: {
@@ -194,7 +195,7 @@ Deno.serve(async (req) => {
                 },
               },
             }),
-          }
+          },
         );
         const result = await res.json();
 
@@ -203,21 +204,18 @@ Deno.serve(async (req) => {
           const details = result.error.details ?? [];
           const isStale =
             details.some(
-              (d: { errorCode?: string }) => d.errorCode === "UNREGISTERED"
+              (d: { errorCode?: string }) => d.errorCode === "UNREGISTERED",
             ) || result.error.code === 404;
           if (isStale) {
             console.log("Removing stale token for recipient:", recipientId);
-            await supabase
-              .from("device_tokens")
-              .delete()
-              .eq("token", t.token);
+            await supabase.from("device_tokens").delete().eq("token", t.token);
           } else {
             console.error("FCM error for token:", JSON.stringify(result.error));
           }
         }
 
         return result;
-      })
+      }),
     );
 
     return new Response(JSON.stringify(results), {
@@ -225,9 +223,9 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("Function error:", error);
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 });

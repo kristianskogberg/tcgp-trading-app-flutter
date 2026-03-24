@@ -79,7 +79,7 @@ class _ProfileGateState extends State<ProfileGate> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'To start using Pocket Trading, please create your profile first.',
+                'To start using PocketTrade, please create your profile first.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16),
               ),

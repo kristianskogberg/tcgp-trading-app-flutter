@@ -1,3 +1,5 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/services/notification_service.dart';
 
@@ -79,4 +81,66 @@ class AuthService {
   User? get currentUser => _client.auth.currentUser;
 
   bool get isAnonymous => _client.auth.currentUser?.isAnonymous ?? false;
+
+  bool get isGoogleLinked =>
+      _client.auth.currentUser?.identities
+          ?.any((id) => id.provider == 'google') ??
+      false;
+
+  Future<AuthResponse> linkGoogleAccount() async {
+    final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'] ?? '';
+    final googleUser =
+        await GoogleSignIn(serverClientId: webClientId).signIn();
+    if (googleUser == null) throw Exception('Google sign-in was cancelled');
+    final idToken = (await googleUser.authentication).idToken;
+    if (idToken == null) throw Exception('Failed to get ID token');
+
+    final oldUserId = _client.auth.currentUser?.id;
+
+    final response = await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+    );
+
+    // If Supabase created a new user instead of linking to the anonymous one,
+    // migrate all data (profile, cards, conversations) to the new user ID.
+    final newUserId = response.user?.id;
+    if (oldUserId != null && newUserId != null && oldUserId != newUserId) {
+      await _migrateUserData(oldUserId, newUserId);
+    }
+
+    return response;
+  }
+
+  Future<void> _migrateUserData(String oldId, String newId) async {
+    await _client
+        .from('profiles')
+        .update({'user_id': newId})
+        .eq('user_id', oldId);
+    await _client
+        .from('user_cards')
+        .update({'user_id': newId})
+        .eq('user_id', oldId);
+    await _client
+        .from('conversations')
+        .update({'user_a': newId})
+        .eq('user_a', oldId);
+    await _client
+        .from('conversations')
+        .update({'user_b': newId})
+        .eq('user_b', oldId);
+  }
+
+  Future<AuthResponse> signInWithGoogle() async {
+    final webClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'] ?? '';
+    final googleUser =
+        await GoogleSignIn(serverClientId: webClientId).signIn();
+    if (googleUser == null) throw Exception('Google sign-in was cancelled');
+    final idToken = (await googleUser.authentication).idToken;
+    if (idToken == null) throw Exception('Failed to get ID token');
+    return await _client.auth.signInWithIdToken(
+      provider: OAuthProvider.google,
+      idToken: idToken,
+    );
+  }
 }

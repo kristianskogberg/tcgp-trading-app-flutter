@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/auth/auth_service.dart';
+import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/link_account_screen.dart';
 
 class OptionalLinkScreen extends StatefulWidget {
-  final VoidCallback onContinue;
+  /// When non-null, the screen is in onboarding mode (shows "Skip for now").
+  /// When null, it's in settings mode (shows back button, pops on done).
+  final VoidCallback? onContinue;
 
-  const OptionalLinkScreen({super.key, required this.onContinue});
+  const OptionalLinkScreen({super.key, this.onContinue});
 
   @override
   State<OptionalLinkScreen> createState() => _OptionalLinkScreenState();
@@ -12,16 +16,57 @@ class OptionalLinkScreen extends StatefulWidget {
 
 class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
   bool _linked = false;
+  bool _loading = false;
+  String? _linkedMethod; // 'email' or 'google'
 
-  Future<void> _linkAccount() async {
+  bool get _isFromOnboarding => widget.onContinue != null;
+
+  Future<void> _linkWithEmail() async {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => const LinkAccountScreen(fromOnboarding: true),
+        builder: (_) => LinkAccountScreen(fromOnboarding: _isFromOnboarding),
       ),
     );
     if (result == true && mounted) {
-      setState(() => _linked = true);
+      setState(() {
+        _linked = true;
+        _linkedMethod = 'email';
+      });
+    }
+  }
+
+  Future<void> _linkWithGoogle() async {
+    setState(() => _loading = true);
+    try {
+      await AuthService().linkGoogleAccount();
+      await ProfileService().clearProfileCache();
+      if (mounted) {
+        setState(() {
+          _linked = true;
+          _loading = false;
+          _linkedMethod = 'google';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        final message =
+            e.toString().contains('cancelled') ? null : 'Google sign-in failed';
+        if (message != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message)),
+          );
+        }
+      }
+    }
+  }
+
+  void _onDone() {
+    if (_isFromOnboarding) {
+      widget.onContinue!();
+    } else {
+      Navigator.pop(context, true);
     }
   }
 
@@ -30,7 +75,7 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Link Account'),
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: !_isFromOnboarding,
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
@@ -47,9 +92,11 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'You can log in with your email anytime.',
-                style: TextStyle(color: Colors.white70, height: 1.5),
+              Text(
+                _linkedMethod == 'google'
+                    ? 'Your Google account is connected.'
+                    : 'You can log in with your email anytime.',
+                style: const TextStyle(color: Colors.white70, height: 1.5),
                 textAlign: TextAlign.center,
               ),
             ] else ...[
@@ -57,13 +104,13 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
                   size: 72, color: Colors.white54),
               const SizedBox(height: 24),
               const Text(
-                'Secure your account',
+                'Link your account',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
               const Text(
-                'Link an email to protect your data. This is optional — you can always do it later in Settings.',
+                'Link an account to protect your data. This is optional — you can always do it later in Settings.',
                 style: TextStyle(color: Colors.white70, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -88,26 +135,43 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: widget.onContinue,
-                  child: const Text('Continue'),
+                  onPressed: _onDone,
+                  child: Text(_isFromOnboarding ? 'Continue' : 'Done'),
                 ),
               )
             else ...[
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _linkAccount,
-                  child: const Text('Link Email'),
+                child: OutlinedButton.icon(
+                  onPressed: _loading ? null : _linkWithGoogle,
+                  icon: _loading
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.g_mobiledata, size: 24),
+                  label: const Text('Continue with Google'),
                 ),
               ),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: TextButton(
-                  onPressed: widget.onContinue,
-                  child: const Text('Skip for now'),
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _linkWithEmail,
+                  child: const Text('Link with Email'),
                 ),
               ),
+              if (_isFromOnboarding) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: widget.onContinue,
+                    child: const Text('Skip for now'),
+                  ),
+                ),
+              ],
             ],
             const SizedBox(height: 16),
           ],

@@ -4,6 +4,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
 
+
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -26,6 +28,19 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     _turnstileController.dispose();
     super.dispose();
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      await authService.signInWithGoogle();
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted && !e.toString().contains('cancelled')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Google sign-in failed')),
+        );
+      }
+    }
   }
 
   Future<void> login() async {
@@ -104,6 +119,23 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton(
               onPressed: login,
               child: const Text('Login'),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Expanded(child: Divider(color: Colors.white24)),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text('or', style: TextStyle(color: Colors.white54)),
+                ),
+                const Expanded(child: Divider(color: Colors.white24)),
+              ],
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: _signInWithGoogle,
+              icon: const Icon(Icons.g_mobiledata, size: 24),
+              label: const Text('Sign in with Google'),
             ),
             const SizedBox(height: 20),
             GestureDetector(
