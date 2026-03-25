@@ -91,7 +91,12 @@ class _ProfileScreenState extends State<ProfileScreen>
       _usernameController.addListener(_onFieldChanged);
       _friendIdController.addListener(_onFieldChanged);
       _loadProfile();
+      _userCardService.addListener(_onCardsChanged);
     }
+  }
+
+  void _onCardsChanged() {
+    if (!_editing) _loadCards();
   }
 
   void _onFieldChanged() {
@@ -180,6 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   void dispose() {
+    _userCardService.removeListener(_onCardsChanged);
     _tabController.dispose();
     _usernameController.dispose();
     _friendIdController.dispose();

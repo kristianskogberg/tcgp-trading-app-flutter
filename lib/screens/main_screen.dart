@@ -4,12 +4,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/conversations_screen.dart';
 import 'package:tcgp_trading_app/screens/home_screen.dart';
+import 'package:tcgp_trading_app/screens/optional_link_screen.dart';
 import 'package:tcgp_trading_app/screens/profile_screen.dart';
 import 'package:tcgp_trading_app/screens/settings_screen.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
 import 'package:tcgp_trading_app/services/notification_service.dart';
 
 class MainScreen extends StatefulWidget {
+  /// When true, shows the link-account prompt once after onboarding.
+  static bool showLinkPrompt = false;
+
   const MainScreen({super.key});
 
   @override
@@ -34,6 +38,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _conversationsChannel = _chatService.subscribeToNewMessages(() {
       _checkUnread();
     });
+    if (MainScreen.showLinkPrompt) {
+      MainScreen.showLinkPrompt = false;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const OptionalLinkScreen(fromOnboarding: true),
+            ),
+          );
+        }
+      });
+    }
   }
 
   @override
@@ -128,8 +145,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 isLabelVisible: _hasUnread,
                 smallSize: 10,
                 backgroundColor: const Color(0xFF02F8AE),
-                child:
-                    const Icon(Icons.chat_bubble, color: Color(0xFF02F8AE)),
+                child: const Icon(Icons.chat_bubble, color: Color(0xFF02F8AE)),
               ),
               label: 'Messages',
             ),

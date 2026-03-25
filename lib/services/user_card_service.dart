@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/models/pending_card_edit.dart';
@@ -23,7 +24,7 @@ class UserCardEntry {
   bool get isAny => language == 'ANY';
 }
 
-class UserCardService {
+class UserCardService extends ChangeNotifier {
   static final UserCardService _instance = UserCardService._internal();
   factory UserCardService() => _instance;
   UserCardService._internal();
@@ -262,6 +263,7 @@ class UserCardService {
       }
     }
     _persistCache(); // single persist
+    notifyListeners();
   }
 
   Future<void> deleteAllUserCards() async {

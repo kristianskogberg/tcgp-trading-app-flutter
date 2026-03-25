@@ -64,25 +64,16 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
     try {
       await _authService.linkEmail(email, password);
       if (mounted) {
-        if (widget.fromOnboarding) {
-          final verified = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => EmailVerificationScreen(
-                email: email,
-                fromOnboarding: true,
-              ),
+        final verified = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => EmailVerificationScreen(
+              email: email,
+              fromOnboarding: widget.fromOnboarding,
             ),
-          );
-          if (mounted) Navigator.pop(context, verified ?? false);
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => EmailVerificationScreen(email: email),
-            ),
-          );
-        }
+          ),
+        );
+        if (mounted) Navigator.pop(context, verified ?? false);
       }
     } catch (e) {
       if (mounted) {

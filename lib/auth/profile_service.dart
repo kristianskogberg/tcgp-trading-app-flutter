@@ -66,7 +66,7 @@ class ProfileService {
       'icon': icon,
     };
 
-    // Pre-populate cache synchronously so ProfileGate never races the DB write.
+    // Pre-populate cache synchronously so reads don't race the DB write.
     _cachedProfile = payload;
 
     final saved = await _client

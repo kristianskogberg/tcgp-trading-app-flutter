@@ -4,11 +4,11 @@ import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/link_account_screen.dart';
 
 class OptionalLinkScreen extends StatefulWidget {
-  /// When non-null, the screen is in onboarding mode (shows "Skip for now").
-  /// When null, it's in settings mode (shows back button, pops on done).
-  final VoidCallback? onContinue;
+  /// When true, the screen is in onboarding mode (shows "Skip for now").
+  /// When false, it's in settings mode (shows back button, pops on done).
+  final bool fromOnboarding;
 
-  const OptionalLinkScreen({super.key, this.onContinue});
+  const OptionalLinkScreen({super.key, this.fromOnboarding = false});
 
   @override
   State<OptionalLinkScreen> createState() => _OptionalLinkScreenState();
@@ -19,7 +19,7 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
   bool _loading = false;
   String? _linkedMethod; // 'email' or 'google'
 
-  bool get _isFromOnboarding => widget.onContinue != null;
+  bool get _isFromOnboarding => widget.fromOnboarding;
 
   Future<void> _linkWithEmail() async {
     final result = await Navigator.push<bool>(
@@ -63,11 +63,7 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
   }
 
   void _onDone() {
-    if (_isFromOnboarding) {
-      widget.onContinue!();
-    } else {
-      Navigator.pop(context, true);
-    }
+    if (mounted) Navigator.pop(context, !_isFromOnboarding ? true : null);
   }
 
   @override
@@ -167,7 +163,7 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
-                    onPressed: widget.onContinue,
+                    onPressed: () { if (mounted) Navigator.pop(context); },
                     child: const Text('Skip for now'),
                   ),
                 ),

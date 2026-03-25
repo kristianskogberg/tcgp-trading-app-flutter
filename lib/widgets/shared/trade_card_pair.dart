@@ -1,5 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/utils/set_image_url.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
 /// A reusable widget that displays two cards side by side with a swap icon.
@@ -114,8 +116,8 @@ class TradeCardPair extends StatelessWidget {
                         )
                     : null,
                 errorWidget: cardHeight != null
-                    ? (context, url, error) => const Icon(Icons.broken_image,
-                        color: Colors.white24)
+                    ? (context, url, error) =>
+                        const Icon(Icons.broken_image, color: Colors.white24)
                     : null,
               ),
             ),
@@ -140,6 +142,24 @@ class TradeCardPair extends StatelessWidget {
                   ),
                 ),
               ),
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+                child: CachedNetworkImage(
+                  imageUrl: setImageUrl(card.set),
+                  height: 20,
+                  fit: BoxFit.contain,
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  placeholder: (_, __) => const SizedBox(height: 20),
+                ),
+              ),
+            ),
           ],
         ),
         if (bottomLabel != null) ...[

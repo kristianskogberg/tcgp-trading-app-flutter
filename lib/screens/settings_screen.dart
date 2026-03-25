@@ -32,37 +32,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _clearAllCaches() async {
+    await UserCardService().clearCache();
+    await ProfileService().clearProfileCache();
+    await CardService().clearCache();
+  }
+
   Future<void> _deleteAccount() async {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const _DeleteAccountDialog(),
+      builder: (_) => _DestructiveActionDialog(
+        title: 'Delete Account',
+        description:
+            'This will permanently delete your account and all your data, including your profile, wishlist, and listings. This cannot be undone.',
+        loadingText: 'Deleting your account...',
+        confirmLabel: 'Delete',
+        accentColor: Colors.redAccent,
+        onConfirm: () async {
+          await AuthService().deleteAccount();
+          await _clearAllCaches();
+        },
+      ),
     );
   }
 
   Future<void> _signOut() async {
     final isAnon = AuthService().isAnonymous;
+    if (isAnon) {
+      await showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => _DestructiveActionDialog(
+          title: 'Sign Out',
+          description:
+              'Signing out will permanently delete all your data, including your profile, wishlist, and listings. This cannot be undone.',
+          loadingText: 'Signing out...',
+          confirmLabel: 'Sign out',
+          accentColor: Colors.redAccent,
+          showWarningBadge: true,
+          onConfirm: () async {
+            await UserCardService().deleteAllUserCards();
+            await ProfileService().deleteProfile();
+            await NotificationService().removeToken();
+            await _clearAllCaches();
+            await AuthService().signOut();
+          },
+        ),
+      );
+      return;
+    }
     final confirmed = await showAppDialog<bool>(
       context: context,
       title: 'Sign out',
-      content: Text(
-        isAnon
-            ? 'Warning: Signing out will permanently delete your data unless you have linked an email. Continue?'
-            : 'Are you sure you want to sign out?',
-      ),
+      content: const Text('Are you sure you want to sign out?'),
       primaryText: 'Sign out',
       onPrimaryPressed: () => true,
     );
     if (confirmed != true) return;
     try {
-      if (isAnon) {
-        await UserCardService().deleteAllUserCards();
-        await ProfileService().deleteProfile();
-      }
       await NotificationService().removeToken();
-      await UserCardService().clearCache();
-      await ProfileService().clearProfileCache();
-      await CardService().clearCache();
+      await _clearAllCaches();
       await AuthService().signOut();
     } catch (e) {
       if (mounted) {
@@ -153,16 +183,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-class _DeleteAccountDialog extends StatefulWidget {
-  const _DeleteAccountDialog();
+class _DestructiveActionDialog extends StatefulWidget {
+  final String title;
+  final String description;
+  final String loadingText;
+  final String confirmLabel;
+  final Color accentColor;
+  final bool showWarningBadge;
+  final Future<void> Function() onConfirm;
+
+  const _DestructiveActionDialog({
+    required this.title,
+    required this.description,
+    required this.loadingText,
+    required this.confirmLabel,
+    required this.accentColor,
+    this.showWarningBadge = false,
+    required this.onConfirm,
+  });
 
   @override
-  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+  State<_DestructiveActionDialog> createState() =>
+      _DestructiveActionDialogState();
 }
 
-class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+class _DestructiveActionDialogState extends State<_DestructiveActionDialog> {
   int _secondsLeft = 5;
-  bool _deleting = false;
+  bool _running = false;
   Timer? _timer;
 
   @override
@@ -182,15 +229,16 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     super.dispose();
   }
 
-  Future<void> _performDelete() async {
-    setState(() => _deleting = true);
+  Future<void> _perform() async {
+    setState(() => _running = true);
     try {
-      await AuthService().deleteAccount();
+      await widget.onConfirm();
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        setState(() => _deleting = false);
+        setState(() => _running = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete account: $e')),
+          SnackBar(content: Text('${widget.title} failed: $e')),
         );
       }
     }
@@ -198,9 +246,9 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final enabled = _secondsLeft <= 0 && !_deleting;
+    final enabled = _secondsLeft <= 0 && !_running;
     return PopScope(
-      canPop: !_deleting,
+      canPop: !_running,
       child: Dialog(
         backgroundColor: const Color(0xFF1E1E24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -216,9 +264,9 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                 color: Color(0xFF141418),
                 border: Border(bottom: BorderSide(color: Colors.white12)),
               ),
-              child: const Text(
-                'Delete Account',
-                style: TextStyle(
+              child: Text(
+                widget.title,
+                style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                     color: Colors.white),
@@ -230,14 +278,29 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (!_running && widget.showWarningBadge) ...[
+                    const Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded,
+                            size: 16, color: Colors.amber),
+                        SizedBox(width: 8),
+                        Text(
+                          'You have not linked an account yet',
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.amber,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   Text(
-                    _deleting
-                        ? 'Deleting your account...'
-                        : 'This will permanently delete your account and all your data, including your profile, wishlist, and listings. This cannot be undone.',
+                    _running ? widget.loadingText : widget.description,
                     style: const TextStyle(fontSize: 14, color: Colors.white70),
                   ),
                   const SizedBox(height: 20),
-                  if (_deleting)
+                  if (_running)
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
@@ -262,19 +325,20 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: FilledButton(
-                            onPressed: enabled ? _performDelete : null,
+                            onPressed: enabled ? _perform : null,
                             style: FilledButton.styleFrom(
-                              backgroundColor: Colors.redAccent,
+                              backgroundColor: widget.accentColor,
                               foregroundColor: Colors.black,
                               disabledBackgroundColor:
-                                  Colors.redAccent.withOpacity(0.3),
+                                  widget.accentColor.withOpacity(0.3),
                               disabledForegroundColor: Colors.black38,
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10)),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
-                            child: Text(
-                                enabled ? 'Delete' : 'Delete ($_secondsLeft)'),
+                            child: Text(enabled
+                                ? widget.confirmLabel
+                                : '${widget.confirmLabel} ($_secondsLeft)'),
                           ),
                         ),
                       ],

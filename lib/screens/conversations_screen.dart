@@ -51,7 +51,8 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
         _conversations = conversations;
         _loading = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Failed to load conversations: $e');
       if (!mounted) return;
       setState(() => _loading = false);
     }

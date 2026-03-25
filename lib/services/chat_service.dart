@@ -165,8 +165,7 @@ class ChatService {
         .from('conversations')
         .select()
         .or('user_a.eq.$userId,user_b.eq.$userId')
-        .not('last_message_text', 'is', null)
-        .order('last_message_at', ascending: false);
+        .order('last_message_at', ascending: false, nullsFirst: false);
 
     // Collect other-user IDs to fetch their profile names
     final otherUserIds = (rows as List).map((r) {
@@ -191,15 +190,14 @@ class ChatService {
       final isUserA = r['user_a'] == userId;
       final otherUserId = isUserA ? r['user_b'] : r['user_a'];
       final profile = profileMap[otherUserId];
-      // Skip conversations where the other user's profile no longer exists
-      if (profile == null) continue;
       final unreadCount =
           (isUserA ? r['unread_count_a'] : r['unread_count_b']) as int? ?? 0;
       result.add({
         ...r,
         'other_user_id': otherUserId,
-        'other_player_name': profile['player_name'] as String? ?? 'Unknown',
-        'other_icon': profile['icon'] as String?,
+        'other_player_name':
+            profile?['player_name'] as String? ?? 'Deleted user',
+        'other_icon': profile?['icon'] as String?,
         'unread_count': unreadCount,
       });
     }
