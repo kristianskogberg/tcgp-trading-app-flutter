@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 
 class SortSelector extends StatelessWidget {
   final String currentSort;
@@ -40,7 +41,7 @@ class SortSelector extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: isSelected
-                          ? const Color(0xFF02F8AE)
+                          ? AppColors.primary
                           : Colors.transparent,
                     ),
                   ),
@@ -48,7 +49,7 @@ class SortSelector extends StatelessWidget {
                     option.$2,
                     style: TextStyle(
                       color:
-                          isSelected ? const Color(0xFF02F8AE) : Colors.white54,
+                          isSelected ? AppColors.primary : Colors.white54,
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
                     ),

@@ -1,5 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
+import 'package:tcgp_trading_app/utils/set_image_url.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
@@ -55,6 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   String? _savedIcon;
 
   late final TabController _tabController;
+  int _activeTab = 0;
   List<PocketCard> _wishlistCards = [];
   List<PocketCard> _listingCards = [];
   bool _loadingCards = false;
@@ -85,6 +89,11 @@ class _ProfileScreenState extends State<ProfileScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() => _activeTab = _tabController.index);
+      }
+    });
     if (widget.isOtherUser) {
       _loadOtherProfile();
     } else {
@@ -430,12 +439,17 @@ class _ProfileScreenState extends State<ProfileScreen>
             padding: const EdgeInsets.symmetric(horizontal: 6),
             child: TabBar(
               controller: _tabController,
-              indicator: const UnderlineTabIndicator(
-                borderSide: BorderSide(color: Color(0xFF02F8AE), width: 2),
+              indicator: UnderlineTabIndicator(
+                borderSide: BorderSide(
+                  color:
+                      _activeTab == 0 ? AppColors.primary : AppColors.secondary,
+                  width: 2,
+                ),
               ),
               indicatorSize: TabBarIndicatorSize.tab,
               dividerHeight: 0,
-              labelColor: const Color(0xFF02F8AE),
+              labelColor:
+                  _activeTab == 0 ? AppColors.primary : AppColors.secondary,
               unselectedLabelColor: Colors.white60,
               labelStyle:
                   const TextStyle(fontWeight: FontWeight.w400, fontSize: 14),
@@ -486,6 +500,15 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  String _langLabel(Set<String> langs) {
+    if (langs.isEmpty) return '';
+    if (langs.contains('ANY')) return 'ANY';
+    final list = langs.toList();
+    if (list.length == 1) return list.first;
+    if (list.length == 2) return '${list[0]}, ${list[1]}';
+    return '${list[0]}, +${list.length - 1}';
+  }
+
   Widget _buildCardGrid(List<PocketCard> cards, String type) {
     if (cards.isEmpty) {
       return Center(
@@ -507,17 +530,70 @@ class _ProfileScreenState extends State<ProfileScreen>
             mainAxisSpacing: 8,
           ),
           itemCount: cards.length,
-          itemBuilder: (context, index) => CardTile(
-            card: cards[index],
-            mode: HomeMode.browse,
-            isPendingWishlist: false,
-            isPendingOwned: false,
-            pendingLanguages: const {},
-            heroTag: 'profile-card-hero-${cards[index].id}',
-            onWishlistToggle: (_) {},
-            onOwnedToggle: (_) {},
-            onLanguagesChanged: (_, __) {},
-          ),
+          itemBuilder: (context, index) {
+            final card = cards[index];
+            final langs = widget.isOtherUser
+                ? <String>{}
+                : _userCardService.getLanguages(
+                    card.id, type == 'listings' ? 'owned' : 'wishlist');
+            final langLabel = _langLabel(langs);
+            return Stack(
+              children: [
+                CardTile(
+                  card: card,
+                  mode: HomeMode.browse,
+                  isPendingWishlist: false,
+                  isPendingOwned: false,
+                  pendingLanguages: const {},
+                  heroTag: 'profile-card-hero-${card.id}',
+                  onWishlistToggle: (_) {},
+                  onOwnedToggle: (_) {},
+                  onLanguagesChanged: (_, __) {},
+                ),
+                if (langLabel.isNotEmpty)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: Text(
+                        langLabel,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ),
+                  ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: setImageUrl(card.set),
+                      height: 20,
+                      fit: BoxFit.contain,
+                      errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                      placeholder: (_, __) =>
+                          const SizedBox(height: 20, width: 20),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );

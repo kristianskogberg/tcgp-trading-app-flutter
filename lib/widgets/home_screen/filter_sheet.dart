@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
 
@@ -161,7 +162,7 @@ void openFilterSheet({
                                 Navigator.pop(context);
                               },
                               style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFF02F8AE),
+                                backgroundColor: AppColors.primary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -225,16 +226,16 @@ class _FilterSection extends StatelessWidget {
               selected: isSelected,
               onSelected: (_) => onToggle(option),
               selectedColor: const Color(0xFF1E1E24),
-              checkmarkColor: const Color(0xFF02F8AE),
+              checkmarkColor: AppColors.primary,
               backgroundColor: const Color(0xFF1E1E24),
               labelStyle: TextStyle(
-                color: isSelected ? const Color(0xFF02F8AE) : Colors.white70,
+                color: isSelected ? AppColors.primary : Colors.white70,
                 fontSize: 13,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
-                  color: isSelected ? const Color(0xFF02F8AE) : Colors.white24,
+                  color: isSelected ? AppColors.primary : Colors.white24,
                 ),
               ),
             );

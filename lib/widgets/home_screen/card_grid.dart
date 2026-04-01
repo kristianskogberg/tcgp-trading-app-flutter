@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
@@ -113,9 +114,9 @@ class CardGrid extends StatelessWidget {
             child: ElevatedButton(
               onPressed: isSaving ? null : onSubmit,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF02F8AE),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.black,
-                disabledBackgroundColor: const Color(0xFF02F8AE),
+                disabledBackgroundColor: AppColors.primary,
                 disabledForegroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(

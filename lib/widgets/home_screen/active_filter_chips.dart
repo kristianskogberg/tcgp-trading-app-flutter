@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
 
@@ -53,7 +54,7 @@ class ActiveFilterChips extends StatelessWidget {
         height: 20,
         fit: BoxFit.contain,
         errorWidget: (context, url, error) => Text(label,
-            style: const TextStyle(color: Color(0xFF02F8AE), fontSize: 12)),
+            style: const TextStyle(color: AppColors.primary, fontSize: 12)),
       );
     }
     return Text(label);
@@ -67,14 +68,14 @@ class ActiveFilterChips extends StatelessWidget {
         selected: true,
         onSelected: (_) => onRemoveFilter(type, label),
         selectedColor: const Color(0xFF1E1E24),
-        checkmarkColor: const Color(0xFF02F8AE),
+        checkmarkColor: AppColors.primary,
         deleteIcon: const Icon(Icons.close, size: 16),
         onDeleted: () => onRemoveFilter(type, label),
         deleteIconColor: Colors.white70,
-        labelStyle: const TextStyle(color: Color(0xFF02F8AE), fontSize: 12),
+        labelStyle: const TextStyle(color: AppColors.primary, fontSize: 12),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF02F8AE)),
+          side: const BorderSide(color: AppColors.primary),
         ),
       ),
     );

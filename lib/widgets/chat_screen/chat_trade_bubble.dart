@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
 import 'package:tcgp_trading_app/widgets/shared/trade_card_pair.dart';
@@ -50,17 +51,17 @@ class ChatTradeBubble extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 260),
         decoration: BoxDecoration(
           color: isAccepted
-              ? const Color(0xFF02F8AE).withOpacity(0.15)
+              ? AppColors.primary.withOpacity(0.15)
               : isDenied
                   ? Colors.redAccent.withOpacity(0.10)
                   : const Color(0xFF1E1E24),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isAccepted
-                ? const Color(0xFF02F8AE).withOpacity(0.6)
+                ? AppColors.primary.withOpacity(0.6)
                 : isDenied
                     ? Colors.redAccent.withOpacity(0.3)
-                    : const Color(0xFF02F8AE).withOpacity(0.3),
+                    : AppColors.primary.withOpacity(0.3),
             width: isAccepted ? 1.5 : 1,
           ),
         ),
@@ -70,12 +71,12 @@ class ChatTradeBubble extends StatelessWidget {
             if (isAccepted)
               const Row(
                 children: [
-                  Icon(Icons.check_circle, size: 14, color: Color(0xFF02F8AE)),
+                  Icon(Icons.check_circle, size: 14, color: AppColors.primary),
                   SizedBox(width: 4),
                   Text(
                     'Accepted',
                     style: TextStyle(
-                      color: Color(0xFF02F8AE),
+                      color: AppColors.primary,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -148,7 +149,7 @@ class ChatTradeBubble extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: isProcessing ? null : onAccept,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF02F8AE),
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.black,
                           padding: EdgeInsets.zero,
                           shape: RoundedRectangleBorder(

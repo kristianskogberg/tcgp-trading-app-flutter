@@ -8,6 +8,7 @@ import 'package:tcgp_trading_app/screens/optional_link_screen.dart';
 import 'package:tcgp_trading_app/screens/profile_screen.dart';
 import 'package:tcgp_trading_app/screens/settings_screen.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/services/notification_service.dart';
 
 class MainScreen extends StatefulWidget {
@@ -131,33 +132,33 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           destinations: [
             NavigationDestination(
               icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home, color: Color(0xFF02F8AE)),
+              selectedIcon: const Icon(Icons.home, color: AppColors.primary),
               label: 'Home',
             ),
             NavigationDestination(
               icon: Badge(
                 isLabelVisible: _hasUnread,
                 smallSize: 10,
-                backgroundColor: const Color(0xFF02F8AE),
+                backgroundColor: AppColors.primary,
                 child: const Icon(Icons.chat_bubble_outline),
               ),
               selectedIcon: Badge(
                 isLabelVisible: _hasUnread,
                 smallSize: 10,
-                backgroundColor: const Color(0xFF02F8AE),
-                child: const Icon(Icons.chat_bubble, color: Color(0xFF02F8AE)),
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.chat_bubble, color: AppColors.primary),
               ),
               label: 'Messages',
             ),
             NavigationDestination(
               icon: const Icon(Icons.person_outline),
-              selectedIcon: const Icon(Icons.person, color: Color(0xFF02F8AE)),
+              selectedIcon: const Icon(Icons.person, color: AppColors.primary),
               label: 'Profile',
             ),
             NavigationDestination(
               icon: const Icon(Icons.settings_outlined),
               selectedIcon:
-                  const Icon(Icons.settings, color: Color(0xFF02F8AE)),
+                  const Icon(Icons.settings, color: AppColors.primary),
               label: 'Settings',
             ),
           ],

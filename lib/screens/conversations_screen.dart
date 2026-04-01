@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/screens/chat_screen.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
 
@@ -181,7 +182,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               _formatRelativeTime(lastMessageAt.toLocal()),
               style: TextStyle(
                 fontSize: 11,
-                color: hasUnread ? const Color(0xFF02F8AE) : Colors.white38,
+                color: hasUnread ? AppColors.primary : Colors.white38,
               ),
             ),
           if (hasUnread) ...[
@@ -190,7 +191,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
               width: 10,
               height: 10,
               decoration: const BoxDecoration(
-                color: Color(0xFF02F8AE),
+                color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
             ),

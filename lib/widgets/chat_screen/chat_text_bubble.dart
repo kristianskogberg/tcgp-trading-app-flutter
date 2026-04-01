@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
 
@@ -26,7 +27,7 @@ class ChatTextBubble extends StatelessWidget {
             horizontal: ChatConstants.messagePadding, vertical: 8),
         constraints: const BoxConstraints(maxWidth: 280),
         decoration: BoxDecoration(
-          color: isMine ? const Color(0xFF02F8AE) : const Color(0xFF2A2A30),
+          color: isMine ? AppColors.primary : const Color(0xFF2A2A30),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(12),
             topRight: const Radius.circular(12),

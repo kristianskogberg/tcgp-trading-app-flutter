@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 
 class ChatInputBar extends StatelessWidget {
   final TextEditingController textController;
@@ -31,7 +32,7 @@ class ChatInputBar extends StatelessWidget {
               icon: Icon(
                 Icons.add_circle_rounded,
                 color: enabled
-                    ? const Color(0xFF02F8AE)
+                    ? AppColors.primary
                     : Colors.white24,
               ),
               enabled: enabled,
@@ -111,7 +112,7 @@ class ChatInputBar extends StatelessWidget {
               icon: Icon(
                 Icons.send_rounded,
                 color: enabled
-                    ? const Color(0xFF02F8AE)
+                    ? AppColors.primary
                     : Colors.white24,
               ),
             ),

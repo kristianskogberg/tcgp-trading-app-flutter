@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/feedback_submission.dart';
 import 'package:tcgp_trading_app/services/feedback_service.dart';
 
@@ -69,7 +70,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                       label: Text(type.label),
                       selected: isSelected,
                       onSelected: (_) => setState(() => _selectedType = type),
-                      selectedColor: const Color(0xFF02F8AE),
+                      selectedColor: AppColors.primary,
                       checkmarkColor: Colors.white,
                       backgroundColor: const Color(0xFF1E1E24),
                       labelStyle: TextStyle(
@@ -80,7 +81,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                         borderRadius: BorderRadius.circular(20),
                         side: BorderSide(
                           color: isSelected
-                              ? const Color(0xFF02F8AE)
+                              ? AppColors.primary
                               : Colors.white24,
                         ),
                       ),
@@ -151,7 +152,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               child: FilledButton(
                 onPressed: _submitting ? null : _submit,
                 style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF02F8AE),
+                  backgroundColor: AppColors.primary,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

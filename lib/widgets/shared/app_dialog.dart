@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 
 Future<T?> showAppDialog<T>({
   required BuildContext context,
@@ -129,7 +130,7 @@ class AppDialog<T> extends StatelessWidget {
                         },
                         style: FilledButton.styleFrom(
                           backgroundColor:
-                              primaryButtonColor ?? const Color(0xFF02F8AE),
+                              primaryButtonColor ?? AppColors.primary,
                           foregroundColor:
                               primaryForegroundColor ?? Colors.black,
                           shape: RoundedRectangleBorder(

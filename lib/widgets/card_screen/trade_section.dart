@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/models/trade_match.dart';
@@ -26,7 +27,7 @@ class TradeSection extends StatefulWidget {
 class _TradeSectionState extends State<TradeSection>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final activeColor = const Color(0xFF02F8AE);
+  final activeColor = AppColors.primary;
   final inactiveColor = Colors.white60;
   final _userCardService = UserCardService();
   final _langFilterService = LanguageFilterService();
@@ -117,15 +118,17 @@ class _TradeSectionState extends State<TradeSection>
           padding: const EdgeInsets.symmetric(horizontal: 6),
           child: TabBar(
             controller: _tabController,
-            indicator: const UnderlineTabIndicator(
+            indicator: UnderlineTabIndicator(
               borderSide: BorderSide(
-                color: Color(0xFF02F8AE),
+                color:
+                    _activeTab == 0 ? AppColors.primary : AppColors.secondary,
                 width: 2,
               ),
             ),
             indicatorSize: TabBarIndicatorSize.tab,
             dividerHeight: 0,
-            labelColor: const Color(0xFF02F8AE),
+            labelColor:
+                _activeTab == 0 ? AppColors.primary : AppColors.secondary,
             unselectedLabelColor: Colors.white60,
             labelStyle: const TextStyle(
               fontWeight: FontWeight.w400,
@@ -196,7 +199,7 @@ class _TradeSectionState extends State<TradeSection>
                                 TextSpan(
                                   text: 'Edit',
                                   style: const TextStyle(
-                                    color: Color(0xFF02F8AE),
+                                    color: AppColors.primary,
                                   ),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
@@ -218,7 +221,7 @@ class _TradeSectionState extends State<TradeSection>
                                 TextSpan(
                                   text: 'Wishlist now',
                                   style: const TextStyle(
-                                    color: Color(0xFF02F8AE),
+                                    color: AppColors.primary,
                                   ),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
@@ -242,7 +245,7 @@ class _TradeSectionState extends State<TradeSection>
                                 TextSpan(
                                   text: 'Edit',
                                   style: const TextStyle(
-                                    color: Color(0xFF02F8AE),
+                                    color: AppColors.secondary,
                                   ),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
@@ -263,7 +266,7 @@ class _TradeSectionState extends State<TradeSection>
                                 TextSpan(
                                   text: 'List now',
                                   style: const TextStyle(
-                                    color: Color(0xFF02F8AE),
+                                    color: AppColors.secondary,
                                   ),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
@@ -343,17 +346,17 @@ class _TradeSectionState extends State<TradeSection>
                           );
                         },
                         selectedColor: const Color(0xFF1E1E24),
-                        checkmarkColor: const Color(0xFF02F8AE),
+                        checkmarkColor: AppColors.primary,
                         labelStyle: TextStyle(
                           color: _selectedLanguages.length == _languages.length
-                              ? const Color(0xFF02F8AE)
+                              ? AppColors.primary
                               : Colors.white70,
                           fontSize: 12,
                         ),
                         backgroundColor: const Color(0xFF1E1E24),
                         side: BorderSide(
                           color: _selectedLanguages.length == _languages.length
-                              ? const Color(0xFF02F8AE)
+                              ? AppColors.primary
                               : Colors.white24,
                         ),
                       ),
@@ -375,17 +378,17 @@ class _TradeSectionState extends State<TradeSection>
                               _updateLanguageFilter(updated);
                             },
                             selectedColor: const Color(0xFF1E1E24),
-                            checkmarkColor: const Color(0xFF02F8AE),
+                            checkmarkColor: AppColors.primary,
                             labelStyle: TextStyle(
                               color: isSelected
-                                  ? const Color(0xFF02F8AE)
+                                  ? AppColors.primary
                                   : Colors.white70,
                               fontSize: 12,
                             ),
                             backgroundColor: const Color(0xFF1E1E24),
                             side: BorderSide(
                               color: isSelected
-                                  ? const Color(0xFF02F8AE)
+                                  ? AppColors.primary
                                   : Colors.white24,
                             ),
                           ),
@@ -407,7 +410,7 @@ class _TradeSectionState extends State<TradeSection>
                       label:
                           const Text('Apply', style: TextStyle(fontSize: 12)),
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF02F8AE),
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         shape: RoundedRectangleBorder(
@@ -443,9 +446,8 @@ class _TradeSectionState extends State<TradeSection>
                         });
                         _fetchMatches();
                       },
-                      activeColor: const Color(0xFF02F8AE),
-                      activeTrackColor:
-                          const Color(0xFF02F8AE).withOpacity(0.4),
+                      activeColor: AppColors.primary,
+                      activeTrackColor: AppColors.primary.withOpacity(0.4),
                       inactiveThumbColor: Colors.white38,
                       inactiveTrackColor: Colors.white10,
                     ),
@@ -477,8 +479,8 @@ class _TradeSectionState extends State<TradeSection>
                         }
                       });
                     },
-                    activeColor: const Color(0xFF02F8AE),
-                    activeTrackColor: const Color(0xFF02F8AE).withOpacity(0.4),
+                    activeColor: AppColors.primary,
+                    activeTrackColor: AppColors.primary.withOpacity(0.4),
                     inactiveThumbColor: Colors.white38,
                     inactiveTrackColor: Colors.white10,
                   ),
@@ -610,7 +612,7 @@ class _TradeSectionState extends State<TradeSection>
                                       ? Icons.check_circle
                                       : Icons.favorite,
                                   size: 14,
-                                  color: const Color(0xFF02F8AE),
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ),
@@ -627,7 +629,7 @@ class _TradeSectionState extends State<TradeSection>
                                 child: const Icon(
                                   Icons.swap_horiz,
                                   size: 14,
-                                  color: Color(0xFF02F8AE),
+                                  color: AppColors.primary,
                                 ),
                               ),
                             ),

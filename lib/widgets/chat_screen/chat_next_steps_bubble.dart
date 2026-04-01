@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
 
 class ChatNextStepsBubble extends StatelessWidget {
@@ -18,7 +19,7 @@ class ChatNextStepsBubble extends StatelessWidget {
           color: const Color(0xFF1E1E24),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFF02F8AE).withOpacity(0.15),
+            color: AppColors.primary.withOpacity(0.15),
           ),
         ),
         child: Column(
@@ -64,10 +65,10 @@ class ChatNextStepsBubble extends StatelessWidget {
                         onPressed: onConfirmTrade,
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(
-                            color: Color(0xFF02F8AE),
+                            color: AppColors.primary,
                             width: 1,
                           ),
-                          foregroundColor: const Color(0xFF02F8AE),
+                          foregroundColor: AppColors.primary,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -127,14 +128,14 @@ class _StepItem extends StatelessWidget {
                   width: 22,
                   height: 22,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF02F8AE).withOpacity(0.15),
+                    color: AppColors.primary.withOpacity(0.15),
                     shape: BoxShape.circle,
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     '$number',
                     style: const TextStyle(
-                      color: Color(0xFF02F8AE),
+                      color: AppColors.primary,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -144,7 +145,7 @@ class _StepItem extends StatelessWidget {
                   Expanded(
                     child: Container(
                       width: 1.5,
-                      color: const Color(0xFF02F8AE).withOpacity(0.15),
+                      color: AppColors.primary.withOpacity(0.15),
                     ),
                   ),
               ],

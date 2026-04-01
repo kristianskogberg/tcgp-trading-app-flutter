@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final TextEditingController searchController;
@@ -69,7 +70,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         IconButton(
           icon: Icon(
             isEditMode ? Icons.edit : Icons.edit_outlined,
-            color: isEditMode ? const Color(0xFF02F8AE) : null,
+            color: isEditMode ? AppColors.primary : null,
           ),
           onPressed: onToggleEditMode,
         ),
@@ -87,7 +88,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                   width: 8,
                   height: 8,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF02F8AE),
+                    color: AppColors.primary,
                     shape: BoxShape.circle,
                   ),
                 ),

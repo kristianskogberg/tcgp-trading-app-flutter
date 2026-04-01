@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 
 Color activityColor(DateTime? lastActiveAt) {
   if (lastActiveAt == null) return Colors.white24;
   final diff = DateTime.now().toUtc().difference(lastActiveAt.toUtc());
-  if (diff.inMinutes < 30) return const Color(0xFF02F8AE);
+  if (diff.inMinutes < 30) return AppColors.primary;
   if (diff.inHours < 6) return Colors.amber;
   return Colors.white24;
 }

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:safe_text/safe_text.dart';
 import 'package:tcgp_trading_app/auth/auth_gate.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/firebase_options.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -45,8 +46,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF02F8AE),
-          primary: const Color(0xFF02F8AE),
+          seedColor: AppColors.primary,
+          primary: AppColors.primary,
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
@@ -71,14 +72,14 @@ class MyApp extends StatelessWidget {
           overlayColor: WidgetStateProperty.all(Colors.transparent),
           iconTheme: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.selected)) {
-              return const IconThemeData(color: Color(0xFF02F8AE));
+              return const IconThemeData(color: AppColors.primary);
             }
             return const IconThemeData(color: Colors.white54);
           }),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF02F8AE),
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -87,8 +88,8 @@ class MyApp extends StatelessWidget {
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF02F8AE),
-            side: const BorderSide(color: Color(0xFF02F8AE)),
+            foregroundColor: AppColors.primary,
+            side: const BorderSide(color: AppColors.primary),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),

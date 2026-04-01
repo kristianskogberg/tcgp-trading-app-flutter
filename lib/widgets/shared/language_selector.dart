@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
 
 class LanguageSelector extends StatefulWidget {
@@ -72,19 +73,15 @@ class _LanguageSelectorState extends State<LanguageSelector> {
                   });
                   await widget.onToggle(entry.key, selected);
                 },
-                selectedColor: const Color(0xFF02F8AE).withAlpha(51),
-                checkmarkColor: const Color(0xFF02F8AE),
+                selectedColor: AppColors.primary.withAlpha(51),
+                checkmarkColor: AppColors.primary,
                 labelStyle: TextStyle(
-                  color: isSelected
-                      ? const Color(0xFF02F8AE)
-                      : Colors.white70,
+                  color: isSelected ? AppColors.primary : Colors.white70,
                   fontSize: 13,
                 ),
                 backgroundColor: const Color(0xFF2A2A32),
                 side: BorderSide(
-                  color: isSelected
-                      ? const Color(0xFF02F8AE)
-                      : Colors.white24,
+                  color: isSelected ? AppColors.primary : Colors.white24,
                 ),
               );
             }).toList(),

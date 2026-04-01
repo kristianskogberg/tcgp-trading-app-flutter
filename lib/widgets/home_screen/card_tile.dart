@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/screens/card_screen.dart';
@@ -155,9 +156,9 @@ class _CardTileState extends State<CardTile> {
     final untradable = isCardUntradable(widget.card.rarity, widget.card.pack);
 
     final chipColor = widget.isPendingWishlist
-        ? const Color(0xFF02F8AE)
+        ? AppColors.primary
         : widget.isPendingOwned
-            ? Colors.redAccent
+            ? AppColors.secondary
             : Colors.white38;
 
     return Stack(
@@ -210,7 +211,7 @@ class _CardTileState extends State<CardTile> {
                         icon: Icons.favorite,
                         label: 'Want',
                         isActive: widget.isPendingWishlist,
-                        activeColor: const Color(0xFF02F8AE),
+                        activeColor: AppColors.primary,
                         onTap: () =>
                             widget.onWishlistToggle?.call(_selectedLanguages),
                       ),
@@ -221,7 +222,7 @@ class _CardTileState extends State<CardTile> {
                         icon: Icons.check_circle,
                         label: 'Have',
                         isActive: widget.isPendingOwned,
-                        activeColor: Colors.redAccent,
+                        activeColor: AppColors.secondary,
                         onTap: () {
                           if (_selectedLanguages.contains('ANY') ||
                               _selectedLanguages.length > 1) {
@@ -380,18 +381,18 @@ class _LanguagePickerState extends State<_LanguagePicker> {
                   label: const Text('Any'),
                   selected: _isAnySelected,
                   onSelected: (_) => _selectAny(),
-                  selectedColor: const Color(0xFF02F8AE).withAlpha(51),
-                  checkmarkColor: const Color(0xFF02F8AE),
+                  selectedColor: AppColors.primary.withAlpha(51),
+                  checkmarkColor: AppColors.primary,
                   labelStyle: TextStyle(
                     color: _isAnySelected
-                        ? const Color(0xFF02F8AE)
+                        ? AppColors.primary
                         : Colors.white70,
                     fontSize: 13,
                   ),
                   backgroundColor: const Color(0xFF2A2A32),
                   side: BorderSide(
                     color: _isAnySelected
-                        ? const Color(0xFF02F8AE)
+                        ? AppColors.primary
                         : Colors.white24,
                   ),
                 ),
@@ -402,17 +403,17 @@ class _LanguagePickerState extends State<_LanguagePicker> {
                   label: Text(entry.value),
                   selected: isSelected,
                   onSelected: (_) => _toggleLanguage(entry.key),
-                  selectedColor: const Color(0xFF02F8AE).withAlpha(51),
-                  checkmarkColor: const Color(0xFF02F8AE),
+                  selectedColor: AppColors.primary.withAlpha(51),
+                  checkmarkColor: AppColors.primary,
                   labelStyle: TextStyle(
                     color:
-                        isSelected ? const Color(0xFF02F8AE) : Colors.white70,
+                        isSelected ? AppColors.primary : Colors.white70,
                     fontSize: 13,
                   ),
                   backgroundColor: const Color(0xFF2A2A32),
                   side: BorderSide(
                     color:
-                        isSelected ? const Color(0xFF02F8AE) : Colors.white24,
+                        isSelected ? AppColors.primary : Colors.white24,
                   ),
                 );
               }),
@@ -426,7 +427,7 @@ class _LanguagePickerState extends State<_LanguagePicker> {
                   ? () => Navigator.pop(context, _selected)
                   : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF02F8AE),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.black,
                 disabledBackgroundColor: Colors.white12,
                 disabledForegroundColor: Colors.white38,

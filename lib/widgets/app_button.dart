@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-const _accentColor = Color(0xFF02F8AE);
+import 'package:tcgp_trading_app/config/app_colors.dart';
 
 class AppButton extends StatelessWidget {
   final String label;
@@ -25,7 +24,7 @@ class AppButton extends StatelessWidget {
               icon: Icon(icon, size: 18),
               label: Text(label),
               style: ElevatedButton.styleFrom(
-                backgroundColor: _accentColor,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -35,7 +34,7 @@ class AppButton extends StatelessWidget {
           : ElevatedButton(
               onPressed: onPressed,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _accentColor,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.black,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -50,8 +49,8 @@ class AppButton extends StatelessWidget {
               icon: Icon(icon, size: 18),
               label: Text(label),
               style: OutlinedButton.styleFrom(
-                foregroundColor: _accentColor,
-                side: const BorderSide(color: _accentColor),
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -60,8 +59,8 @@ class AppButton extends StatelessWidget {
           : OutlinedButton(
               onPressed: onPressed,
               style: OutlinedButton.styleFrom(
-                foregroundColor: _accentColor,
-                side: const BorderSide(color: _accentColor),
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

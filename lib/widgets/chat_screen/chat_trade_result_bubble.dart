@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
@@ -29,7 +30,7 @@ class ChatTradeResultBubble extends StatelessWidget {
     final offerName = offerCard?.name ?? 'Unknown';
     final receiveName = receiveCard?.name ?? 'Unknown';
     final accentColor =
-        isAccepted ? const Color(0xFF02F8AE) : const Color(0xFFE57373);
+        isAccepted ? AppColors.primary : const Color(0xFFE57373);
 
     return Center(
       child: Container(

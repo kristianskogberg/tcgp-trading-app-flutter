@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
 
@@ -42,7 +43,7 @@ class ChatFriendIdBubble extends StatelessWidget {
             color: const Color(0xFF1E1E24),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: const Color(0xFF02F8AE).withOpacity(0.3),
+              color: AppColors.primary.withOpacity(0.3),
               width: 1,
             ),
           ),
@@ -118,7 +119,7 @@ class _CopyButtonState extends State<_CopyButton> {
         children: [
           Icon(Icons.copy,
               size: 16,
-              color: _copied ? const Color(0xFF02F8AE) : Colors.white70),
+              color: _copied ? AppColors.primary : Colors.white70),
           if (_copied)
             Positioned(
               bottom: 22,
@@ -137,7 +138,7 @@ class _CopyButtonState extends State<_CopyButton> {
                   ),
                   child: const Text(
                     'Copied',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF02F8AE)),
+                    style: TextStyle(fontSize: 12, color: AppColors.primary),
                   ),
                 ),
               ),

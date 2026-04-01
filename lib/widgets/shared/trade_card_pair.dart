@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
@@ -49,7 +50,7 @@ class TradeCardPair extends StatelessWidget {
           padding: EdgeInsets.symmetric(horizontal: 2),
           child: Icon(
             Icons.swap_horiz,
-            color: Color(0xFF02F8AE),
+            color: AppColors.primary,
             size: 28,
           ),
         ),
