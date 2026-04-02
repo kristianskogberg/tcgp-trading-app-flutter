@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
@@ -69,9 +70,12 @@ class ChatTradeBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (isAccepted)
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.check_circle, size: 14, color: AppColors.primary),
+                  PhosphorIcon(
+                      PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+                      size: 14,
+                      color: AppColors.primary),
                   SizedBox(width: 4),
                   Text(
                     'Accepted',
@@ -84,9 +88,10 @@ class ChatTradeBubble extends StatelessWidget {
                 ],
               )
             else if (isDenied)
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.cancel, size: 14, color: Colors.white38),
+                  PhosphorIcon(PhosphorIcons.xCircle(PhosphorIconsStyle.fill),
+                      size: 14, color: Colors.white38),
                   SizedBox(width: 4),
                   Text(
                     'Denied',

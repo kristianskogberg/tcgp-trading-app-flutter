@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
@@ -117,26 +118,29 @@ class _CardTileState extends State<CardTile> {
   Widget _buildCardImage() {
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: OptimizedCardImage(
-        imageUrl: widget.card.imageUrl,
-        isThumbnail: true,
-        placeholder: (context, url) => const _CardSkeleton(),
-        errorWidget: (context, url, error) => Container(
-              color: const Color(0xFF1A1A1E),
-              padding: const EdgeInsets.all(8),
-              alignment: Alignment.center,
-              child: Text(
-                widget.card.name,
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: widget.card.name.length > 20 ? 10 : 12,
-                  color: Colors.white54,
-                  fontWeight: FontWeight.w500,
-                ),
+      child: SizedBox.expand(
+        child: OptimizedCardImage(
+          imageUrl: widget.card.imageUrl,
+          isThumbnail: true,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => const _CardSkeleton(),
+          errorWidget: (context, url, error) => Container(
+            color: const Color(0xFF1A1A1E),
+            padding: const EdgeInsets.all(8),
+            alignment: Alignment.center,
+            child: Text(
+              widget.card.name,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: widget.card.name.length > 20 ? 10 : 12,
+                color: Colors.white54,
+                fontWeight: FontWeight.w500,
               ),
             ),
+          ),
+        ),
       ),
     );
   }
@@ -193,7 +197,7 @@ class _CardTileState extends State<CardTile> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.language, size: 14, color: chipColor),
+                          PhosphorIcon(PhosphorIcons.globe(), size: 14, color: chipColor),
                           const SizedBox(width: 4),
                           Text(
                             _languageLabelCompact,
@@ -208,7 +212,7 @@ class _CardTileState extends State<CardTile> {
                   children: [
                     Expanded(
                       child: _ActionButton(
-                        icon: Icons.favorite,
+                        icon: PhosphorIcons.heart(PhosphorIconsStyle.fill),
                         label: 'Want',
                         isActive: widget.isPendingWishlist,
                         activeColor: AppColors.primary,
@@ -219,7 +223,7 @@ class _CardTileState extends State<CardTile> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: _ActionButton(
-                        icon: Icons.check_circle,
+                        icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
                         label: 'Have',
                         isActive: widget.isPendingOwned,
                         activeColor: AppColors.secondary,
@@ -384,16 +388,12 @@ class _LanguagePickerState extends State<_LanguagePicker> {
                   selectedColor: AppColors.primary.withAlpha(51),
                   checkmarkColor: AppColors.primary,
                   labelStyle: TextStyle(
-                    color: _isAnySelected
-                        ? AppColors.primary
-                        : Colors.white70,
+                    color: _isAnySelected ? AppColors.primary : Colors.white70,
                     fontSize: 13,
                   ),
                   backgroundColor: const Color(0xFF2A2A32),
                   side: BorderSide(
-                    color: _isAnySelected
-                        ? AppColors.primary
-                        : Colors.white24,
+                    color: _isAnySelected ? AppColors.primary : Colors.white24,
                   ),
                 ),
               ...languages.entries.map((entry) {
@@ -406,14 +406,12 @@ class _LanguagePickerState extends State<_LanguagePicker> {
                   selectedColor: AppColors.primary.withAlpha(51),
                   checkmarkColor: AppColors.primary,
                   labelStyle: TextStyle(
-                    color:
-                        isSelected ? AppColors.primary : Colors.white70,
+                    color: isSelected ? AppColors.primary : Colors.white70,
                     fontSize: 13,
                   ),
                   backgroundColor: const Color(0xFF2A2A32),
                   side: BorderSide(
-                    color:
-                        isSelected ? AppColors.primary : Colors.white24,
+                    color: isSelected ? AppColors.primary : Colors.white24,
                   ),
                 );
               }),

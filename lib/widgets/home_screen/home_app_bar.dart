@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -41,8 +42,8 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
           decoration: InputDecoration(
             hintText: 'Search cards...',
             hintStyle: const TextStyle(color: Colors.white38, fontSize: 15),
-            prefixIcon:
-                const Icon(Icons.search, color: Colors.white38, size: 20),
+            prefixIcon: PhosphorIcon(PhosphorIcons.magnifyingGlass(),
+                color: Colors.white38, size: 20),
             suffixIcon: ListenableBuilder(
               listenable: searchController,
               builder: (context, _) {
@@ -50,7 +51,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
                   return const SizedBox.shrink();
                 }
                 return IconButton(
-                  icon: const Icon(Icons.close,
+                  icon: PhosphorIcon(PhosphorIcons.x(),
                       color: Colors.white54, size: 18),
                   onPressed: onClearSearch,
                 );
@@ -68,8 +69,10 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          icon: Icon(
-            isEditMode ? Icons.edit : Icons.edit_outlined,
+          icon: PhosphorIcon(
+            isEditMode
+                ? PhosphorIcons.notePencil(PhosphorIconsStyle.fill)
+                : PhosphorIcons.notePencil(),
             color: isEditMode ? AppColors.primary : null,
           ),
           onPressed: onToggleEditMode,
@@ -77,7 +80,7 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         Stack(
           children: [
             IconButton(
-              icon: const Icon(Icons.tune),
+              icon: PhosphorIcon(PhosphorIcons.faders()),
               onPressed: hasCards ? onOpenFilterSheet : null,
             ),
             if (hasActiveFilters)

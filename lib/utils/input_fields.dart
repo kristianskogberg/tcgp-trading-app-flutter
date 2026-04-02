@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/utils/text_input_field.dart';
 
 class EmailField extends StatelessWidget {
@@ -13,7 +14,7 @@ class EmailField extends StatelessWidget {
     return TextInputField(
       controller: controller,
       label: 'Email',
-      icon: Icons.email,
+      icon: PhosphorIcons.envelope(),
       keyboardType: TextInputType.emailAddress,
       errorText: errorText,
     );
@@ -37,7 +38,7 @@ class PasswordField extends StatelessWidget {
     return TextInputField(
       controller: controller,
       label: label,
-      icon: Icons.lock,
+      icon: PhosphorIcons.lock(),
       obscureText: true,
       errorText: errorText,
     );
@@ -55,7 +56,7 @@ class PlayerNameField extends StatelessWidget {
     return TextInputField(
       controller: controller,
       label: 'Player Name',
-      icon: Icons.person,
+      icon: PhosphorIcons.user(),
       maxLength: 14,
       errorText: errorText,
     );
@@ -73,7 +74,7 @@ class FriendIdField extends StatelessWidget {
     return TextInputField(
       controller: controller,
       label: 'Friend ID',
-      icon: Icons.tag,
+      icon: PhosphorIcons.hash(),
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       maxLength: 12,

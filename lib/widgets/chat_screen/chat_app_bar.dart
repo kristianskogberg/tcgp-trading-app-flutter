@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
 
 class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -24,7 +25,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
       titleSpacing: 0,
       actions: [
         PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert),
+          icon: PhosphorIcon(PhosphorIcons.dotsThreeVertical()),
           color: const Color(0xFF242429),
           surfaceTintColor: Colors.transparent,
           elevation: 8,
@@ -38,24 +39,25 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               height: 44,
               value: 'view_profile',
               child: Row(
                 children: [
-                  Icon(Icons.person_outline, size: 20, color: Colors.white70),
+                  PhosphorIcon(PhosphorIcons.user(),
+                      size: 20, color: Colors.white70),
                   SizedBox(width: 12),
-                  Text('View profile',
-                      style: TextStyle(color: Colors.white70)),
+                  Text('View profile', style: TextStyle(color: Colors.white70)),
                 ],
               ),
             ),
-            const PopupMenuItem(
+            PopupMenuItem(
               height: 44,
               value: 'block',
               child: Row(
                 children: [
-                  Icon(Icons.block, size: 20, color: Colors.white70),
+                  PhosphorIcon(PhosphorIcons.prohibit(),
+                      size: 20, color: Colors.white70),
                   SizedBox(width: 12),
                   Text('Block user', style: TextStyle(color: Colors.white70)),
                 ],
@@ -74,11 +76,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                 : null,
             child: displayIcon == null
                 ? Text(
-                    displayName.isNotEmpty
-                        ? displayName[0].toUpperCase()
-                        : '?',
-                    style:
-                        const TextStyle(fontSize: 16, color: Colors.white70),
+                    displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                    style: const TextStyle(fontSize: 16, color: Colors.white70),
                   )
                 : null,
           ),

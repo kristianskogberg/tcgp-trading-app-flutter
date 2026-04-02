@@ -1,5 +1,6 @@
 import 'package:cloudflare_turnstile/cloudflare_turnstile.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
@@ -155,7 +156,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Center(
               child: TextButton.icon(
                 onPressed: _retryCaptcha,
-                icon: const Icon(Icons.refresh),
+                icon: PhosphorIcon(PhosphorIcons.arrowCounterClockwise()),
                 label: const Text('Retry security check'),
               ),
             ),

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
@@ -69,7 +70,7 @@ class ActiveFilterChips extends StatelessWidget {
         onSelected: (_) => onRemoveFilter(type, label),
         selectedColor: const Color(0xFF1E1E24),
         checkmarkColor: AppColors.primary,
-        deleteIcon: const Icon(Icons.close, size: 16),
+        deleteIcon: PhosphorIcon(PhosphorIcons.x(), size: 16),
         onDeleted: () => onRemoveFilter(type, label),
         deleteIconColor: Colors.white70,
         labelStyle: const TextStyle(color: AppColors.primary, fontSize: 12),

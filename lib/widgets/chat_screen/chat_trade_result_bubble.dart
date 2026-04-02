@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
@@ -48,8 +49,10 @@ class ChatTradeResultBubble extends StatelessWidget {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  isAccepted ? Icons.check_circle : Icons.cancel,
+                PhosphorIcon(
+                  isAccepted
+                      ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill)
+                      : PhosphorIcons.xCircle(PhosphorIconsStyle.fill),
                   color: accentColor,
                   size: 14,
                 ),

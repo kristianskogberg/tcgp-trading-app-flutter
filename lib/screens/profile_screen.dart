@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
@@ -368,7 +369,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         actions: [
           if (!widget.isOtherUser && !_loading && !_editing)
             IconButton(
-              icon: const Icon(Icons.edit),
+              icon: PhosphorIcon(PhosphorIcons.notePencil()),
               onPressed: _enterEditMode,
             ),
         ],
@@ -462,8 +463,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   height: 36,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.favorite_border, size: 16),
+                    children: [
+                      PhosphorIcon(PhosphorIcons.heart(), size: 16),
                       SizedBox(width: 6),
                       Text('Wishlist'),
                     ],
@@ -473,8 +474,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   height: 36,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      Icon(Icons.check_circle_outline, size: 16),
+                    children: [
+                      PhosphorIcon(PhosphorIcons.checkCircle(), size: 16),
                       SizedBox(width: 6),
                       Text('Listings'),
                     ],
@@ -575,8 +576,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   bottom: 0,
                   right: 0,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.8),
                       borderRadius: BorderRadius.circular(2),
@@ -631,8 +632,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                     color: Color(0xFF2A2A2E),
                     shape: BoxShape.circle,
                   ),
-                  child:
-                      const Icon(Icons.edit, size: 20, color: Colors.white70),
+                  child: PhosphorIcon(PhosphorIcons.notePencil(),
+                      size: 20, color: Colors.white70),
                 ),
               ),
               if (_selectedIcon != null)
@@ -647,7 +648,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         color: Color(0xFF2A2A2E),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.close,
+                      child: PhosphorIcon(PhosphorIcons.x(),
                           size: 20, color: Colors.white70),
                     ),
                   ),

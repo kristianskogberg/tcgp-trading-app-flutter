@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/feedback_screen.dart';
@@ -115,10 +116,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const _SectionHeader('Account'),
           if (AuthService().isAnonymous)
             ListTile(
-              leading: const Icon(Icons.link),
+              leading: PhosphorIcon(PhosphorIcons.link()),
               title: const Text('Link Account'),
               subtitle: const Text('Save your data with email or Google'),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: PhosphorIcon(PhosphorIcons.caretRight()),
               onTap: () async {
                 await Navigator.push(
                   context,
@@ -131,16 +132,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             )
           else if (AuthService().isGoogleLinked)
             ListTile(
-              leading: const Icon(Icons.g_mobiledata),
+              leading: PhosphorIcon(PhosphorIcons.googleLogo()),
               title: const Text('Google Account'),
               subtitle: Text(AuthService().currentUser?.email ?? '—'),
             )
           else
             ListTile(
-              leading: const Icon(Icons.email_outlined),
+              leading: PhosphorIcon(PhosphorIcons.envelope()),
               title: const Text('Email'),
               subtitle: Text(AuthService().currentUser?.email ?? '—'),
-              trailing: const Icon(Icons.chevron_right),
+              trailing: PhosphorIcon(PhosphorIcons.caretRight()),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -148,21 +149,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ListTile(
-            leading: const Icon(Icons.logout),
+            leading: PhosphorIcon(PhosphorIcons.signOut()),
             title: const Text('Sign out'),
             onTap: _signOut,
           ),
           ListTile(
-            leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+            leading:
+                PhosphorIcon(PhosphorIcons.trash(), color: Colors.redAccent),
             title: const Text('Delete Account',
                 style: TextStyle(color: Colors.redAccent)),
             onTap: _deleteAccount,
           ),
           const _SectionHeader('Support'),
           ListTile(
-            leading: const Icon(Icons.feedback_outlined),
+            leading: PhosphorIcon(PhosphorIcons.chatText()),
             title: const Text('Feedback'),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: PhosphorIcon(PhosphorIcons.caretRight()),
             onTap: _openFeedback,
           ),
           const _SectionHeader('About'),
@@ -279,9 +281,9 @@ class _DestructiveActionDialogState extends State<_DestructiveActionDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (!_running && widget.showWarningBadge) ...[
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded,
+                        PhosphorIcon(PhosphorIcons.warning(),
                             size: 16, color: Colors.amber),
                         SizedBox(width: 8),
                         Text(

@@ -13,6 +13,7 @@ class FeedbackService {
   Future<void> submitFeedback({
     required FeedbackType type,
     String? description,
+    String? cardId,
   }) async {
     final userId = _client.auth.currentUser!.id;
     final info = await PackageInfo.fromPlatform();
@@ -25,6 +26,7 @@ class FeedbackService {
       'description': trimmedDescription,
       'app_version': '${info.version}+${info.buildNumber}',
       'platform': defaultTargetPlatform.name.toLowerCase(),
+      if (cardId != null) 'card_id': cardId,
     });
   }
 }

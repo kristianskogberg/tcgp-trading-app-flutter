@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 
 class ChatInputBar extends StatelessWidget {
@@ -30,10 +31,8 @@ class ChatInputBar extends StatelessWidget {
           children: [
             PopupMenuButton<String>(
               icon: Icon(
-                Icons.add_circle_rounded,
-                color: enabled
-                    ? AppColors.primary
-                    : Colors.white24,
+                PhosphorIcons.plusCircle(PhosphorIconsStyle.fill),
+                color: enabled ? AppColors.primary : Colors.white24,
               ),
               enabled: enabled,
               color: const Color(0xFF242429),
@@ -52,9 +51,9 @@ class ChatInputBar extends StatelessWidget {
                   height: 44,
                   value: 'friend_id',
                   enabled: hasFriendId,
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.person_add_outlined,
+                      PhosphorIcon(PhosphorIcons.userPlus(),
                           size: 20, color: Colors.white70),
                       SizedBox(width: 12),
                       Text('Send my Friend ID',
@@ -62,12 +61,12 @@ class ChatInputBar extends StatelessWidget {
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   height: 44,
                   value: 'quick_message',
                   child: Row(
                     children: [
-                      Icon(Icons.message_outlined,
+                      PhosphorIcon(PhosphorIcons.chatText(),
                           size: 20, color: Colors.white70),
                       SizedBox(width: 12),
                       Text('Send a Quick Message',
@@ -94,12 +93,12 @@ class ChatInputBar extends StatelessWidget {
                     null,
                 decoration: InputDecoration(
                   hintText: 'Type a message...',
-                  hintStyle: const TextStyle(
-                      color: Colors.white24, fontSize: 14),
+                  hintStyle:
+                      const TextStyle(color: Colors.white24, fontSize: 14),
                   filled: true,
                   fillColor: const Color(0xFF2A2A30),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 10),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
                     borderSide: BorderSide.none,
@@ -110,10 +109,8 @@ class ChatInputBar extends StatelessWidget {
             IconButton(
               onPressed: enabled ? onSend : null,
               icon: Icon(
-                Icons.send_rounded,
-                color: enabled
-                    ? AppColors.primary
-                    : Colors.white24,
+                PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill),
+                color: enabled ? AppColors.primary : Colors.white24,
               ),
             ),
           ],

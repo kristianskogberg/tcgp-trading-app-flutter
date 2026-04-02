@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
@@ -46,10 +47,10 @@ class TradeCardPair extends StatelessWidget {
             activityColor: null,
           ),
         ),
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 2),
           child: Icon(
-            Icons.swap_horiz,
+            PhosphorIcons.arrowsLeftRight(),
             color: AppColors.primary,
             size: 28,
           ),
@@ -86,8 +87,9 @@ class TradeCardPair extends StatelessWidget {
               color: Colors.white10,
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Center(
-              child: Icon(Icons.help_outline, size: 24, color: Colors.white24),
+            child: Center(
+              child: PhosphorIcon(PhosphorIcons.question(),
+                  size: 24, color: Colors.white24),
             ),
           ),
         ],
@@ -117,8 +119,9 @@ class TradeCardPair extends StatelessWidget {
                         )
                     : null,
                 errorWidget: cardHeight != null
-                    ? (context, url, error) =>
-                        const Icon(Icons.broken_image, color: Colors.white24)
+                    ? (context, url, error) => PhosphorIcon(
+                        PhosphorIcons.imageBroken(),
+                        color: Colors.white24)
                     : null,
               ),
             ),

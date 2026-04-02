@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/models/message.dart';
 
 class ChatMessageArea extends StatelessWidget {
@@ -32,7 +33,8 @@ class ChatMessageArea extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.white24),
+            PhosphorIcon(PhosphorIcons.warningCircle(),
+                size: 48, color: Colors.white24),
             const SizedBox(height: 12),
             Text(error!,
                 style: const TextStyle(fontSize: 14, color: Colors.white38)),
@@ -42,11 +44,12 @@ class ChatMessageArea extends StatelessWidget {
     }
 
     if (messages.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.chat_bubble_outline, size: 48, color: Colors.white24),
+            PhosphorIcon(PhosphorIcons.chatCircle(),
+                size: 48, color: Colors.white24),
             SizedBox(height: 12),
             Text(
               'Send a message to start the conversation',

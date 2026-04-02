@@ -1,7 +1,8 @@
 enum FeedbackType {
   bugReport('bug_report', 'Bug Report'),
   featureRequest('feature_request', 'Feature Request'),
-  general('general', 'General Feedback');
+  general('general', 'General Feedback'),
+  cardReport('card_report', 'Card Report');
 
   const FeedbackType(this.value, this.label);
   final String value;

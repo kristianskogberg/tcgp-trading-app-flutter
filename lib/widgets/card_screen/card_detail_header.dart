@@ -4,6 +4,7 @@ import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class CardDetailHeader extends StatelessWidget {
   final PocketCard card;
@@ -38,16 +39,24 @@ class CardDetailHeader extends StatelessWidget {
             createRectTween: (begin, end) => RectTween(begin: begin, end: end),
             // Use the source widget during flight so the thumbnail
             // animates smoothly even before the full-res image loads.
-            flightShuttleBuilder: (flightContext, animation, direction,
-                    fromContext, toContext) =>
-                fromContext.widget,
-            child: OptimizedCardImage(
-              imageUrl: card.imageUrl,
-              isThumbnail: false,
-              height: 220,
-              fadeInDuration: Duration.zero,
-              errorWidget: (context, url, error) =>
-                  const Icon(Icons.broken_image, size: 100),
+            flightShuttleBuilder:
+                (flightContext, animation, direction, fromContext, toContext) =>
+                    fromContext.widget,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                height: 220,
+                child: AspectRatio(
+                  aspectRatio: 367 / 512,
+                  child: OptimizedCardImage(
+                    imageUrl: card.imageUrl,
+                    isThumbnail: false,
+                    fadeInDuration: Duration.zero,
+                    errorWidget: (context, url, error) =>
+                        PhosphorIcon(PhosphorIcons.imageBroken(), size: 100),
+                  ),
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 16),

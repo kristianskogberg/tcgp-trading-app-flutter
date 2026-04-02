@@ -54,7 +54,7 @@ class CardGrid extends StatelessWidget {
             int crossAxisCount = (constraints.maxWidth ~/ 180).clamp(3, 4);
             final gridDelegate = SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
-              childAspectRatio: 0.7,
+              childAspectRatio: 367 / 512,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
             );

@@ -30,7 +30,7 @@ class OptimizedCardImage extends StatelessWidget {
       height: height,
       fit: fit,
       memCacheWidth: isThumbnail ? 200 : null,
-      memCacheHeight: isThumbnail ? 300 : null,
+      memCacheHeight: isThumbnail ? 279 : null,
       fadeInDuration: fadeInDuration,
       placeholder: placeholder,
       errorWidget: errorWidget,

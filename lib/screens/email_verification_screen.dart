@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:cloudflare_turnstile/cloudflare_turnstile.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
@@ -150,7 +151,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const SizedBox(height: 24),
-            const Icon(Icons.mark_email_unread_outlined,
+            PhosphorIcon(PhosphorIcons.envelopeOpen(),
                 size: 64, color: Colors.white54),
             const SizedBox(height: 24),
             const Text(

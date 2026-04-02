@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
@@ -23,8 +24,9 @@ class ChatCardColumn extends StatelessWidget {
           color: Colors.white10,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: const Center(
-          child: Icon(Icons.help_outline, size: 24, color: Colors.white24),
+        child: Center(
+          child: PhosphorIcon(PhosphorIcons.question(),
+              size: 24, color: Colors.white24),
         ),
       );
     }
@@ -47,8 +49,9 @@ class ChatCardColumn extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                errorWidget: (context, url, error) =>
-                    const Icon(Icons.broken_image, color: Colors.white24),
+                errorWidget: (context, url, error) => PhosphorIcon(
+                    PhosphorIcons.imageBroken(),
+                    color: Colors.white24),
               ),
             ),
             if (language.isNotEmpty)

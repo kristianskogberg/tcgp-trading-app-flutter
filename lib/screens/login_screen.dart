@@ -1,5 +1,6 @@
 import 'package:cloudflare_turnstile/cloudflare_turnstile.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
@@ -134,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 20),
             OutlinedButton.icon(
               onPressed: _signInWithGoogle,
-              icon: const Icon(Icons.g_mobiledata, size: 24),
+              icon: PhosphorIcon(PhosphorIcons.googleLogo(), size: 24),
               label: const Text('Sign in with Google'),
             ),
             const SizedBox(height: 20),

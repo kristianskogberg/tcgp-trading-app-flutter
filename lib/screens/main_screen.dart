@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/conversations_screen.dart';
@@ -131,8 +132,10 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           },
           destinations: [
             NavigationDestination(
-              icon: const Icon(Icons.home_outlined),
-              selectedIcon: const Icon(Icons.home, color: AppColors.primary),
+              icon: PhosphorIcon(PhosphorIcons.house()),
+              selectedIcon: PhosphorIcon(
+                  PhosphorIcons.house(PhosphorIconsStyle.fill),
+                  color: AppColors.primary),
               label: 'Home',
             ),
             NavigationDestination(
@@ -140,25 +143,30 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 isLabelVisible: _hasUnread,
                 smallSize: 10,
                 backgroundColor: AppColors.primary,
-                child: const Icon(Icons.chat_bubble_outline),
+                child: PhosphorIcon(PhosphorIcons.chats()),
               ),
               selectedIcon: Badge(
                 isLabelVisible: _hasUnread,
                 smallSize: 10,
                 backgroundColor: AppColors.primary,
-                child: const Icon(Icons.chat_bubble, color: AppColors.primary),
+                child: PhosphorIcon(
+                    PhosphorIcons.chats(PhosphorIconsStyle.fill),
+                    color: AppColors.primary),
               ),
               label: 'Messages',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.person_outline),
-              selectedIcon: const Icon(Icons.person, color: AppColors.primary),
+              icon: PhosphorIcon(PhosphorIcons.user()),
+              selectedIcon: PhosphorIcon(
+                  PhosphorIcons.user(PhosphorIconsStyle.fill),
+                  color: AppColors.primary),
               label: 'Profile',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.settings_outlined),
-              selectedIcon:
-                  const Icon(Icons.settings, color: AppColors.primary),
+              icon: PhosphorIcon(PhosphorIcons.gear()),
+              selectedIcon: PhosphorIcon(
+                  PhosphorIcons.gear(PhosphorIconsStyle.fill),
+                  color: AppColors.primary),
               label: 'Settings',
             ),
           ],

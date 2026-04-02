@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/models/pending_card_edit.dart';
@@ -476,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.search_off,
+                                      PhosphorIcon(PhosphorIcons.magnifyingGlassMinus(),
                                           size: 64, color: Colors.white24),
                                       const SizedBox(height: 12),
                                       const Text(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
@@ -20,7 +21,7 @@ class CardThumbnail extends StatelessWidget {
               isThumbnail: true,
               fit: BoxFit.cover,
               errorWidget: (context, url, error) =>
-                  const Center(child: Icon(Icons.broken_image, size: 20)),
+                  Center(child: PhosphorIcon(PhosphorIcons.imageBroken(), size: 20)),
             ),
           ),
         ),

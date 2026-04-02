@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class TextInputField extends StatefulWidget {
   final TextEditingController controller;
@@ -92,7 +93,7 @@ class _TextInputFieldState extends State<TextInputField> {
                 triggerMode: TooltipTriggerMode.tap,
                 showDuration: const Duration(seconds: 6),
                 child: Icon(
-                  Icons.info_outline,
+                  PhosphorIcons.info(),
                   size: 16,
                   color: hasError ? errorColor : Colors.white38,
                 ),
@@ -127,7 +128,7 @@ class _TextInputFieldState extends State<TextInputField> {
             suffixIcon: widget.obscureText
                 ? IconButton(
                     icon: Icon(
-                      _obscured ? Icons.visibility_off : Icons.visibility,
+                      _obscured ? PhosphorIcons.eyeSlash() : PhosphorIcons.eye(),
                       size: 20,
                       color: hasError
                           ? errorColor

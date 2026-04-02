@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
@@ -146,7 +147,7 @@ class _TradeSectionState extends State<TradeSection>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.favorite_border, size: 16),
+                    PhosphorIcon(PhosphorIcons.heart(), size: 16),
                     SizedBox(width: 6),
                     Text('I want this card'),
                   ],
@@ -157,7 +158,7 @@ class _TradeSectionState extends State<TradeSection>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.check_circle_outline, size: 16),
+                    PhosphorIcon(PhosphorIcons.checkCircle(), size: 16),
                     SizedBox(width: 6),
                     Text('I have this card'),
                   ],
@@ -176,7 +177,8 @@ class _TradeSectionState extends State<TradeSection>
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline, size: 16, color: Colors.white38),
+              PhosphorIcon(PhosphorIcons.info(),
+                  size: 16, color: Colors.white38),
               const SizedBox(width: 8),
               Expanded(
                 child: Text.rich(
@@ -290,7 +292,8 @@ class _TradeSectionState extends State<TradeSection>
           ),
           child: Row(
             children: [
-              const Icon(Icons.info_outline, size: 16, color: Colors.white38),
+              PhosphorIcon(PhosphorIcons.info(),
+                  size: 16, color: Colors.white38),
               const SizedBox(width: 8),
               Expanded(
                 child: Text.rich(
@@ -406,7 +409,8 @@ class _TradeSectionState extends State<TradeSection>
                     height: 32,
                     child: FilledButton.icon(
                       onPressed: _applyLanguageFilter,
-                      icon: const Icon(Icons.check, size: 14),
+                      icon: PhosphorIcon(PhosphorIcons.checkSquare(),
+                          size: 14, color: Colors.white38),
                       label:
                           const Text('Apply', style: TextStyle(fontSize: 12)),
                       style: FilledButton.styleFrom(
@@ -562,9 +566,9 @@ class _TradeSectionState extends State<TradeSection>
                                   borderRadius: BorderRadius.circular(2),
                                 ),
                               ),
-                              errorWidget: (context, url, error) => const Icon(
-                                  Icons.broken_image,
-                                  color: Colors.white24),
+                              errorWidget: (context, url, error) =>
+                                  PhosphorIcon(PhosphorIcons.imageBroken(),
+                                      color: Colors.white24),
                             ),
                           ),
                           Positioned(
@@ -604,13 +608,15 @@ class _TradeSectionState extends State<TradeSection>
                                   color: Colors.black.withOpacity(0.8),
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(
+                                child: PhosphorIcon(
                                   _userCardService.isOwned(
                                     matchCard.id,
                                     language: tradeMatch.language,
                                   )
-                                      ? Icons.check_circle
-                                      : Icons.favorite,
+                                      ? PhosphorIcons.checkCircle(
+                                          PhosphorIconsStyle.fill)
+                                      : PhosphorIcons.heart(
+                                          PhosphorIconsStyle.fill),
                                   size: 14,
                                   color: AppColors.primary,
                                 ),
@@ -626,8 +632,8 @@ class _TradeSectionState extends State<TradeSection>
                                   color: Colors.black.withOpacity(0.8),
                                   shape: BoxShape.circle,
                                 ),
-                                child: const Icon(
-                                  Icons.swap_horiz,
+                                child: PhosphorIcon(
+                                  PhosphorIcons.arrowsLeftRight(),
                                   size: 14,
                                   color: AppColors.primary,
                                 ),
@@ -761,7 +767,7 @@ class _TradeSectionState extends State<TradeSection>
               padding: const EdgeInsets.only(top: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
+                  PhosphorIcon(PhosphorIcons.warning(),
                       size: 16, color: Colors.amber),
                   const SizedBox(width: 8),
                   Expanded(
@@ -1089,7 +1095,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
               padding: const EdgeInsets.only(top: 12),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded,
+                  PhosphorIcon(PhosphorIcons.warning(),
                       size: 16, color: Colors.amber),
                   const SizedBox(width: 8),
                   Expanded(

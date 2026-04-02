@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/time_format.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
@@ -117,7 +118,7 @@ class _CopyButtonState extends State<_CopyButton> {
         clipBehavior: Clip.none,
         alignment: Alignment.center,
         children: [
-          Icon(Icons.copy,
+          PhosphorIcon(PhosphorIcons.copy(),
               size: 16,
               color: _copied ? AppColors.primary : Colors.white70),
           if (_copied)

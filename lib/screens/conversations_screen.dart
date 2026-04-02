@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/screens/chat_screen.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
@@ -97,11 +98,12 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
     }
 
     if (_conversations == null || _conversations!.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.chat_bubble_outline, size: 48, color: Colors.white24),
+            PhosphorIcon(PhosphorIcons.chatCircle(),
+                size: 48, color: Colors.white24),
             SizedBox(height: 12),
             Text(
               'No conversations yet',

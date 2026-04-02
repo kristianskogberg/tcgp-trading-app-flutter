@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/feedback_submission.dart';
 import 'package:tcgp_trading_app/services/feedback_service.dart';
@@ -70,20 +71,15 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                       label: Text(type.label),
                       selected: isSelected,
                       onSelected: (_) => setState(() => _selectedType = type),
-                      selectedColor: AppColors.primary,
-                      checkmarkColor: Colors.white,
-                      backgroundColor: const Color(0xFF1E1E24),
+                      selectedColor: AppColors.primary.withAlpha(51),
+                      checkmarkColor: AppColors.primary,
+                      backgroundColor: const Color(0xFF2A2A32),
                       labelStyle: TextStyle(
-                        color: isSelected ? Colors.white : Colors.white70,
+                        color: isSelected ? AppColors.primary : Colors.white70,
                         fontSize: 13,
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(
-                          color: isSelected
-                              ? AppColors.primary
-                              : Colors.white24,
-                        ),
+                      side: BorderSide(
+                        color: isSelected ? AppColors.primary : Colors.white24,
                       ),
                     );
                   }).toList(),
@@ -167,13 +163,21 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                           color: Colors.black,
                         ),
                       )
-                    : const Text(
-                        'Send',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          PhosphorIcon(PhosphorIcons.paperPlaneTilt(),
+                              size: 18, color: Colors.black),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Send',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
               ),
             ),

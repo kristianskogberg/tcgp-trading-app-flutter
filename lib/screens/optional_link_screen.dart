@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/link_account_screen.dart';
@@ -79,7 +80,7 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
           children: [
             const Spacer(),
             if (_linked) ...[
-              const Icon(Icons.check_circle_outline,
+              PhosphorIcon(PhosphorIcons.checkCircle(),
                   size: 72, color: Colors.greenAccent),
               const SizedBox(height: 24),
               const Text(
@@ -96,7 +97,7 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
                 textAlign: TextAlign.center,
               ),
             ] else ...[
-              const Icon(Icons.shield_outlined,
+              PhosphorIcon(PhosphorIcons.link(),
                   size: 72, color: Colors.white54),
               const SizedBox(height: 24),
               const Text(
@@ -112,17 +113,17 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
               ),
               const SizedBox(height: 32),
               _BenefitRow(
-                icon: Icons.cloud_done_outlined,
+                icon: PhosphorIcons.cloudCheck(),
                 text: 'Save your cards and trades',
               ),
               const SizedBox(height: 16),
               _BenefitRow(
-                icon: Icons.login,
+                icon: PhosphorIcons.signIn(),
                 text: 'Log in on any device',
               ),
               const SizedBox(height: 16),
               _BenefitRow(
-                icon: Icons.restart_alt,
+                icon: PhosphorIcons.arrowCounterClockwise(),
                 text: 'Recover your account if you reinstall',
               ),
             ],
@@ -146,7 +147,7 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.g_mobiledata, size: 24),
+                      : PhosphorIcon(PhosphorIcons.googleLogo(), size: 24),
                   label: const Text('Continue with Google'),
                 ),
               ),
