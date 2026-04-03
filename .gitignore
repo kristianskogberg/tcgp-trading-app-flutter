@@ -50,3 +50,6 @@ lib/firebase_options.dart
 firebase.json
 
 .claude/
+.grepai/
+CLAUDE.md
+skills-lock.json

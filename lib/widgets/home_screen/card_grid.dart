@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
@@ -18,6 +19,8 @@ class CardGrid extends StatelessWidget {
   final void Function(String cardId, Set<String> languages) onWishlistToggle;
   final void Function(String cardId, Set<String> languages) onOwnedToggle;
   final void Function(String cardId, Set<String> languages) onLanguagesChanged;
+  final int Function(String) tradeConditionCount;
+  final void Function(String cardId) onConditionsPressed;
   final VoidCallback onSubmit;
 
   const CardGrid({
@@ -33,6 +36,8 @@ class CardGrid extends StatelessWidget {
     required this.onWishlistToggle,
     required this.onOwnedToggle,
     required this.onLanguagesChanged,
+    required this.tradeConditionCount,
+    required this.onConditionsPressed,
     required this.onSubmit,
   });
 
@@ -90,6 +95,10 @@ class CardGrid extends StatelessWidget {
                                 : (langs) => onOwnedToggle(card.id, langs),
                             onLanguagesChanged:
                                 isSaving ? null : onLanguagesChanged,
+                            tradeConditionCount: tradeConditionCount(card.id),
+                            onConditionsPressed: isSaving
+                                ? null
+                                : () => onConditionsPressed(card.id),
                           );
                         },
                         childCount: grouped[setOrder[i]]!.length,
@@ -132,12 +141,21 @@ class CardGrid extends StatelessWidget {
                         valueColor: AlwaysStoppedAnimation(Colors.black),
                       ),
                     )
-                  : const Text(
-                      'Save changes',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        PhosphorIcon(PhosphorIcons.check(),
+                            size: 18, color: Colors.black),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Save changes',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
             ),
           ),

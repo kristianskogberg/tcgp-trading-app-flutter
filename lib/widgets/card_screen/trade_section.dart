@@ -5,6 +5,7 @@ import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/screens/chat_screen.dart';
+import 'package:tcgp_trading_app/screens/trade_condition_picker_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/services/language_filter_service.dart';
@@ -147,7 +148,7 @@ class _TradeSectionState extends State<TradeSection>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    PhosphorIcon(PhosphorIcons.heart(), size: 16),
+                    PhosphorIcon(PhosphorIcons.heartStraight(), size: 16),
                     SizedBox(width: 6),
                     Text('I want this card'),
                   ],
@@ -244,6 +245,15 @@ class _TradeSectionState extends State<TradeSection>
                                 TextSpan(
                                     text:
                                         ' for trade in ${_formatLanguages(card.id, 'owned')}. '),
+                                if (_userCardService
+                                    .hasTradeConditions(card.id))
+                                  TextSpan(
+                                    text:
+                                        'Only accepting ${_userCardService.getTradeConditionCount(card.id)} specific ${_userCardService.getTradeConditionCount(card.id) == 1 ? 'card' : 'cards'}. ',
+                                    style: const TextStyle(
+                                      color: AppColors.secondary,
+                                    ),
+                                  ),
                                 TextSpan(
                                   text: 'Edit',
                                   style: const TextStyle(
@@ -510,6 +520,13 @@ class _TradeSectionState extends State<TradeSection>
 
     if (matches == null) return const SizedBox.shrink();
 
+    // Apply trade conditions filter on "I have this card" tab
+    if (_activeTab == 1 &&
+        _userCardService.hasTradeConditions(widget.card.id)) {
+      final conditions = _userCardService.getTradeConditions(widget.card.id);
+      matches = matches.where((m) => conditions.containsKey(m.$1.id)).toList();
+    }
+
     // Apply client-side filter: "My listings only" / "My wishlist only"
     // Uses language-aware check (same logic as the checkmark icon overlay).
     if (_activeTab == 0 && _myListedOnly) {
@@ -615,7 +632,7 @@ class _TradeSectionState extends State<TradeSection>
                                   )
                                       ? PhosphorIcons.checkCircle(
                                           PhosphorIconsStyle.fill)
-                                      : PhosphorIcons.heart(
+                                      : PhosphorIcons.heartStraight(
                                           PhosphorIconsStyle.fill),
                                   size: 14,
                                   color: AppColors.primary,
@@ -948,14 +965,24 @@ class _TradeSectionState extends State<TradeSection>
             : 'You have already wishlisted this card. Creating a listing will remove it from your wishlist.'
         : null;
 
+    final initialConditions = type == 'owned'
+        ? _userCardService.getTradeConditions(cardId)
+        : <String, Set<String>>{};
+
     final result = await showDialog<
-        ({bool wishlisted, bool owned, Set<String> languages})?>(
+        ({
+          bool wishlisted,
+          bool owned,
+          Set<String> languages,
+          Map<String, Set<String>> conditions,
+        })?>(
       context: context,
       builder: (context) => _EditCardDialog(
         card: widget.card,
         initialWishlist: pendingWishlist,
         initialOwned: pendingOwned,
         initialLanguages: pendingLangs,
+        initialConditions: initialConditions,
         type: type,
         isEditing: isEditing,
         warningText: warningText,
@@ -991,6 +1018,16 @@ class _TradeSectionState extends State<TradeSection>
           }
         }
       }
+
+      // Sync trade conditions
+      if (type == 'owned') {
+        final oldConditions = initialConditions;
+        final newConditions = result.conditions;
+        if (oldConditions.length != newConditions.length ||
+            oldConditions.toString() != newConditions.toString()) {
+          await _userCardService.setTradeConditions(cardId, newConditions);
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1008,6 +1045,7 @@ class _EditCardDialog extends StatefulWidget {
   final bool initialWishlist;
   final bool initialOwned;
   final Set<String> initialLanguages;
+  final Map<String, Set<String>> initialConditions;
   final String type;
   final bool isEditing;
   final String? warningText;
@@ -1017,6 +1055,7 @@ class _EditCardDialog extends StatefulWidget {
     required this.initialWishlist,
     required this.initialOwned,
     required this.initialLanguages,
+    required this.initialConditions,
     required this.type,
     required this.isEditing,
     this.warningText,
@@ -1030,6 +1069,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
   late bool _wishlisted;
   late bool _owned;
   late Set<String> _languages;
+  late Map<String, Set<String>> _conditions;
 
   @override
   void initState() {
@@ -1037,6 +1077,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
     _wishlisted = widget.initialWishlist;
     _owned = widget.initialOwned;
     _languages = Set.from(widget.initialLanguages);
+    _conditions = Map.from(widget.initialConditions);
   }
 
   String get dialogTitle {
@@ -1046,8 +1087,24 @@ class _EditCardDialogState extends State<_EditCardDialog> {
     return widget.isEditing ? 'Edit Listing' : 'Create a Listing';
   }
 
+  Future<void> _openConditionsPicker() async {
+    final result = await Navigator.push<Map<String, Set<String>>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TradeConditionPickerScreen(
+          listedCard: widget.card,
+          initialSelection: _conditions,
+        ),
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(() => _conditions = result);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final showConditions = widget.type == 'owned' && _owned;
+
     return AppDialog(
       centerContent: true,
       title: dialogTitle,
@@ -1063,6 +1120,8 @@ class _EditCardDialogState extends State<_EditCardDialog> {
               isPendingWishlist: _wishlisted,
               isPendingOwned: _owned,
               pendingLanguages: _languages,
+              tradeConditionCount: _conditions.length,
+              onConditionsPressed: _openConditionsPicker,
               onWishlistToggle: widget.type == 'wishlist'
                   ? (langs) {
                       setState(() {
@@ -1090,6 +1149,69 @@ class _EditCardDialogState extends State<_EditCardDialog> {
               },
             ),
           ),
+          if (showConditions)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: GestureDetector(
+                onTap: _openConditionsPicker,
+                child: Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141418),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _conditions.isNotEmpty
+                          ? AppColors.secondary.withAlpha(80)
+                          : Colors.white12,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      PhosphorIcon(
+                        _conditions.isNotEmpty
+                            ? PhosphorIcons.funnel(PhosphorIconsStyle.fill)
+                            : PhosphorIcons.funnel(),
+                        size: 16,
+                        color: _conditions.isNotEmpty
+                            ? AppColors.secondary
+                            : Colors.white38,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _conditions.isNotEmpty
+                              ? 'Accepting ${_conditions.length} specific ${_conditions.length == 1 ? 'card' : 'cards'}'
+                              : 'Set trade conditions',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _conditions.isNotEmpty
+                                ? AppColors.secondary
+                                : Colors.white54,
+                          ),
+                        ),
+                      ),
+                      if (_conditions.isNotEmpty)
+                        GestureDetector(
+                          onTap: () => setState(() => _conditions.clear()),
+                          child: PhosphorIcon(
+                            PhosphorIcons.x(),
+                            size: 16,
+                            color: Colors.white38,
+                          ),
+                        )
+                      else
+                        PhosphorIcon(
+                          PhosphorIcons.caretRight(),
+                          size: 14,
+                          color: Colors.white38,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           if (widget.warningText != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),
@@ -1113,6 +1235,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
         wishlisted: _wishlisted,
         owned: _owned,
         languages: _languages,
+        conditions: _conditions,
       ),
     );
   }

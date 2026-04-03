@@ -34,10 +34,15 @@ class UserCardService extends ChangeNotifier {
   /// Maps "cardId:language" -> UserCardEntry
   Map<String, UserCardEntry> _wishlist = {};
   Map<String, UserCardEntry> _owned = {};
+
+  /// Maps listedCardId -> {wantedCardId: Set<language>} (trade conditions)
+  Map<String, Map<String, Set<String>>> _tradeConditions = {};
+
   bool _loaded = false;
   String? _cachedUserId;
   static const _cacheKey = 'cached_user_cards_v2';
   static const _cacheUserKey = 'cached_user_cards_user_id';
+  static const _conditionsCacheKey = 'cached_trade_conditions_v2';
 
   Future<void> _persistCache() async {
     final prefs = await SharedPreferences.getInstance();
@@ -48,6 +53,15 @@ class UserCardService extends ChangeNotifier {
         'wishlist': _wishlist.values.map((e) => e.toJson()).toList(),
         'owned': _owned.values.map((e) => e.toJson()).toList(),
       }),
+    );
+    await prefs.setString(
+      _conditionsCacheKey,
+      jsonEncode(_tradeConditions.map(
+        (k, v) => MapEntry(
+          k,
+          v.map((ck, cv) => MapEntry(ck, cv.toList())),
+        ),
+      )),
     );
     if (userId != null) {
       await prefs.setString(_cacheUserKey, userId);
@@ -75,6 +89,25 @@ class UserCardService extends ChangeNotifier {
         _wishlist = _parseEntries(data['wishlist'] as List);
         _owned = _parseEntries(data['owned'] as List);
         _cachedUserId = cachedUserId;
+      } catch (_) {}
+    }
+    final conditionsRaw = prefs.getString(_conditionsCacheKey);
+    if (conditionsRaw != null) {
+      try {
+        final data = jsonDecode(conditionsRaw) as Map<String, dynamic>;
+        _tradeConditions = data.map(
+          (k, v) => MapEntry(
+            k,
+            (v as Map<String, dynamic>).map(
+              (ck, cv) => MapEntry(
+                ck,
+                cv is List
+                    ? Set<String>.from(cv.cast<String>())
+                    : <String>{cv as String},
+              ),
+            ),
+          ),
+        );
       } catch (_) {}
     }
     _loaded = true;
@@ -114,6 +147,27 @@ class UserCardService extends ChangeNotifier {
         _owned[entry.key] = entry;
       }
     }
+
+    // Load trade conditions
+    try {
+      final conditionRows = await _client
+          .from('trade_conditions')
+          .select('listed_card_id, wanted_card_id, wanted_language')
+          .eq('user_id', user.id);
+      _tradeConditions = {};
+      for (final row in conditionRows) {
+        final listedId = row['listed_card_id'] as String;
+        final wantedId = row['wanted_card_id'] as String;
+        final wantedLang = (row['wanted_language'] as String?) ?? 'ANY';
+        _tradeConditions
+            .putIfAbsent(listedId, () => {})
+            .putIfAbsent(wantedId, () => {})
+            .add(wantedLang);
+      }
+    } catch (_) {
+      // Table may not exist yet - conditions will work from cache only
+    }
+
     await _persistCache();
   }
 
@@ -189,6 +243,12 @@ class UserCardService extends ChangeNotifier {
         .eq('type', type)
         .eq('language', language);
     map.remove(key);
+
+    // Clear trade conditions when removing the last owned entry for this card
+    if (type == 'owned' && !_owned.values.any((e) => e.cardId == cardId)) {
+      await clearTradeConditions(cardId);
+    }
+
     await _persistCache();
   }
 
@@ -240,6 +300,65 @@ class UserCardService extends ChangeNotifier {
     }).toSet();
   }
 
+  // ---------------------------------------------------------------------------
+  // Trade conditions
+  // ---------------------------------------------------------------------------
+
+  Map<String, Set<String>> getTradeConditions(String cardId) =>
+      _tradeConditions[cardId] ?? {};
+
+  bool hasTradeConditions(String cardId) =>
+      _tradeConditions.containsKey(cardId) &&
+      _tradeConditions[cardId]!.isNotEmpty;
+
+  int getTradeConditionCount(String cardId) =>
+      _tradeConditions[cardId]?.length ?? 0;
+
+  Future<void> setTradeConditions(
+      String cardId, Map<String, Set<String>> wantedCards) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('No authenticated user');
+
+    // Clear existing conditions for this card
+    try {
+      await _client
+          .from('trade_conditions')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('listed_card_id', cardId);
+    } catch (_) {}
+
+    // Insert new conditions — one row per (wantedCardId, language) pair
+    if (wantedCards.isNotEmpty) {
+      try {
+        final rows = <Map<String, dynamic>>[];
+        for (final entry in wantedCards.entries) {
+          for (final lang in entry.value) {
+            rows.add({
+              'user_id': user.id,
+              'listed_card_id': cardId,
+              'wanted_card_id': entry.key,
+              'wanted_language': lang,
+            });
+          }
+        }
+        await _client.from('trade_conditions').insert(rows);
+      } catch (_) {}
+    }
+
+    // Update cache
+    if (wantedCards.isEmpty) {
+      _tradeConditions.remove(cardId);
+    } else {
+      _tradeConditions[cardId] = wantedCards;
+    }
+    await _persistCache();
+  }
+
+  Future<void> clearTradeConditions(String cardId) async {
+    await setTradeConditions(cardId, {});
+  }
+
   void applyBulkEditsToCache({
     required Map<String, PendingCardEdit> additions,
     required Set<String> removals,
@@ -275,10 +394,12 @@ class UserCardService extends ChangeNotifier {
   Future<void> clearCache() async {
     _wishlist = {};
     _owned = {};
+    _tradeConditions = {};
     _loaded = false;
     _cachedUserId = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_cacheKey);
     await prefs.remove(_cacheUserKey);
+    await prefs.remove(_conditionsCacheKey);
   }
 }

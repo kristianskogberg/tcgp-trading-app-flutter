@@ -4,8 +4,10 @@ import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/screens/card_screen.dart';
-import 'package:tcgp_trading_app/utils/languages.dart';
+import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_language_button.dart';
+import 'package:tcgp_trading_app/widgets/shared/language_picker_sheet.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
 class CardTile extends StatefulWidget {
@@ -17,6 +19,8 @@ class CardTile extends StatefulWidget {
   final void Function(Set<String> languages)? onWishlistToggle;
   final void Function(Set<String> languages)? onOwnedToggle;
   final void Function(String cardId, Set<String> languages)? onLanguagesChanged;
+  final int tradeConditionCount;
+  final VoidCallback? onConditionsPressed;
   final String? heroTag;
 
   const CardTile({
@@ -29,6 +33,8 @@ class CardTile extends StatefulWidget {
     this.onWishlistToggle,
     this.onOwnedToggle,
     this.onLanguagesChanged,
+    this.tradeConditionCount = 0,
+    this.onConditionsPressed,
     this.heroTag,
   });
 
@@ -72,22 +78,6 @@ class _CardTileState extends State<CardTile> {
 
   bool get _hasPending => widget.isPendingWishlist || widget.isPendingOwned;
 
-  String get _languageLabel {
-    if (_selectedLanguages.contains('ANY')) return 'Any';
-    if (_selectedLanguages.length == 1) {
-      return languages[_selectedLanguages.first] ?? _selectedLanguages.first;
-    }
-    return 'Mixed...';
-  }
-
-  String get _languageLabelCompact {
-    if (_selectedLanguages.contains('ANY')) return 'ANY';
-    if (_selectedLanguages.length == 1) return _selectedLanguages.first;
-    final langs = _selectedLanguages.toList();
-    if (langs.length == 2) return '${langs[0]}, ${langs[1]}';
-    return '${langs[0]}, +${langs.length - 1}';
-  }
-
   Future<void> _showLanguagePicker() async {
     final result = await showModalBottomSheet<Set<String>>(
       context: context,
@@ -95,7 +85,7 @@ class _CardTileState extends State<CardTile> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => _LanguagePicker(
+      builder: (context) => LanguagePickerSheet(
         selected: Set.from(_selectedLanguages),
         showAny: widget.isPendingWishlist,
         multiSelect: !widget.isPendingOwned,
@@ -146,12 +136,38 @@ class _CardTileState extends State<CardTile> {
   }
 
   Widget _buildBrowseTile(BuildContext context) {
+    final hasConditions = UserCardService().hasTradeConditions(widget.card.id);
+
     return GestureDetector(
       onTap: () => _navigateToCard(context),
-      child: Hero(
-        tag: widget.heroTag ?? 'card-hero-${widget.card.id}',
-        createRectTween: (begin, end) => RectTween(begin: begin, end: end),
-        child: _buildCardImage(),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Hero(
+              tag: widget.heroTag ?? 'card-hero-${widget.card.id}',
+              createRectTween: (begin, end) =>
+                  RectTween(begin: begin, end: end),
+              child: _buildCardImage(),
+            ),
+          ),
+          if (hasConditions)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.8),
+                  shape: BoxShape.circle,
+                ),
+                child: PhosphorIcon(
+                  PhosphorIcons.funnel(PhosphorIconsStyle.fill),
+                  size: 12,
+                  color: AppColors.secondary,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -165,6 +181,10 @@ class _CardTileState extends State<CardTile> {
             ? AppColors.secondary
             : Colors.white38;
 
+    final hasConditions = widget.tradeConditionCount > 0;
+    final conditionsColor =
+        hasConditions ? AppColors.secondary : Colors.white38;
+
     return Stack(
       children: [
         Positioned.fill(
@@ -173,6 +193,16 @@ class _CardTileState extends State<CardTile> {
             child: _buildCardImage(),
           ),
         ),
+        if (_hasPending)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: Colors.black.withAlpha(80),
+                border: Border.all(color: chipColor, width: 2),
+              ),
+            ),
+          ),
         if (!untradable)
           Positioned(
             left: 4,
@@ -183,36 +213,77 @@ class _CardTileState extends State<CardTile> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: GestureDetector(
-                    onTap: _hasPending ? _showLanguagePicker : null,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 6, horizontal: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2A2A30).withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          PhosphorIcon(PhosphorIcons.globe(), size: 14, color: chipColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            _languageLabelCompact,
-                            style: TextStyle(fontSize: 12, color: chipColor),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  child: widget.isPendingOwned
+                      ? Row(
+                          children: [
+                            Expanded(
+                              child: CardLanguageButton(
+                                languages: _selectedLanguages,
+                                color: chipColor,
+                                onTap: _showLanguagePicker,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: widget.onConditionsPressed,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 6, horizontal: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2A2A30)
+                                        .withOpacity(0.9),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      PhosphorIcon(
+                                        hasConditions
+                                            ? PhosphorIcons.magnifyingGlass(
+                                                PhosphorIconsStyle.fill)
+                                            : PhosphorIcons.magnifyingGlass(),
+                                        size: 18,
+                                        color: conditionsColor,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      if (hasConditions) ...[
+                                        Text(
+                                          '${widget.tradeConditionCount}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: conditionsColor,
+                                          ),
+                                        ),
+                                      ] else ...[
+                                        const Text(
+                                          'Any',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white38,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : CardLanguageButton(
+                          languages: _selectedLanguages,
+                          color: chipColor,
+                          onTap: _hasPending ? _showLanguagePicker : null,
+                        ),
                 ),
                 Row(
                   children: [
                     Expanded(
                       child: _ActionButton(
-                        icon: PhosphorIcons.heart(PhosphorIconsStyle.fill),
+                        icon: PhosphorIcons.heartStraight(
+                            PhosphorIconsStyle.fill),
                         label: 'Want',
                         isActive: widget.isPendingWishlist,
                         activeColor: AppColors.primary,
@@ -223,7 +294,8 @@ class _CardTileState extends State<CardTile> {
                     const SizedBox(width: 4),
                     Expanded(
                       child: _ActionButton(
-                        icon: PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+                        icon:
+                            PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
                         label: 'Have',
                         isActive: widget.isPendingOwned,
                         activeColor: AppColors.secondary,
@@ -298,149 +370,6 @@ class _ActionButton extends StatelessWidget {
             ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _LanguagePicker extends StatefulWidget {
-  final Set<String> selected;
-  final bool showAny;
-  final bool multiSelect;
-
-  const _LanguagePicker({
-    required this.selected,
-    this.showAny = false,
-    this.multiSelect = true,
-  });
-
-  @override
-  State<_LanguagePicker> createState() => _LanguagePickerState();
-}
-
-class _LanguagePickerState extends State<_LanguagePicker> {
-  late Set<String> _selected;
-
-  bool get _isAnySelected => _selected.contains('ANY');
-
-  @override
-  void initState() {
-    super.initState();
-    _selected = Set.from(widget.selected);
-  }
-
-  void _selectAny() {
-    setState(() => _selected = {'ANY'});
-  }
-
-  void _toggleLanguage(String key) {
-    setState(() {
-      if (widget.multiSelect) {
-        _selected.remove('ANY');
-        if (_selected.contains(key)) {
-          _selected.remove(key);
-        } else {
-          _selected.add(key);
-        }
-      } else {
-        _selected = {key};
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Select language',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (widget.showAny)
-                FilterChip(
-                  label: const Text('Any'),
-                  selected: _isAnySelected,
-                  onSelected: (_) => _selectAny(),
-                  selectedColor: AppColors.primary.withAlpha(51),
-                  checkmarkColor: AppColors.primary,
-                  labelStyle: TextStyle(
-                    color: _isAnySelected ? AppColors.primary : Colors.white70,
-                    fontSize: 13,
-                  ),
-                  backgroundColor: const Color(0xFF2A2A32),
-                  side: BorderSide(
-                    color: _isAnySelected ? AppColors.primary : Colors.white24,
-                  ),
-                ),
-              ...languages.entries.map((entry) {
-                final isSelected =
-                    _isAnySelected || _selected.contains(entry.key);
-                return FilterChip(
-                  label: Text(entry.value),
-                  selected: isSelected,
-                  onSelected: (_) => _toggleLanguage(entry.key),
-                  selectedColor: AppColors.primary.withAlpha(51),
-                  checkmarkColor: AppColors.primary,
-                  labelStyle: TextStyle(
-                    color: isSelected ? AppColors.primary : Colors.white70,
-                    fontSize: 13,
-                  ),
-                  backgroundColor: const Color(0xFF2A2A32),
-                  side: BorderSide(
-                    color: isSelected ? AppColors.primary : Colors.white24,
-                  ),
-                );
-              }),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _selected.isNotEmpty
-                  ? () => Navigator.pop(context, _selected)
-                  : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.black,
-                disabledBackgroundColor: Colors.white12,
-                disabledForegroundColor: Colors.white38,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: const Text(
-                'Done',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

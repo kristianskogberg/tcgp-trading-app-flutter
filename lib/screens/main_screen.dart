@@ -24,7 +24,6 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _currentScreenIndex = 0;
-  bool _isBottomBarVisible = true;
   final _conversationsRefresh = ValueNotifier<int>(0);
   final _chatService = ChatService();
   bool _hasUnread = false;
@@ -84,37 +83,23 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: NotificationListener<UserScrollNotification>(
-        onNotification: (notification) {
-          if (notification.direction == ScrollDirection.forward) {
-            if (!_isBottomBarVisible) {
-              setState(() => _isBottomBarVisible = true);
-            }
-          } else if (notification.direction == ScrollDirection.reverse) {
-            if (_isBottomBarVisible) {
-              setState(() => _isBottomBarVisible = false);
-            }
-          }
-          return false;
-        },
-        child: IndexedStack(
-          index: _currentScreenIndex,
-          children: [
-            const HomeScreen(),
-            ConversationsScreen(
-              refreshNotifier: _conversationsRefresh,
-              onUnreadChanged: _checkUnread,
-            ),
-            ProfileScreen(
-              onProfileSaved: () => setState(() => _currentScreenIndex = 0),
-            ),
-            const SettingsScreen(),
-          ],
-        ),
+      body: IndexedStack(
+        index: _currentScreenIndex,
+        children: [
+          const HomeScreen(),
+          ConversationsScreen(
+            refreshNotifier: _conversationsRefresh,
+            onUnreadChanged: _checkUnread,
+          ),
+          ProfileScreen(
+            onProfileSaved: () => setState(() => _currentScreenIndex = 0),
+          ),
+          const SettingsScreen(),
+        ],
       ),
       bottomNavigationBar: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        height: _isBottomBarVisible ? 44 : 0,
+        height: 44,
         clipBehavior: Clip.hardEdge,
         decoration: const BoxDecoration(),
         child: NavigationBar(

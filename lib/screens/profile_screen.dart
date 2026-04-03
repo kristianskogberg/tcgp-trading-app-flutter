@@ -464,7 +464,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      PhosphorIcon(PhosphorIcons.heart(), size: 16),
+                      PhosphorIcon(PhosphorIcons.heartStraight(), size: 16),
                       SizedBox(width: 6),
                       Text('Wishlist'),
                     ],

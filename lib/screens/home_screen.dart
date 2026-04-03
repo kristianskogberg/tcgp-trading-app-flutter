@@ -11,6 +11,7 @@ import 'package:tcgp_trading_app/widgets/home_screen/card_grid.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/filter_sheet.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/home_app_bar.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/sort_selector.dart';
+import 'package:tcgp_trading_app/screens/trade_condition_picker_screen.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -43,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Pending edits for edit mode
   final Map<String, PendingCardEdit> _pendingEdits = {};
   final Set<String> _pendingRemovals = {};
+  final Map<String, Map<String, Set<String>>> _pendingConditions = {};
 
   // Available filter options (extracted from data)
   List<String> _availableSets = [];
@@ -63,7 +65,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _hasActiveFilters || _searchController.text.isNotEmpty;
 
   bool get _hasPendingChanges =>
-      _pendingEdits.isNotEmpty || _pendingRemovals.isNotEmpty;
+      _pendingEdits.isNotEmpty ||
+      _pendingRemovals.isNotEmpty ||
+      _pendingConditions.isNotEmpty;
 
   bool _isSaving = false;
 
@@ -305,6 +309,49 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _setsEqual(Set<String> a, Set<String> b) =>
       a.length == b.length && a.containsAll(b);
 
+  bool _mapsEqual(Map<String, Set<String>> a, Map<String, Set<String>> b) {
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      final bVal = b[entry.key];
+      if (bVal == null || !_setsEqual(entry.value, bVal)) return false;
+    }
+    return true;
+  }
+
+  int _effectiveConditionCount(String cardId) {
+    if (_pendingConditions.containsKey(cardId)) {
+      return _pendingConditions[cardId]!.length;
+    }
+    return _userCardService.getTradeConditionCount(cardId);
+  }
+
+  Future<void> _openConditionsPicker(String cardId) async {
+    final card = _allCards.firstWhere((c) => c.id == cardId);
+    final currentConditions = _pendingConditions[cardId] ??
+        _userCardService.getTradeConditions(cardId);
+
+    final result = await Navigator.push<Map<String, Set<String>>>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TradeConditionPickerScreen(
+          listedCard: card,
+          initialSelection: currentConditions,
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      final existing = _userCardService.getTradeConditions(cardId);
+      if (_mapsEqual(result, existing)) {
+        _pendingConditions.remove(cardId);
+      } else {
+        _pendingConditions[cardId] = result;
+      }
+    });
+  }
+
   Future<void> _submitPendingEdits() async {
     setState(() => _isSaving = true);
     final additions = Map<String, PendingCardEdit>.from(_pendingEdits);
@@ -352,11 +399,22 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
+    // Persist trade conditions
+    for (final entry in Map.from(_pendingConditions).entries) {
+      try {
+        await _userCardService.setTradeConditions(entry.key, entry.value);
+        successCount++;
+      } catch (e) {
+        failCount++;
+      }
+    }
+
     if (!mounted) return;
     setState(() {
       _isSaving = false;
       _pendingEdits.clear();
       _pendingRemovals.clear();
+      _pendingConditions.clear();
       _currentMode = HomeMode.browse;
     });
 
@@ -386,6 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _currentMode = HomeMode.browse;
         _pendingEdits.clear();
         _pendingRemovals.clear();
+        _pendingConditions.clear();
       } else {
         _currentMode = HomeMode.edit;
       }
@@ -477,11 +536,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      PhosphorIcon(PhosphorIcons.magnifyingGlassMinus(),
-                                          size: 64, color: Colors.white24),
+                                      PhosphorIcon(
+                                          PhosphorIcons.magnifyingGlassMinus(),
+                                          size: 64,
+                                          color: Colors.white24),
                                       const SizedBox(height: 12),
                                       const Text(
-                                        'No cards match',
+                                        'No cards found',
                                         style: TextStyle(
                                             color: Colors.white38,
                                             fontSize: 16),
@@ -506,6 +567,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             onOwnedToggle: (cardId, langs) =>
                                 _togglePending(cardId, 'owned', langs),
                             onLanguagesChanged: _updatePendingLanguages,
+                            tradeConditionCount: _effectiveConditionCount,
+                            onConditionsPressed: _openConditionsPicker,
                             onSubmit: _submitPendingEdits,
                           ),
                   ),

@@ -48,7 +48,7 @@ class TradeCardPair extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 2),
+          padding: EdgeInsets.symmetric(horizontal: 4),
           child: Icon(
             PhosphorIcons.arrowsLeftRight(),
             color: AppColors.primary,
