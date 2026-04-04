@@ -8,10 +8,38 @@ import 'package:tcgp_trading_app/widgets/card_screen/card_detail_header.dart';
 import 'package:tcgp_trading_app/widgets/card_screen/trade_section.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
-class CardScreen extends StatelessWidget {
+class CardScreen extends StatefulWidget {
   final PocketCard card;
   final String? heroTag;
   const CardScreen({super.key, required this.card, this.heroTag});
+
+  @override
+  State<CardScreen> createState() => _CardScreenState();
+}
+
+class _CardScreenState extends State<CardScreen> {
+  final _scrollController = ScrollController();
+  final _tradeSectionKey = GlobalKey<TradeSectionState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _tradeSectionKey.currentState?.loadMore();
+    }
+  }
 
   void _showReportDialog(BuildContext context) {
     final controller = TextEditingController();
@@ -23,7 +51,7 @@ class CardScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${card.name} (${card.set} #${card.number})',
+            '${widget.card.name} (${widget.card.set} #${widget.card.number})',
             style: const TextStyle(color: Colors.white54, fontSize: 13),
           ),
           const SizedBox(height: 12),
@@ -62,7 +90,7 @@ class CardScreen extends StatelessWidget {
             .submitFeedback(
           type: FeedbackType.cardReport,
           description: description,
-          cardId: card.id,
+          cardId: widget.card.id,
         )
             .then((_) {
           if (context.mounted) {
@@ -77,7 +105,7 @@ class CardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isUntradable = isCardUntradable(card.rarity, card.pack);
+    final isUntradable = isCardUntradable(widget.card.rarity, widget.card.pack);
 
     return Scaffold(
       appBar: AppBar(
@@ -86,13 +114,13 @@ class CardScreen extends StatelessWidget {
           children: [
             Flexible(
               child: Text(
-                card.name,
+                widget.card.name,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 8),
             Text(
-              '${card.set} | #${card.number}',
+              '${widget.card.set} | #${widget.card.number}',
               style: const TextStyle(
                 color: Colors.white38,
                 fontSize: 14,
@@ -135,10 +163,11 @@ class CardScreen extends StatelessWidget {
         ],
       ),
       body: SingleChildScrollView(
+        controller: _scrollController,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CardDetailHeader(card: card, heroTag: heroTag),
+            CardDetailHeader(card: widget.card, heroTag: widget.heroTag),
             if (isUntradable)
               Container(
                 width: double.infinity,
@@ -164,7 +193,7 @@ class CardScreen extends StatelessWidget {
                 ),
               )
             else
-              TradeSection(card: card),
+              TradeSection(key: _tradeSectionKey, card: widget.card),
           ],
         ),
       ),

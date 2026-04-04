@@ -25,11 +25,13 @@ class TradeSection extends StatefulWidget {
   const TradeSection({super.key, required this.card});
 
   @override
-  State<TradeSection> createState() => _TradeSectionState();
+  TradeSectionState createState() => TradeSectionState();
 }
 
-class _TradeSectionState extends State<TradeSection>
+class TradeSectionState extends State<TradeSection>
     with SingleTickerProviderStateMixin {
+  static const _pageSize = 30;
+
   late final TabController _tabController;
   final activeColor = AppColors.primary;
   final inactiveColor = Colors.white60;
@@ -41,6 +43,11 @@ class _TradeSectionState extends State<TradeSection>
   List<(PocketCard, TradeMatch)>? _wantMatches;
   List<(PocketCard, TradeMatch)>? _ownedMatches;
   bool _loadingMatches = false;
+  bool _loadingMore = false;
+  int _wantOffset = 0;
+  int _ownedOffset = 0;
+  bool _wantHasMore = true;
+  bool _ownedHasMore = true;
   bool _trainersOnly = false;
   bool _myListedOnly = false;
   bool _myWishlistedOnly = false;
@@ -101,6 +108,10 @@ class _TradeSectionState extends State<TradeSection>
       _appliedLanguages = {..._selectedLanguages};
       _wantMatches = null;
       _ownedMatches = null;
+      _wantOffset = 0;
+      _ownedOffset = 0;
+      _wantHasMore = true;
+      _ownedHasMore = true;
     });
     _langFilterService.setSelectedLanguages(_selectedLanguages);
     _fetchMatches();
@@ -458,6 +469,10 @@ class _TradeSectionState extends State<TradeSection>
                           _trainersOnly = value;
                           _wantMatches = null;
                           _ownedMatches = null;
+                          _wantOffset = 0;
+                          _ownedOffset = 0;
+                          _wantHasMore = true;
+                          _ownedHasMore = true;
                         });
                         _fetchMatches();
                       },
@@ -512,6 +527,8 @@ class _TradeSectionState extends State<TradeSection>
 
   Widget _buildMatchGrid() {
     var matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
+    final hasMore = _activeTab == 0 ? _wantHasMore : _ownedHasMore;
+
     if (_loadingMatches) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -542,7 +559,7 @@ class _TradeSectionState extends State<TradeSection>
           .toList();
     }
 
-    if (matches.isEmpty) {
+    if (matches.isEmpty && !hasMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24, horizontal: 6),
         child: Center(
@@ -554,96 +571,104 @@ class _TradeSectionState extends State<TradeSection>
       );
     }
 
+    final itemCount = matches.length + (_loadingMore ? 1 : 0);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final itemWidth = (constraints.maxWidth - 8 * 3) / 4;
-          return Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: matches!.map((match) {
-              final (matchCard, tradeMatch) = match;
-              return SizedBox(
-                width: itemWidth,
-                child: GestureDetector(
-                  onTap: () => _onMatchTapped(matchCard, tradeMatch),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: OptimizedCardImage(
-                              imageUrl: matchCard.imageUrl,
-                              isThumbnail: true,
-                              placeholder: (context, url) => Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white10,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                              errorWidget: (context, url, error) =>
-                                  PhosphorIcon(PhosphorIcons.imageBroken(),
-                                      color: Colors.white24),
-                            ),
-                          ),
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.black
-                                    .withOpacity(UIConstants.buttonOpacity),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                              child: Text(
-                                tradeMatch.language,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (_userCardService.isWishlisted(
-                                matchCard.id,
-                                language: tradeMatch.language,
-                              ) ||
-                              _userCardService.isOwned(
-                                matchCard.id,
-                                language: tradeMatch.language,
-                              ))
-                            Positioned(
-                              bottom: 4,
-                              right: 4,
-                              child: CardBadge(
-                                type: _userCardService.isOwned(
-                                  matchCard.id,
-                                  language: tradeMatch.language,
-                                )
-                                    ? CardBadgeType.matchOwned
-                                    : CardBadgeType.matchWishlisted,
-                              ),
-                            ),
-                          if (_hasProposal(matchCard, tradeMatch))
-                            const Positioned(
-                              bottom: 4,
-                              left: 4,
-                              child:
-                                  CardBadge(type: CardBadgeType.pendingTrade),
-                            ),
-                        ],
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 0.72,
+        ),
+        itemCount: itemCount,
+        itemBuilder: (context, index) {
+          if (index >= matches!.length) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(8),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            );
+          }
+
+          final (matchCard, tradeMatch) = matches[index];
+          return GestureDetector(
+            onTap: () => _onMatchTapped(matchCard, tradeMatch),
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: OptimizedCardImage(
+                    imageUrl: matchCard.imageUrl,
+                    isThumbnail: true,
+                    placeholder: (context, url) => Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(2),
                       ),
-                    ],
+                    ),
+                    errorWidget: (context, url, error) => PhosphorIcon(
+                        PhosphorIcons.imageBroken(),
+                        color: Colors.white24),
                   ),
                 ),
-              );
-            }).toList(),
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    decoration: BoxDecoration(
+                      color:
+                          Colors.black.withOpacity(UIConstants.buttonOpacity),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: Text(
+                      tradeMatch.language,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ),
+                ),
+                if (_userCardService.isWishlisted(
+                      matchCard.id,
+                      language: tradeMatch.language,
+                    ) ||
+                    _userCardService.isOwned(
+                      matchCard.id,
+                      language: tradeMatch.language,
+                    ))
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: CardBadge(
+                      type: _userCardService.isOwned(
+                        matchCard.id,
+                        language: tradeMatch.language,
+                      )
+                          ? CardBadgeType.matchOwned
+                          : CardBadgeType.matchWishlisted,
+                    ),
+                  ),
+                if (_hasProposal(matchCard, tradeMatch))
+                  const Positioned(
+                    bottom: 4,
+                    left: 4,
+                    child: CardBadge(type: CardBadgeType.pendingTrade),
+                  ),
+              ],
+            ),
           );
         },
       ),
@@ -858,6 +883,10 @@ class _TradeSectionState extends State<TradeSection>
       _isOwned = _userCardService.isOwned(widget.card.id);
       _wantMatches = null;
       _ownedMatches = null;
+      _wantOffset = 0;
+      _ownedOffset = 0;
+      _wantHasMore = true;
+      _ownedHasMore = true;
     });
     _fetchMatches();
   }
@@ -879,31 +908,35 @@ class _TradeSectionState extends State<TradeSection>
       }));
 
       final langList = _appliedLanguages.toList();
-
       final fullartOnly = _trainersOnly && _isFullArtSupporter;
 
       if (wantNeeded) {
         futures.add(_userCardService
             .getTradeMatchesForWanted(cardId, langList,
-                fullartOnly: fullartOnly)
+                fullartOnly: fullartOnly, limit: _pageSize, offset: 0)
             .then((matches) {
-          _wantMatches = matches
+          final mapped = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
-              .where((pair) => pair.$1.rarity == widget.card.rarity)
               .toList();
+          _wantMatches = mapped;
+          _wantOffset = _pageSize;
+          _wantHasMore = matches.length >= _pageSize;
         }));
       }
 
       if (ownedNeeded) {
         futures.add(_userCardService
-            .getTradeMatchesForOwned(cardId, langList, fullartOnly: fullartOnly)
+            .getTradeMatchesForOwned(cardId, langList,
+                fullartOnly: fullartOnly, limit: _pageSize, offset: 0)
             .then((matches) {
-          _ownedMatches = matches
+          final mapped = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
-              .where((pair) => pair.$1.rarity == widget.card.rarity)
               .toList();
+          _ownedMatches = mapped;
+          _ownedOffset = _pageSize;
+          _ownedHasMore = matches.length >= _pageSize;
         }));
       }
 
@@ -915,6 +948,68 @@ class _TradeSectionState extends State<TradeSection>
 
     if (!mounted) return;
     setState(() => _loadingMatches = false);
+  }
+
+  void loadMore() {
+    if (_loadingMatches || _loadingMore) return;
+    final hasMore = _activeTab == 0 ? _wantHasMore : _ownedHasMore;
+    final matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
+    if (!hasMore || matches == null) return;
+    _loadMoreMatches();
+  }
+
+  Future<void> _loadMoreMatches() async {
+    if (_loadingMore) return;
+    setState(() => _loadingMore = true);
+
+    try {
+      final cardId = widget.card.id;
+      final cardMap = CardService().getCardMap();
+      final langList = _appliedLanguages.toList();
+      final fullartOnly = _trainersOnly && _isFullArtSupporter;
+      final offset = _activeTab == 0 ? _wantOffset : _ownedOffset;
+
+      final List<TradeMatch> matches;
+      if (_activeTab == 0) {
+        matches = await _userCardService.getTradeMatchesForWanted(
+          cardId,
+          langList,
+          fullartOnly: fullartOnly,
+          limit: _pageSize,
+          offset: offset,
+        );
+      } else {
+        matches = await _userCardService.getTradeMatchesForOwned(
+          cardId,
+          langList,
+          fullartOnly: fullartOnly,
+          limit: _pageSize,
+          offset: offset,
+        );
+      }
+
+      final mapped = matches
+          .where((m) => cardMap.containsKey(m.cardId))
+          .map((m) => (cardMap[m.cardId]!, m))
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        if (_activeTab == 0) {
+          _wantMatches!.addAll(mapped);
+          _wantOffset += _pageSize;
+          _wantHasMore = matches.length >= _pageSize;
+        } else {
+          _ownedMatches!.addAll(mapped);
+          _ownedOffset += _pageSize;
+          _ownedHasMore = matches.length >= _pageSize;
+        }
+        _loadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingMore = false);
+    }
   }
 
   Future<void> _onWantPressed() async {

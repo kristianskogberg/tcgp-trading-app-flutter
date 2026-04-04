@@ -252,8 +252,12 @@ class UserCardService extends ChangeNotifier {
 
   /// Find users who own [cardId], then return their wishlist cards with profile info.
   Future<List<TradeMatch>> getTradeMatchesForWanted(
-      String cardId, List<String> languages,
-      {bool fullartOnly = false}) async {
+    String cardId,
+    List<String> languages, {
+    bool fullartOnly = false,
+    required int limit,
+    required int offset,
+  }) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
@@ -262,6 +266,8 @@ class UserCardService extends ChangeNotifier {
       'p_user_id': user.id,
       'p_languages': languages,
       'p_fullart_only': fullartOnly,
+      'p_limit': limit,
+      'p_offset': offset,
     });
 
     return (rows as List)
@@ -271,8 +277,12 @@ class UserCardService extends ChangeNotifier {
 
   /// Find users who want [cardId], then return their owned cards with profile info.
   Future<List<TradeMatch>> getTradeMatchesForOwned(
-      String cardId, List<String> languages,
-      {bool fullartOnly = false}) async {
+    String cardId,
+    List<String> languages, {
+    bool fullartOnly = false,
+    required int limit,
+    required int offset,
+  }) async {
     final user = _client.auth.currentUser;
     if (user == null) return [];
 
@@ -281,6 +291,8 @@ class UserCardService extends ChangeNotifier {
       'p_user_id': user.id,
       'p_languages': languages,
       'p_fullart_only': fullartOnly,
+      'p_limit': limit,
+      'p_offset': offset,
     });
 
     return (rows as List)
