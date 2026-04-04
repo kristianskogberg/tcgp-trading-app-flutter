@@ -7,6 +7,7 @@ class PocketCard {
   final String pack;
   final String imageUrl;
   final String type;
+  final String cardType;
   final bool fullart;
   final bool ex;
 
@@ -17,6 +18,7 @@ class PocketCard {
     required this.pack,
     required this.imageUrl,
     required this.type,
+    required this.cardType,
     this.fullart = false,
     this.ex = false,
   })  : set = _extractSet(id),
@@ -41,6 +43,7 @@ class PocketCard {
       pack: json['pack'] as String? ?? '',
       imageUrl: json['image'] as String? ?? '',
       type: json['type'] as String? ?? '',
+      cardType: json['card_type'] as String? ?? '',
       fullart: json['fullart'] as bool? ?? false,
       ex: json['ex'] as bool? ?? false,
     );
@@ -53,6 +56,7 @@ class PocketCard {
         'pack': pack,
         'image': imageUrl,
         'type': type,
+        'card_type': cardType,
         'fullart': fullart,
         'ex': ex,
       };

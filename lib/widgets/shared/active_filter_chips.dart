@@ -9,6 +9,7 @@ class ActiveFilterChips extends StatelessWidget {
   final Set<String> selectedSets;
   final Set<String> selectedRarities;
   final Set<String> selectedPacks;
+  final Set<String> selectedCardTypes;
   final void Function(String type, String value) onRemoveFilter;
 
   const ActiveFilterChips({
@@ -16,6 +17,7 @@ class ActiveFilterChips extends StatelessWidget {
     required this.selectedSets,
     required this.selectedRarities,
     required this.selectedPacks,
+    required this.selectedCardTypes,
     required this.onRemoveFilter,
   });
 
@@ -31,7 +33,9 @@ class ActiveFilterChips extends StatelessWidget {
     for (final p in selectedPacks) {
       chips.add(_buildDismissibleChip(p, 'pack'));
     }
-
+    for (final ct in selectedCardTypes) {
+      chips.add(_buildDismissibleChip(ct, 'cardType'));
+    }
     return SizedBox(
       height: 48,
       child: ListView(
@@ -57,6 +61,9 @@ class ActiveFilterChips extends StatelessWidget {
         errorWidget: (context, url, error) => Text(label,
             style: const TextStyle(color: AppColors.primary, fontSize: 12)),
       );
+    }
+    if (type == 'cardType') {
+      return Text(label);
     }
     return Text(label);
   }

@@ -1,1 +1,1 @@
-enum HomeMode { browse, edit }
+enum HomeMode { browse, edit, picker }

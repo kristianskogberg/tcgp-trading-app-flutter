@@ -314,6 +314,13 @@ class UserCardService extends ChangeNotifier {
   int getTradeConditionCount(String cardId) =>
       _tradeConditions[cardId]?.length ?? 0;
 
+  bool isConditionTarget(String cardId) {
+    for (final conditions in _tradeConditions.values) {
+      if (conditions.containsKey(cardId)) return true;
+    }
+    return false;
+  }
+
   Future<void> setTradeConditions(
       String cardId, Map<String, Set<String>> wantedCards) async {
     final user = _client.auth.currentUser;

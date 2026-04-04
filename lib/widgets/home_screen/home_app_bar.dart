@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_search_bar.dart';
 
 class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
   final TextEditingController searchController;
@@ -32,40 +33,10 @@ class HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       automaticallyImplyLeading: false,
       titleSpacing: 12,
-      title: SizedBox(
-        height: 40,
-        child: TextField(
-          controller: searchController,
-          onChanged: onSearchChanged,
-          keyboardType: TextInputType.text,
-          style: const TextStyle(color: Colors.white, fontSize: 15),
-          decoration: InputDecoration(
-            hintText: 'Search cards...',
-            hintStyle: const TextStyle(color: Colors.white38, fontSize: 15),
-            prefixIcon: PhosphorIcon(PhosphorIcons.magnifyingGlass(),
-                color: Colors.white38, size: 20),
-            suffixIcon: ListenableBuilder(
-              listenable: searchController,
-              builder: (context, _) {
-                if (searchController.text.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return IconButton(
-                  icon: PhosphorIcon(PhosphorIcons.x(),
-                      color: Colors.white54, size: 18),
-                  onPressed: onClearSearch,
-                );
-              },
-            ),
-            filled: true,
-            fillColor: const Color(0xFF1E1E24),
-            contentPadding: const EdgeInsets.symmetric(vertical: 0),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
+      title: CardSearchBar(
+        controller: searchController,
+        onChanged: onSearchChanged,
+        onClear: onClearSearch,
       ),
       actions: [
         IconButton(

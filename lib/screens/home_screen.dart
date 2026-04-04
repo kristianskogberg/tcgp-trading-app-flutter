@@ -6,11 +6,13 @@ import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/models/pending_card_edit.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
-import 'package:tcgp_trading_app/widgets/home_screen/active_filter_chips.dart';
-import 'package:tcgp_trading_app/widgets/home_screen/card_grid.dart';
-import 'package:tcgp_trading_app/widgets/home_screen/filter_sheet.dart';
+import 'package:tcgp_trading_app/widgets/shared/active_filter_chips.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_grid.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_tile.dart';
+import 'package:tcgp_trading_app/widgets/shared/filter_sheet.dart';
 import 'package:tcgp_trading_app/widgets/home_screen/home_app_bar.dart';
-import 'package:tcgp_trading_app/widgets/home_screen/sort_selector.dart';
+import 'package:tcgp_trading_app/widgets/shared/sort_selector.dart';
 import 'package:tcgp_trading_app/screens/trade_condition_picker_screen.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
@@ -39,7 +41,9 @@ class _HomeScreenState extends State<HomeScreen> {
   HomeMode _currentMode = HomeMode.browse;
 
   // Sort
-  String _sortBy = 'set'; // 'set', 'wishlist', 'owned'
+  bool _sortAscending = false; // false = descending (newest sets first)
+  bool _showWishlistOnly = false;
+  bool _showOwnedOnly = false;
 
   // Pending edits for edit mode
   final Map<String, PendingCardEdit> _pendingEdits = {};
@@ -50,16 +54,19 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> _availableSets = [];
   List<String> _availableRarities = [];
   List<String> _availablePacks = [];
+  List<String> _availableCardTypes = [];
 
   // Active filters
   Set<String> _selectedSets = {};
   Set<String> _selectedRarities = {};
   Set<String> _selectedPacks = {};
+  Set<String> _selectedCardTypes = {};
 
   bool get _hasActiveFilters =>
       _selectedSets.isNotEmpty ||
       _selectedRarities.isNotEmpty ||
-      _selectedPacks.isNotEmpty;
+      _selectedPacks.isNotEmpty ||
+      _selectedCardTypes.isNotEmpty;
 
   bool get _isFiltering =>
       _hasActiveFilters || _searchController.text.isNotEmpty;
@@ -109,18 +116,21 @@ class _HomeScreenState extends State<HomeScreen> {
     final sets = <String>{};
     final rarities = <String>{};
     final packs = <String>{};
+    final cardTypes = <String>{};
     for (final card in cards) {
       sets.add(card.set);
       if (card.rarity.toLowerCase() != "promo") {
         rarities.add(card.rarity);
       }
       if (card.pack.isNotEmpty) packs.add(card.pack);
+      if (card.cardType.isNotEmpty) cardTypes.add(card.cardType);
     }
     setState(() {
       _allCards = cards;
       _availableSets = sets.toList()..sort();
       _availableRarities = rarities.toList()..sort();
       _availablePacks = packs.toList()..sort();
+      _availableCardTypes = cardTypes.toList()..sort();
     });
     _applyFilters();
   }
@@ -152,21 +162,21 @@ class _HomeScreenState extends State<HomeScreen> {
         if (_selectedPacks.isNotEmpty && !_selectedPacks.contains(card.pack)) {
           return false;
         }
+        if (_selectedCardTypes.isNotEmpty &&
+            !_selectedCardTypes.contains(card.cardType)) {
+          return false;
+        }
+        if (_showWishlistOnly && !_effectiveWishlist(card.id)) return false;
+        if (_showOwnedOnly && !_effectiveOwned(card.id)) return false;
         return true;
       }).toList()
         ..sort((a, b) {
-          if (_sortBy == 'wishlist') {
-            final aW = _effectiveWishlist(a.id);
-            final bW = _effectiveWishlist(b.id);
-            if (aW && !bW) return -1;
-            if (!aW && bW) return 1;
-          } else if (_sortBy == 'owned') {
-            final aO = _effectiveOwned(a.id);
-            final bO = _effectiveOwned(b.id);
-            if (aO && !bO) return -1;
-            if (!aO && bO) return 1;
-          }
-          return a.id.compareTo(b.id);
+          final aPromo = a.set.startsWith('P-');
+          final bPromo = b.set.startsWith('P-');
+          if (aPromo != bPromo) return aPromo ? 1 : -1;
+          final setCmp = a.set.compareTo(b.set);
+          if (setCmp != 0) return _sortAscending ? setCmp : -setCmp;
+          return a.number.compareTo(b.number);
         });
     });
   }
@@ -180,6 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _selectedRarities.remove(value);
         case 'pack':
           _selectedPacks.remove(value);
+        case 'cardType':
+          _selectedCardTypes.remove(value);
       }
     });
     _applyFilters();
@@ -191,22 +203,41 @@ class _HomeScreenState extends State<HomeScreen> {
       availableSets: _availableSets,
       availableRarities: _availableRarities,
       availablePacks: _availablePacks,
+      availableCardTypes: _availableCardTypes,
       selectedSets: _selectedSets,
       selectedRarities: _selectedRarities,
       selectedPacks: _selectedPacks,
-      onApply: (sets, rarities, packs) {
+      selectedCardTypes: _selectedCardTypes,
+      onApply: (sets, rarities, packs, cardTypes) {
         setState(() {
           _selectedSets = sets;
           _selectedRarities = rarities;
           _selectedPacks = packs;
+          _selectedCardTypes = cardTypes;
         });
         _applyFilters();
       },
     );
   }
 
-  void _onSortChanged(String sort) {
-    setState(() => _sortBy = sort);
+  void _onSortAscendingChanged(bool ascending) {
+    setState(() => _sortAscending = ascending);
+    _applyFilters();
+  }
+
+  void _onToggleWishlist() {
+    setState(() {
+      _showWishlistOnly = !_showWishlistOnly;
+      if (_showWishlistOnly) _showOwnedOnly = false;
+    });
+    _applyFilters();
+  }
+
+  void _onToggleOwned() {
+    setState(() {
+      _showOwnedOnly = !_showOwnedOnly;
+      if (_showOwnedOnly) _showWishlistOnly = false;
+    });
     _applyFilters();
   }
 
@@ -323,6 +354,14 @@ class _HomeScreenState extends State<HomeScreen> {
       return _pendingConditions[cardId]!.length;
     }
     return _userCardService.getTradeConditionCount(cardId);
+  }
+
+  bool _isConditionTarget(String cardId) {
+    // Check pending conditions first
+    for (final conditions in _pendingConditions.values) {
+      if (conditions.containsKey(cardId)) return true;
+    }
+    return _userCardService.isConditionTarget(cardId);
   }
 
   Future<void> _openConditionsPicker(String cardId) async {
@@ -497,14 +536,19 @@ class _HomeScreenState extends State<HomeScreen> {
             return Column(
               children: [
                 SortSelector(
-                  currentSort: _sortBy,
-                  onSortChanged: _onSortChanged,
+                  sortAscending: _sortAscending,
+                  showWishlistOnly: _showWishlistOnly,
+                  showOwnedOnly: _showOwnedOnly,
+                  onSortAscendingChanged: _onSortAscendingChanged,
+                  onToggleWishlist: _onToggleWishlist,
+                  onToggleOwned: _onToggleOwned,
                 ),
                 if (_hasActiveFilters)
                   ActiveFilterChips(
                     selectedSets: _selectedSets,
                     selectedRarities: _selectedRarities,
                     selectedPacks: _selectedPacks,
+                    selectedCardTypes: _selectedCardTypes,
                     onRemoveFilter: _removeFilter,
                   ),
                 if (_isFiltering && displayCards.isNotEmpty)
@@ -556,20 +600,88 @@ class _HomeScreenState extends State<HomeScreen> {
                         : CardGrid(
                             cards: displayCards,
                             scrollController: _scrollController,
-                            mode: _currentMode,
-                            hasPendingChanges: _hasPendingChanges,
-                            isSaving: _isSaving,
-                            effectiveWishlist: _effectiveWishlist,
-                            effectiveOwned: _effectiveOwned,
-                            effectiveLanguages: _effectiveLanguages,
-                            onWishlistToggle: (cardId, langs) =>
-                                _togglePending(cardId, 'wishlist', langs),
-                            onOwnedToggle: (cardId, langs) =>
-                                _togglePending(cardId, 'owned', langs),
-                            onLanguagesChanged: _updatePendingLanguages,
-                            tradeConditionCount: _effectiveConditionCount,
-                            onConditionsPressed: _openConditionsPicker,
-                            onSubmit: _submitPendingEdits,
+                            bottomPadding: _currentMode == HomeMode.edit &&
+                                    _hasPendingChanges
+                                ? 72
+                                : 6,
+                            bottomOverlay: _currentMode == HomeMode.edit &&
+                                    (_hasPendingChanges || _isSaving)
+                                ? Positioned(
+                                    left: 16,
+                                    right: 16,
+                                    bottom: 12,
+                                    child: ElevatedButton(
+                                      onPressed: _isSaving
+                                          ? null
+                                          : _submitPendingEdits,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.black,
+                                        disabledBackgroundColor:
+                                            AppColors.primary,
+                                        disabledForegroundColor: Colors.black,
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      child: _isSaving
+                                          ? const SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation(
+                                                        Colors.black),
+                                              ),
+                                            )
+                                          : Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                PhosphorIcon(
+                                                    PhosphorIcons.check(),
+                                                    size: 18,
+                                                    color: Colors.black),
+                                                const SizedBox(width: 8),
+                                                const Text(
+                                                  'Save changes',
+                                                  style: TextStyle(
+                                                    color: Colors.black,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                    ),
+                                  )
+                                : null,
+                            tileBuilder: (card) => CardTile(
+                              card: card,
+                              mode: _currentMode,
+                              isPendingWishlist: _effectiveWishlist(card.id),
+                              isPendingOwned: _effectiveOwned(card.id),
+                              isConditionTarget: _isConditionTarget(card.id),
+                              pendingLanguages: _effectiveLanguages(card.id),
+                              onWishlistToggle: _isSaving
+                                  ? null
+                                  : (langs) => _togglePending(
+                                      card.id, 'wishlist', langs),
+                              onOwnedToggle: _isSaving
+                                  ? null
+                                  : (langs) =>
+                                      _togglePending(card.id, 'owned', langs),
+                              onLanguagesChanged:
+                                  _isSaving ? null : _updatePendingLanguages,
+                              tradeConditionCount:
+                                  _effectiveConditionCount(card.id),
+                              onConditionsPressed: _isSaving
+                                  ? null
+                                  : () => _openConditionsPicker(card.id),
+                            ),
                           ),
                   ),
                 ),

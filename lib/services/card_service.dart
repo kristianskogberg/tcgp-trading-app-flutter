@@ -93,7 +93,9 @@ class CardService {
     // Fetch remaining batches in parallel
     // Estimate ~3 batches for ~3000 cards; fetch up to 5 to be safe
     final futures = <Future<List<dynamic>>>[];
-    for (int offset = _batchSize; offset < _batchSize * 5; offset += _batchSize) {
+    for (int offset = _batchSize;
+        offset < _batchSize * 5;
+        offset += _batchSize) {
       futures.add(
         _client
             .from('cards')
@@ -137,8 +139,9 @@ class CardService {
       return;
     }
 
-    final updatedCards =
-        updated.map((e) => PocketCard.fromJson(e as Map<String, dynamic>)).toList();
+    final updatedCards = updated
+        .map((e) => PocketCard.fromJson(e as Map<String, dynamic>))
+        .toList();
     final cardMap = <String, PocketCard>{};
     for (final c in _cards!) {
       cardMap[c.id] = c;
@@ -152,12 +155,14 @@ class CardService {
   }
 
   /// Persist current cards to SharedPreferences.
-  Future<void> _persistCache(SharedPreferences prefs, {List<dynamic>? rawData}) async {
+  Future<void> _persistCache(SharedPreferences prefs,
+      {List<dynamic>? rawData}) async {
     final data = rawData ?? _cards!.map((c) => c.toJson()).toList();
     await prefs.setString(_cacheKey, json.encode(data));
     _cachedAt ??= DateTime.now();
     await prefs.setInt(_cacheTimestampKey, _cachedAt!.millisecondsSinceEpoch);
-    await prefs.setString(_lastSyncKey, DateTime.now().toUtc().toIso8601String());
+    await prefs.setString(
+        _lastSyncKey, DateTime.now().toUtc().toIso8601String());
   }
 
   /// Load cards from SharedPreferences disk cache into memory.

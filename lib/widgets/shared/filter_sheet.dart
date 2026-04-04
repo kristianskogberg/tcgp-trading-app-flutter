@@ -4,21 +4,29 @@ import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
 
+import 'dart:developer' as developer;
+
 void openFilterSheet({
   required BuildContext context,
   required List<String> availableSets,
   required List<String> availableRarities,
   required List<String> availablePacks,
+  required List<String> availableCardTypes,
   required Set<String> selectedSets,
   required Set<String> selectedRarities,
   required Set<String> selectedPacks,
-  required void Function(
-          Set<String> sets, Set<String> rarities, Set<String> packs)
+  required Set<String> selectedCardTypes,
+  required void Function(Set<String> sets, Set<String> rarities,
+          Set<String> packs, Set<String> cardTypes)
       onApply,
+  Set<String>? lockedRarities,
 }) {
   var draftSets = Set<String>.from(selectedSets);
   var draftRarities = Set<String>.from(selectedRarities);
   var draftPacks = Set<String>.from(selectedPacks);
+  var draftCardTypes = Set<String>.from(selectedCardTypes);
+
+  developer.log("available card types: ${availableCardTypes.length}");
 
   showModalBottomSheet(
     context: context,
@@ -83,31 +91,33 @@ void openFilterSheet({
                               imageUrl: setImageUrl(option),
                               height: 20,
                               fit: BoxFit.contain,
-                              errorWidget: (context, url, error) =>
-                                  Text(option,
-                                      style: const TextStyle(
-                                          fontSize: 13, color: Colors.white70)),
+                              errorWidget: (context, url, error) => Text(option,
+                                  style: const TextStyle(
+                                      fontSize: 13, color: Colors.white70)),
                             ),
                           ),
                           const SizedBox(height: 16),
-                          _FilterSection(
-                            title: 'Rarity',
-                            options: availableRarities,
-                            selected: draftRarities,
-                            onToggle: (val) => setSheetState(() {
-                              draftRarities.contains(val)
-                                  ? draftRarities.remove(val)
-                                  : draftRarities.add(val);
-                            }),
-                            iconBuilder: (option) {
-                              final asset = getRarityAsset(option);
-                              if (asset == null) return null;
-                              return Image.asset(
-                                asset,
-                                height: 16,
-                              );
-                            },
-                          ),
+                          if (lockedRarities != null)
+                            _LockedRarityInfo(rarities: lockedRarities)
+                          else
+                            _FilterSection(
+                              title: 'Rarity',
+                              options: availableRarities,
+                              selected: draftRarities,
+                              onToggle: (val) => setSheetState(() {
+                                draftRarities.contains(val)
+                                    ? draftRarities.remove(val)
+                                    : draftRarities.add(val);
+                              }),
+                              iconBuilder: (option) {
+                                final asset = getRarityAsset(option);
+                                if (asset == null) return null;
+                                return Image.asset(
+                                  asset,
+                                  height: 16,
+                                );
+                              },
+                            ),
                           const SizedBox(height: 16),
                           _FilterSection(
                             title: 'Packs',
@@ -117,6 +127,17 @@ void openFilterSheet({
                               draftPacks.contains(val)
                                   ? draftPacks.remove(val)
                                   : draftPacks.add(val);
+                            }),
+                          ),
+                          const SizedBox(height: 16),
+                          _FilterSection(
+                            title: 'Card Types',
+                            options: availableCardTypes,
+                            selected: draftCardTypes,
+                            onToggle: (val) => setSheetState(() {
+                              draftCardTypes.contains(val)
+                                  ? draftCardTypes.remove(val)
+                                  : draftCardTypes.add(val);
                             }),
                           ),
                           const SizedBox(height: 80),
@@ -140,6 +161,7 @@ void openFilterSheet({
                                   draftSets.clear();
                                   draftRarities.clear();
                                   draftPacks.clear();
+                                  draftCardTypes.clear();
                                 });
                               },
                               style: OutlinedButton.styleFrom(
@@ -158,7 +180,8 @@ void openFilterSheet({
                           Expanded(
                             child: FilledButton(
                               onPressed: () {
-                                onApply(draftSets, draftRarities, draftPacks);
+                                onApply(draftSets, draftRarities, draftPacks,
+                                    draftCardTypes);
                                 Navigator.pop(context);
                               },
                               style: FilledButton.styleFrom(
@@ -240,6 +263,53 @@ class _FilterSection extends StatelessWidget {
               ),
             );
           }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _LockedRarityInfo extends StatelessWidget {
+  final Set<String> rarities;
+
+  const _LockedRarityInfo({required this.rarities});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Rarity',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.white70,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: rarities.map((rarity) {
+            final asset = getRarityAsset(rarity);
+            return Chip(
+              label: asset != null
+                  ? Image.asset(asset, height: 16)
+                  : Text(rarity),
+              backgroundColor: const Color(0xFF1E1E24),
+              labelStyle: const TextStyle(color: Colors.white38, fontSize: 13),
+              side: const BorderSide(color: Colors.white12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Rarity is locked to the listed card',
+          style: TextStyle(fontSize: 11, color: Colors.white38),
         ),
       ],
     );

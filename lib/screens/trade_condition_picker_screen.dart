@@ -1,14 +1,19 @@
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
-import 'package:tcgp_trading_app/utils/set_image_url.dart';
+import 'package:tcgp_trading_app/widgets/shared/active_filter_chips.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_grid.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_tile.dart';
+import 'package:tcgp_trading_app/widgets/shared/filter_sheet.dart';
+import 'package:tcgp_trading_app/widgets/shared/sort_selector.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 import 'package:tcgp_trading_app/widgets/shared/card_language_button.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_search_bar.dart';
 import 'package:tcgp_trading_app/widgets/shared/language_picker_sheet.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
@@ -39,6 +44,22 @@ class _TradeConditionPickerScreenState
   final ScrollController _selectedScrollController = ScrollController();
   Timer? _debounceTimer;
 
+  // Sort & filter
+  bool _sortAscending = false;
+  Set<String> _selectedSets = {};
+  Set<String> _selectedPacks = {};
+  Set<String> _selectedCardTypes = {};
+
+  // Available filter options (populated from card data)
+  List<String> _availableSets = [];
+  List<String> _availablePacks = [];
+  List<String> _availableCardTypes = [];
+
+  bool get _hasActiveFilters =>
+      _selectedSets.isNotEmpty ||
+      _selectedPacks.isNotEmpty ||
+      _selectedCardTypes.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
@@ -67,8 +88,21 @@ class _TradeConditionPickerScreenState
       // Exclude untradable cards
       if (isCardUntradable(card.rarity, card.pack)) return false;
       return true;
-    }).toList()
-      ..sort((a, b) => a.id.compareTo(b.id));
+    }).toList();
+
+    // Populate available filter options
+    final sets = <String>{};
+    final packs = <String>{};
+    final cardTypes = <String>{};
+    for (final card in _allCards) {
+      sets.add(card.set);
+      if (card.pack.isNotEmpty) packs.add(card.pack);
+      if (card.cardType.isNotEmpty) cardTypes.add(card.cardType);
+    }
+    _availableSets = sets.toList()..sort();
+    _availablePacks = packs.toList()..sort();
+    _availableCardTypes = cardTypes.toList()..sort();
+
     _applyFilter();
   }
 
@@ -82,14 +116,68 @@ class _TradeConditionPickerScreenState
   void _applyFilter() {
     final query = _searchController.text.toLowerCase();
     setState(() {
-      if (query.isEmpty) {
-        _filteredCards = List.from(_allCards);
-      } else {
-        _filteredCards = _allCards
-            .where((card) => card.name.toLowerCase().contains(query))
-            .toList();
+      _filteredCards = _allCards.where((card) {
+        if (query.isNotEmpty && !card.name.toLowerCase().contains(query)) {
+          return false;
+        }
+        if (_selectedSets.isNotEmpty && !_selectedSets.contains(card.set)) {
+          return false;
+        }
+        if (_selectedPacks.isNotEmpty && !_selectedPacks.contains(card.pack)) {
+          return false;
+        }
+        if (_selectedCardTypes.isNotEmpty &&
+            !_selectedCardTypes.contains(card.cardType)) {
+          return false;
+        }
+        return true;
+      }).toList()
+        ..sort((a, b) {
+          final aPromo = a.set.startsWith('P-');
+          final bPromo = b.set.startsWith('P-');
+          if (aPromo != bPromo) return aPromo ? 1 : -1;
+          final setCmp = a.set.compareTo(b.set);
+          if (setCmp != 0) return _sortAscending ? setCmp : -setCmp;
+          return a.number.compareTo(b.number);
+        });
+    });
+  }
+
+  void _removeFilter(String type, String value) {
+    setState(() {
+      switch (type) {
+        case 'set':
+          _selectedSets.remove(value);
+        case 'pack':
+          _selectedPacks.remove(value);
+        case 'cardType':
+          _selectedCardTypes.remove(value);
       }
     });
+    _applyFilter();
+  }
+
+  void _openFilterSheet() {
+    openFilterSheet(
+      context: context,
+      availableSets: _availableSets,
+      availableRarities: const [],
+      availablePacks: _availablePacks,
+      availableCardTypes: _availableCardTypes,
+      selectedSets: _selectedSets,
+      selectedRarities: const {},
+      selectedPacks: _selectedPacks,
+      selectedCardTypes: _selectedCardTypes,
+      lockedRarities: {widget.listedCard.rarity},
+      onApply: (sets, rarities, packs, cardTypes) {
+        setState(() {
+          _selectedSets = sets;
+          _selectedPacks = packs;
+          _selectedCardTypes = cardTypes;
+        });
+        _applyFilter();
+      },
+    );
   }
 
   void _toggleCard(String cardId) {
@@ -151,13 +239,6 @@ class _TradeConditionPickerScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Group cards by set
-    final grouped = <String, List<PocketCard>>{};
-    for (final card in _filteredCards) {
-      grouped.putIfAbsent(card.set, () => []).add(card);
-    }
-    final setOrder = grouped.keys.toList()..sort();
-
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -243,312 +324,161 @@ class _TradeConditionPickerScreenState
                 Expanded(
                   child: SizedBox(
                     height: 112,
-                    child: _selected.isEmpty
-                        ? const _DashedPlaceholderCard()
-                        : ListView.separated(
-                            controller: _selectedScrollController,
-                            scrollDirection: Axis.horizontal,
-                            itemCount: _selected.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(width: 8),
-                            itemBuilder: (context, index) {
-                              final cardId = _selected.keys.elementAt(index);
-                              final langs = _selected[cardId]!;
-                              final cardMap = CardService().getCardMap();
-                              final card = cardMap[cardId];
-                              if (card == null) {
-                                return const SizedBox.shrink();
-                              }
-                              return GestureDetector(
-                                onTap: () => _toggleCard(cardId),
-                                child: SizedBox(
-                                  width: 80,
-                                  height: 112,
-                                  child: Stack(
-                                    clipBehavior: Clip.none,
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: SizedBox(
-                                          width: 80,
-                                          height: 112,
-                                          child: OptimizedCardImage(
-                                            imageUrl: card.imageUrl,
-                                            isThumbnail: true,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        top: 0,
-                                        right: 0,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(4),
-                                          decoration: const BoxDecoration(
-                                            color: Colors.black54,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: PhosphorIcon(
-                                            PhosphorIcons.x(
-                                                PhosphorIconsStyle.bold),
-                                            size: 14,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      Positioned(
-                                        bottom: 0,
-                                        left: 0,
-                                        right: 0,
-                                        child: CardLanguageButton(
-                                          languages: langs,
-                                          color: AppColors.primary,
-                                          rounded: false,
-                                          onTap: () =>
-                                              _showLanguagePicker(cardId),
-                                        ),
-                                      ),
-                                    ],
+                    child: ListView.separated(
+                      controller: _selectedScrollController,
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _selected.length +
+                          (_selected.length < maxSelectedCards ? 1 : 0),
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        // Last item is the dashed placeholder
+                        if (index == _selected.length) {
+                          return const _DashedPlaceholderCard();
+                        }
+                        final cardId = _selected.keys.elementAt(index);
+                        final langs = _selected[cardId]!;
+                        final cardMap = CardService().getCardMap();
+                        final card = cardMap[cardId];
+                        if (card == null) {
+                          return const SizedBox.shrink();
+                        }
+                        return GestureDetector(
+                          onTap: () => _toggleCard(cardId),
+                          child: SizedBox(
+                            width: 80,
+                            height: 112,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: SizedBox(
+                                    width: 80,
+                                    height: 112,
+                                    child: OptimizedCardImage(
+                                      imageUrl: card.imageUrl,
+                                      isThumbnail: true,
+                                      fit: BoxFit.cover,
+                                    ),
                                   ),
                                 ),
-                              );
-                            },
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black54,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: PhosphorIcon(
+                                      PhosphorIcons.x(PhosphorIconsStyle.bold),
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: CardLanguageButton(
+                                    languages: langs,
+                                    color: AppColors.condition,
+                                    rounded: false,
+                                    onTap: () => _showLanguagePicker(cardId),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ],
             ),
           ),
 
-          // Search bar
+          // Search bar + filter button
           Padding(
-            padding: const EdgeInsets.fromLTRB(6, 10, 6, 4),
-            child: SizedBox(
-              height: 40,
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                keyboardType: TextInputType.text,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
-                decoration: InputDecoration(
-                  hintText: 'Search cards...',
-                  hintStyle:
-                      const TextStyle(color: Colors.white38, fontSize: 15),
-                  prefixIcon: PhosphorIcon(PhosphorIcons.magnifyingGlass(),
-                      color: Colors.white38, size: 20),
-                  suffixIcon: ListenableBuilder(
-                    listenable: _searchController,
-                    builder: (context, _) {
-                      if (_searchController.text.isEmpty) {
-                        return const SizedBox.shrink();
-                      }
-                      return IconButton(
-                        icon: PhosphorIcon(PhosphorIcons.x(),
-                            color: Colors.white54, size: 18),
-                        onPressed: () {
-                          _searchController.clear();
-                          _applyFilter();
-                        },
-                      );
+            padding: const EdgeInsets.fromLTRB(6, 10, 2, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: CardSearchBar(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    onClear: () {
+                      _searchController.clear();
+                      _applyFilter();
                     },
                   ),
-                  filled: true,
-                  fillColor: const Color(0xFF1E1E24),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
                 ),
-              ),
+                Stack(
+                  children: [
+                    IconButton(
+                      icon: PhosphorIcon(PhosphorIcons.faders()),
+                      onPressed: _openFilterSheet,
+                    ),
+                    if (_hasActiveFilters)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
           ),
+          // Sort selector
+          SortSelector(
+            sortAscending: _sortAscending,
+            showQuickFilters: false,
+            onSortAscendingChanged: (val) {
+              setState(() => _sortAscending = val);
+              _applyFilter();
+            },
+          ),
+          // Active filter chips
+          if (_hasActiveFilters)
+            ActiveFilterChips(
+              selectedSets: _selectedSets,
+              selectedRarities: const {},
+              selectedPacks: _selectedPacks,
+              selectedCardTypes: _selectedCardTypes,
+              onRemoveFilter: _removeFilter,
+            ),
           // Card grid
           Expanded(
-            child: _filteredCards.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        PhosphorIcon(PhosphorIcons.magnifyingGlassMinus(),
-                            size: 64, color: Colors.white24),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'No cards found',
-                          style: TextStyle(color: Colors.white38, fontSize: 16),
-                        ),
-                      ],
-                    ),
-                  )
-                : LayoutBuilder(
-                    builder: (context, constraints) {
-                      final crossAxisCount =
-                          (constraints.maxWidth ~/ 180).clamp(3, 4);
-                      final gridDelegate =
-                          SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: crossAxisCount,
-                        childAspectRatio: 367 / 512,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                      );
-
-                      return CustomScrollView(
-                        controller: _scrollController,
-                        slivers: [
-                          for (int i = 0; i < setOrder.length; i++) ...[
-                            SliverToBoxAdapter(
-                              child: _SetHeader(
-                                setId: setOrder[i],
-                                isFirst: i == 0,
-                              ),
-                            ),
-                            SliverPadding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 6),
-                              sliver: SliverGrid(
-                                gridDelegate: gridDelegate,
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                    final card = grouped[setOrder[i]]![index];
-                                    final isSelected =
-                                        _selected.containsKey(card.id);
-                                    return _PickerCardTile(
-                                      card: card,
-                                      isSelected: isSelected,
-                                      language: _selected[card.id],
-                                      onTap: () => _toggleCard(card.id),
-                                      onLanguageTap: isSelected
-                                          ? () => _showLanguagePicker(card.id)
-                                          : null,
-                                    );
-                                  },
-                                  childCount: grouped[setOrder[i]]!.length,
-                                ),
-                              ),
-                            ),
-                          ],
-                          const SliverPadding(
-                              padding: EdgeInsets.only(bottom: 16)),
-                        ],
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PickerCardTile extends StatelessWidget {
-  final PocketCard card;
-  final bool isSelected;
-  final Set<String>? language;
-  final VoidCallback onTap;
-  final VoidCallback? onLanguageTap;
-
-  const _PickerCardTile({
-    required this.card,
-    required this.isSelected,
-    this.language,
-    required this.onTap,
-    this.onLanguageTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: OptimizedCardImage(
-                imageUrl: card.imageUrl,
-                isThumbnail: true,
-                fit: BoxFit.cover,
-              ),
+            child: CardGrid(
+              cards: _filteredCards,
+              scrollController: _scrollController,
+              setHeaderImageHeight: 24,
+              bottomPadding: 16,
+              tileBuilder: (card) {
+                final isSelected = _selected.containsKey(card.id);
+                return CardTile(
+                  card: card,
+                  mode: HomeMode.picker,
+                  isPickerSelected: isSelected,
+                  pendingLanguages: _selected[card.id] ?? const {'ANY'},
+                  onPickerTap: () => _toggleCard(card.id),
+                  onPickerLanguageTap:
+                      isSelected ? () => _showLanguagePicker(card.id) : null,
+                );
+              },
             ),
           ),
-          if (isSelected) ...[
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: Colors.black.withAlpha(100),
-                  border: Border.all(color: AppColors.primary, width: 3),
-                ),
-              ),
-            ),
-            Positioned(
-              top: 4,
-              right: 4,
-              child: Container(
-                padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                child: PhosphorIcon(
-                  PhosphorIcons.check(PhosphorIconsStyle.bold),
-                  size: 12,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 3,
-              left: 3,
-              right: 3,
-              child: CardLanguageButton(
-                languages: language ?? {'ANY'},
-                color: AppColors.primary,
-                onTap: onLanguageTap,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _SetHeader extends StatelessWidget {
-  final String setId;
-  final bool isFirst;
-
-  const _SetHeader({required this.setId, required this.isFirst});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: isFirst ? 6 : 16,
-        bottom: 8,
-        left: 6,
-        right: 6,
-      ),
-      child: Row(
-        children: [
-          const Expanded(child: Divider()),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: CachedNetworkImage(
-              imageUrl: setImageUrl(setId),
-              height: 24,
-              fit: BoxFit.contain,
-              errorWidget: (context, url, error) => Text(
-                setId,
-                style: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-          const Expanded(child: Divider()),
         ],
       ),
     );

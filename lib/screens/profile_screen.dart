@@ -10,7 +10,7 @@ import 'package:tcgp_trading_app/utils/input_fields.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
-import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {

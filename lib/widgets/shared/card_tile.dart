@@ -15,6 +15,7 @@ class CardTile extends StatefulWidget {
   final HomeMode mode;
   final bool isPendingWishlist;
   final bool isPendingOwned;
+  final bool isConditionTarget;
   final Set<String> pendingLanguages;
   final void Function(Set<String> languages)? onWishlistToggle;
   final void Function(Set<String> languages)? onOwnedToggle;
@@ -23,12 +24,18 @@ class CardTile extends StatefulWidget {
   final VoidCallback? onConditionsPressed;
   final String? heroTag;
 
+  // Picker mode params
+  final bool isPickerSelected;
+  final VoidCallback? onPickerTap;
+  final VoidCallback? onPickerLanguageTap;
+
   const CardTile({
     super.key,
     required this.card,
     this.mode = HomeMode.browse,
     this.isPendingWishlist = false,
     this.isPendingOwned = false,
+    this.isConditionTarget = false,
     this.pendingLanguages = const {'ANY'},
     this.onWishlistToggle,
     this.onOwnedToggle,
@@ -36,6 +43,9 @@ class CardTile extends StatefulWidget {
     this.tradeConditionCount = 0,
     this.onConditionsPressed,
     this.heroTag,
+    this.isPickerSelected = false,
+    this.onPickerTap,
+    this.onPickerLanguageTap,
   });
 
   @override
@@ -102,6 +112,9 @@ class _CardTileState extends State<CardTile> {
     if (widget.mode == HomeMode.browse) {
       return _buildBrowseTile(context);
     }
+    if (widget.mode == HomeMode.picker) {
+      return _buildPickerTile(context);
+    }
     return _buildEditTile(context);
   }
 
@@ -135,8 +148,36 @@ class _CardTileState extends State<CardTile> {
     );
   }
 
+  Widget _buildStatusIcon(IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.8),
+        shape: BoxShape.circle,
+      ),
+      child: PhosphorIcon(icon, size: 14, color: color),
+    );
+  }
+
   Widget _buildBrowseTile(BuildContext context) {
-    final hasConditions = UserCardService().hasTradeConditions(widget.card.id);
+    final icons = <Widget>[];
+    if (widget.isPendingOwned) {
+      icons.add(_buildStatusIcon(
+        PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+        AppColors.secondary,
+      ));
+    } else if (widget.isPendingWishlist) {
+      icons.add(_buildStatusIcon(
+        PhosphorIcons.heartStraight(PhosphorIconsStyle.fill),
+        AppColors.primary,
+      ));
+    }
+    if (widget.isConditionTarget) {
+      icons.add(_buildStatusIcon(
+        PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.fill),
+        AppColors.condition,
+      ));
+    }
 
     return GestureDetector(
       onTap: () => _navigateToCard(context),
@@ -150,23 +191,68 @@ class _CardTileState extends State<CardTile> {
               child: _buildCardImage(),
             ),
           ),
-          if (hasConditions)
+          if (icons.isNotEmpty)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (int i = 0; i < icons.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 2),
+                    icons[i],
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPickerTile(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onPickerTap,
+      child: Stack(
+        children: [
+          Positioned.fill(child: _buildCardImage()),
+          if (widget.isPickerSelected) ...[
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.black.withAlpha(100),
+                  border: Border.all(color: AppColors.condition, width: 3),
+                ),
+              ),
+            ),
             Positioned(
               top: 4,
               right: 4,
               child: Container(
                 padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.8),
+                decoration: const BoxDecoration(
+                  color: AppColors.condition,
                   shape: BoxShape.circle,
                 ),
                 child: PhosphorIcon(
-                  PhosphorIcons.funnel(PhosphorIconsStyle.fill),
+                  PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.bold),
                   size: 12,
-                  color: AppColors.secondary,
+                  color: Colors.black,
                 ),
               ),
             ),
+            Positioned(
+              bottom: 3,
+              left: 3,
+              right: 3,
+              child: CardLanguageButton(
+                languages: _selectedLanguages,
+                color: AppColors.condition,
+                onTap: widget.onPickerLanguageTap,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -183,7 +269,7 @@ class _CardTileState extends State<CardTile> {
 
     final hasConditions = widget.tradeConditionCount > 0;
     final conditionsColor =
-        hasConditions ? AppColors.secondary : Colors.white38;
+        hasConditions ? AppColors.condition : Colors.white38;
 
     return Stack(
       children: [
@@ -201,6 +287,15 @@ class _CardTileState extends State<CardTile> {
                 color: Colors.black.withAlpha(80),
                 border: Border.all(color: chipColor, width: 2),
               ),
+            ),
+          ),
+        if (widget.isConditionTarget)
+          Positioned(
+            top: 4,
+            right: 4,
+            child: _buildStatusIcon(
+              PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.fill),
+              AppColors.condition,
             ),
           ),
         if (!untradable)

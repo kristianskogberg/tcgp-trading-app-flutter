@@ -13,7 +13,7 @@ import 'package:tcgp_trading_app/utils/activity_utils.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 import 'package:tcgp_trading_app/widgets/shared/trade_card_pair.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
-import 'package:tcgp_trading_app/widgets/home_screen/card_tile.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 import 'package:flutter/gestures.dart';
 
