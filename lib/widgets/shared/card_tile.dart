@@ -4,8 +4,9 @@ import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/screens/card_screen.dart';
-import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_badge.dart';
 import 'package:tcgp_trading_app/widgets/shared/card_language_button.dart';
 import 'package:tcgp_trading_app/widgets/shared/language_picker_sheet.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
@@ -148,34 +149,20 @@ class _CardTileState extends State<CardTile> {
     );
   }
 
-  Widget _buildStatusIcon(IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.8),
-        shape: BoxShape.circle,
-      ),
-      child: PhosphorIcon(icon, size: 14, color: color),
-    );
-  }
-
   Widget _buildBrowseTile(BuildContext context) {
     final icons = <Widget>[];
     if (widget.isPendingOwned) {
-      icons.add(_buildStatusIcon(
-        PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
-        AppColors.secondary,
-      ));
+      icons.add(const CardBadge(type: CardBadgeType.owned));
     } else if (widget.isPendingWishlist) {
-      icons.add(_buildStatusIcon(
-        PhosphorIcons.heartStraight(PhosphorIconsStyle.fill),
-        AppColors.primary,
-      ));
+      icons.add(const CardBadge(type: CardBadgeType.wishlist));
     }
     if (widget.isConditionTarget) {
-      icons.add(_buildStatusIcon(
-        PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.fill),
-        AppColors.condition,
+      icons.add(const CardBadge(type: CardBadgeType.conditionTarget));
+    }
+    if (widget.isPendingOwned && widget.tradeConditionCount > 0) {
+      icons.add(CardBadge(
+        type: CardBadgeType.listedWithConditions,
+        count: widget.tradeConditionCount,
       ));
     }
 
@@ -197,6 +184,7 @@ class _CardTileState extends State<CardTile> {
               right: 4,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   for (int i = 0; i < icons.length; i++) ...[
                     if (i > 0) const SizedBox(height: 2),
@@ -221,7 +209,8 @@ class _CardTileState extends State<CardTile> {
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  color: Colors.black.withAlpha(100),
+                  color: Colors.black
+                      .withOpacity(UIConstants.selectedCardOverlayOpacity),
                   border: Border.all(color: AppColors.condition, width: 3),
                 ),
               ),
@@ -229,18 +218,7 @@ class _CardTileState extends State<CardTile> {
             Positioned(
               top: 4,
               right: 4,
-              child: Container(
-                padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
-                  color: AppColors.condition,
-                  shape: BoxShape.circle,
-                ),
-                child: PhosphorIcon(
-                  PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.bold),
-                  size: 12,
-                  color: Colors.black,
-                ),
-              ),
+              child: const CardBadge(type: CardBadgeType.conditionTarget),
             ),
             Positioned(
               bottom: 3,
@@ -268,8 +246,7 @@ class _CardTileState extends State<CardTile> {
             : Colors.white38;
 
     final hasConditions = widget.tradeConditionCount > 0;
-    final conditionsColor =
-        hasConditions ? AppColors.condition : Colors.white38;
+    const conditionsColor = AppColors.condition;
 
     return Stack(
       children: [
@@ -284,18 +261,10 @@ class _CardTileState extends State<CardTile> {
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
-                color: Colors.black.withAlpha(80),
+                color: Colors.black.withOpacity(UIConstants
+                    .selectedCardOverlayOpacity), // selected card overlay opacity
                 border: Border.all(color: chipColor, width: 2),
               ),
-            ),
-          ),
-        if (widget.isConditionTarget)
-          Positioned(
-            top: 4,
-            right: 4,
-            child: _buildStatusIcon(
-              PhosphorIcons.magnifyingGlass(PhosphorIconsStyle.fill),
-              AppColors.condition,
             ),
           ),
         if (!untradable)
@@ -326,8 +295,8 @@ class _CardTileState extends State<CardTile> {
                                   padding: const EdgeInsets.symmetric(
                                       vertical: 6, horizontal: 6),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF2A2A30)
-                                        .withOpacity(0.9),
+                                    color: Colors.black
+                                        .withOpacity(UIConstants.buttonOpacity),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
@@ -344,19 +313,27 @@ class _CardTileState extends State<CardTile> {
                                       ),
                                       const SizedBox(width: 3),
                                       if (hasConditions) ...[
-                                        Text(
-                                          '${widget.tradeConditionCount}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: conditionsColor,
+                                        Flexible(
+                                          child: Text(
+                                            '${widget.tradeConditionCount}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: conditionsColor,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
                                           ),
                                         ),
                                       ] else ...[
-                                        const Text(
-                                          'Any',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.white38,
+                                        Flexible(
+                                          child: Text(
+                                            'Any',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: conditionsColor,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
                                           ),
                                         ),
                                       ],
@@ -447,7 +424,7 @@ class _ActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFF2A2A30).withOpacity(0.9),
+          color: Colors.black.withOpacity(UIConstants.buttonOpacity),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Column(

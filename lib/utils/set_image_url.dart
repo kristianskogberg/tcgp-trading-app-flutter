@@ -3,6 +3,9 @@ const _overrides = <String, String>{
   'P-B': 'https://www.serebii.net/tcgpocket/logo/promo-b.png',
   'P-C': 'https://www.serebii.net/tcgpocket/logo/promo-c.png',
   'P-D': 'https://www.serebii.net/tcgpocket/logo/promo-d.png',
+  'P-E': 'https://www.serebii.net/tcgpocket/logo/promo-e.png',
+  'P-F': 'https://www.serebii.net/tcgpocket/logo/promo-f.png',
+  'P-G': 'https://www.serebii.net/tcgpocket/logo/promo-g.png',
 };
 
 String setImageUrl(String setId) =>

@@ -1,17 +1,16 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
 
 class SetHeader extends StatelessWidget {
   final String setId;
   final bool isFirst;
-  final double imageHeight;
 
   const SetHeader({
     super.key,
     required this.setId,
     required this.isFirst,
-    this.imageHeight = 36,
   });
 
   @override
@@ -30,7 +29,7 @@ class SetHeader extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: CachedNetworkImage(
               imageUrl: setImageUrl(setId),
-              height: imageHeight,
+              height: UIConstants.setImageHeight,
               fit: BoxFit.contain,
               errorWidget: (context, url, error) => Text(
                 setId,

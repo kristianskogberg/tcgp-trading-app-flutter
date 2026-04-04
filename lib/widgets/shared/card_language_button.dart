@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 
 class CardLanguageButton extends StatelessWidget {
   final Set<String> languages;
@@ -31,7 +32,7 @@ class CardLanguageButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFF2A2A30).withAlpha(230),
+          color: Colors.black.withOpacity(UIConstants.buttonOpacity),
           borderRadius: rounded ? BorderRadius.circular(8) : BorderRadius.zero,
         ),
         child: Row(

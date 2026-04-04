@@ -71,7 +71,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                       label: Text(type.label),
                       selected: isSelected,
                       onSelected: (_) => setState(() => _selectedType = type),
-                      selectedColor: AppColors.primary.withAlpha(51),
+                      selectedColor: AppColors.primary.withOpacity(0.1),
                       checkmarkColor: AppColors.primary,
                       backgroundColor: const Color(0xFF2A2A32),
                       labelStyle: TextStyle(

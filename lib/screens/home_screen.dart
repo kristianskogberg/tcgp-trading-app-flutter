@@ -395,7 +395,6 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isSaving = true);
     final additions = Map<String, PendingCardEdit>.from(_pendingEdits);
     final removals = Set<String>.from(_pendingRemovals);
-    int successCount = 0;
     int failCount = 0;
 
     // Capture languages to remove BEFORE mutating the cache
@@ -420,7 +419,6 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final lang in removalLangs[key]!) {
         try {
           await _userCardService.removeCard(cardId, type, lang);
-          successCount++;
         } catch (e) {
           failCount++;
         }
@@ -431,7 +429,6 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final lang in edit.languages) {
         try {
           await _userCardService.addCard(edit.cardId, edit.type, lang);
-          successCount++;
         } catch (e) {
           failCount++;
         }
@@ -442,7 +439,6 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final entry in Map.from(_pendingConditions).entries) {
       try {
         await _userCardService.setTradeConditions(entry.key, entry.value);
-        successCount++;
       } catch (e) {
         failCount++;
       }

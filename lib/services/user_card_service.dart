@@ -39,7 +39,6 @@ class UserCardService extends ChangeNotifier {
   Map<String, Map<String, Set<String>>> _tradeConditions = {};
 
   bool _loaded = false;
-  String? _cachedUserId;
   static const _cacheKey = 'cached_user_cards_v2';
   static const _cacheUserKey = 'cached_user_cards_user_id';
   static const _conditionsCacheKey = 'cached_trade_conditions_v2';
@@ -88,7 +87,6 @@ class UserCardService extends ChangeNotifier {
         final data = jsonDecode(raw) as Map<String, dynamic>;
         _wishlist = _parseEntries(data['wishlist'] as List);
         _owned = _parseEntries(data['owned'] as List);
-        _cachedUserId = cachedUserId;
       } catch (_) {}
     }
     final conditionsRaw = prefs.getString(_conditionsCacheKey);
@@ -403,7 +401,6 @@ class UserCardService extends ChangeNotifier {
     _owned = {};
     _tradeConditions = {};
     _loaded = false;
-    _cachedUserId = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_cacheKey);
     await prefs.remove(_cacheUserKey);

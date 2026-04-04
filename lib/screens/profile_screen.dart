@@ -3,15 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
-import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/widgets/shared/card_tile.dart';
-import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback? onProfileSaved;
@@ -559,7 +558,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.8),
+                        color:
+                            Colors.black.withOpacity(UIConstants.buttonOpacity),
                         borderRadius: BorderRadius.circular(2),
                       ),
                       child: Text(
@@ -579,7 +579,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                     padding:
                         const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.8),
+                      color:
+                          Colors.black.withOpacity(UIConstants.buttonOpacity),
                       borderRadius: BorderRadius.circular(2),
                     ),
                     child: CachedNetworkImage(

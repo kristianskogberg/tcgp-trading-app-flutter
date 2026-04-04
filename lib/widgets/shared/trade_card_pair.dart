@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
@@ -133,7 +134,7 @@ class TradeCardPair extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.8),
+                    color: Colors.black.withOpacity(UIConstants.buttonOpacity),
                     borderRadius: BorderRadius.circular(2),
                   ),
                   child: Text(
@@ -152,7 +153,7 @@ class TradeCardPair extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.8),
+                  color: Colors.black.withOpacity(UIConstants.buttonOpacity),
                   borderRadius: BorderRadius.circular(2),
                 ),
                 child: CachedNetworkImage(

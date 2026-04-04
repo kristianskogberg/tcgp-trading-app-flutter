@@ -9,6 +9,7 @@ class CardGrid extends StatelessWidget {
   final Widget Function(PocketCard card) tileBuilder;
   final double bottomPadding;
   final Widget? bottomOverlay;
+  final double setHeaderImageHeight;
 
   const CardGrid({
     super.key,
@@ -17,6 +18,7 @@ class CardGrid extends StatelessWidget {
     required this.tileBuilder,
     this.bottomPadding = 6,
     this.bottomOverlay,
+    this.setHeaderImageHeight = 36,
   });
 
   @override

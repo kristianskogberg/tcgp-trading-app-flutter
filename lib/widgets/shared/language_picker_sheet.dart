@@ -85,7 +85,7 @@ class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
                   label: const Text('Any'),
                   selected: _isAnySelected,
                   onSelected: (_) => _selectAny(),
-                  selectedColor: AppColors.primary.withAlpha(51),
+                  selectedColor: AppColors.primary.withOpacity(0.2),
                   checkmarkColor: AppColors.primary,
                   labelStyle: TextStyle(
                     color: _isAnySelected ? AppColors.primary : Colors.white70,
@@ -103,7 +103,7 @@ class _LanguagePickerSheetState extends State<LanguagePickerSheet> {
                   label: Text(entry.value),
                   selected: isSelected,
                   onSelected: (_) => _toggleLanguage(entry.key),
-                  selectedColor: AppColors.primary.withAlpha(51),
+                  selectedColor: AppColors.primary.withOpacity(0.2),
                   checkmarkColor: AppColors.primary,
                   labelStyle: TextStyle(
                     color: isSelected ? AppColors.primary : Colors.white70,

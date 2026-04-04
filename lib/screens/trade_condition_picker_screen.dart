@@ -7,6 +7,7 @@ import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/widgets/shared/active_filter_chips.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_badge.dart';
 import 'package:tcgp_trading_app/widgets/shared/card_grid.dart';
 import 'package:tcgp_trading_app/widgets/shared/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/shared/filter_sheet.dart';
@@ -362,21 +363,10 @@ class _TradeConditionPickerScreenState
                                     ),
                                   ),
                                 ),
-                                Positioned(
+                                const Positioned(
                                   top: 0,
                                   right: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Colors.black54,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: PhosphorIcon(
-                                      PhosphorIcons.x(PhosphorIconsStyle.bold),
-                                      size: 14,
-                                      color: Colors.white,
-                                    ),
-                                  ),
+                                  child: CardBadge(type: CardBadgeType.remove),
                                 ),
                                 Positioned(
                                   bottom: 0,
@@ -463,7 +453,6 @@ class _TradeConditionPickerScreenState
             child: CardGrid(
               cards: _filteredCards,
               scrollController: _scrollController,
-              setHeaderImageHeight: 24,
               bottomPadding: 16,
               tileBuilder: (card) {
                 final isSelected = _selected.containsKey(card.id);

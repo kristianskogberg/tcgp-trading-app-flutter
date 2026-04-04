@@ -10,6 +10,8 @@ import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/user_card_service.dart';
 import 'package:tcgp_trading_app/services/language_filter_service.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
+import 'package:tcgp_trading_app/widgets/shared/card_badge.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 import 'package:tcgp_trading_app/widgets/shared/trade_card_pair.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
@@ -47,7 +49,9 @@ class _TradeSectionState extends State<TradeSection>
   Set<String> _selectedLanguages = {...languages.keys};
   Set<String> _appliedLanguages = {...languages.keys};
 
-  bool get _isFullArtSupporter => widget.card.fullart;
+  bool get _isFullArtSupporter =>
+      widget.card.rarity == '☆☆' &&
+      widget.card.cardType.toLowerCase() == 'supporter';
 
   /// Check if the current user has a pending trade proposal for this match.
   bool _hasProposal(PocketCard matchCard, TradeMatch tradeMatch) {
@@ -249,10 +253,7 @@ class _TradeSectionState extends State<TradeSection>
                                     .hasTradeConditions(card.id))
                                   TextSpan(
                                     text:
-                                        'Only accepting ${_userCardService.getTradeConditionCount(card.id)} specific ${_userCardService.getTradeConditionCount(card.id) == 1 ? 'card' : 'cards'}. ',
-                                    style: const TextStyle(
-                                      color: AppColors.secondary,
-                                    ),
+                                        'Accepting ${_userCardService.getTradeConditionCount(card.id)} specific ${_userCardService.getTradeConditionCount(card.id) == 1 ? 'card' : 'cards'}. ',
                                   ),
                                 TextSpan(
                                   text: 'Edit',
@@ -595,7 +596,8 @@ class _TradeSectionState extends State<TradeSection>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 4, vertical: 1),
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.8),
+                                color: Colors.black
+                                    .withOpacity(UIConstants.buttonOpacity),
                                 borderRadius: BorderRadius.circular(2),
                               ),
                               child: Text(
@@ -619,42 +621,21 @@ class _TradeSectionState extends State<TradeSection>
                             Positioned(
                               bottom: 4,
                               right: 4,
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.8),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: PhosphorIcon(
-                                  _userCardService.isOwned(
-                                    matchCard.id,
-                                    language: tradeMatch.language,
-                                  )
-                                      ? PhosphorIcons.checkCircle(
-                                          PhosphorIconsStyle.fill)
-                                      : PhosphorIcons.heartStraight(
-                                          PhosphorIconsStyle.fill),
-                                  size: 14,
-                                  color: AppColors.primary,
-                                ),
+                              child: CardBadge(
+                                type: _userCardService.isOwned(
+                                  matchCard.id,
+                                  language: tradeMatch.language,
+                                )
+                                    ? CardBadgeType.matchOwned
+                                    : CardBadgeType.matchWishlisted,
                               ),
                             ),
                           if (_hasProposal(matchCard, tradeMatch))
-                            Positioned(
+                            const Positioned(
                               bottom: 4,
                               left: 4,
-                              child: Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.8),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: PhosphorIcon(
-                                  PhosphorIcons.arrowsLeftRight(),
-                                  size: 14,
-                                  color: AppColors.primary,
-                                ),
-                              ),
+                              child:
+                                  CardBadge(type: CardBadgeType.pendingTrade),
                             ),
                         ],
                       ),
@@ -808,7 +789,8 @@ class _TradeSectionState extends State<TradeSection>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 4, vertical: 1),
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.8),
+                                color: Colors.black
+                                    .withOpacity(UIConstants.buttonOpacity),
                                 borderRadius: BorderRadius.circular(2),
                               ),
                               child: Text(
@@ -1103,8 +1085,6 @@ class _EditCardDialogState extends State<_EditCardDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final showConditions = widget.type == 'owned' && _owned;
-
     return AppDialog(
       centerContent: true,
       title: dialogTitle,
@@ -1149,69 +1129,6 @@ class _EditCardDialogState extends State<_EditCardDialog> {
               },
             ),
           ),
-          if (showConditions)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: GestureDetector(
-                onTap: _openConditionsPicker,
-                child: Container(
-                  width: double.infinity,
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF141418),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _conditions.isNotEmpty
-                          ? AppColors.secondary.withAlpha(80)
-                          : Colors.white12,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      PhosphorIcon(
-                        _conditions.isNotEmpty
-                            ? PhosphorIcons.funnel(PhosphorIconsStyle.fill)
-                            : PhosphorIcons.funnel(),
-                        size: 16,
-                        color: _conditions.isNotEmpty
-                            ? AppColors.secondary
-                            : Colors.white38,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _conditions.isNotEmpty
-                              ? 'Accepting ${_conditions.length} specific ${_conditions.length == 1 ? 'card' : 'cards'}'
-                              : 'Set trade conditions',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: _conditions.isNotEmpty
-                                ? AppColors.secondary
-                                : Colors.white54,
-                          ),
-                        ),
-                      ),
-                      if (_conditions.isNotEmpty)
-                        GestureDetector(
-                          onTap: () => setState(() => _conditions.clear()),
-                          child: PhosphorIcon(
-                            PhosphorIcons.x(),
-                            size: 16,
-                            color: Colors.white38,
-                          ),
-                        )
-                      else
-                        PhosphorIcon(
-                          PhosphorIcons.caretRight(),
-                          size: 14,
-                          color: Colors.white38,
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           if (widget.warningText != null)
             Padding(
               padding: const EdgeInsets.only(top: 12),

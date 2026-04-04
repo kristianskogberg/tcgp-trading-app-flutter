@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
 class CardThumbnail extends StatelessWidget {
@@ -20,8 +21,8 @@ class CardThumbnail extends StatelessWidget {
               imageUrl: card.imageUrl,
               isThumbnail: true,
               fit: BoxFit.cover,
-              errorWidget: (context, url, error) =>
-                  Center(child: PhosphorIcon(PhosphorIcons.imageBroken(), size: 20)),
+              errorWidget: (context, url, error) => Center(
+                  child: PhosphorIcon(PhosphorIcons.imageBroken(), size: 20)),
             ),
           ),
         ),
@@ -31,7 +32,7 @@ class CardThumbnail extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.8),
+              color: Colors.black.withOpacity(UIConstants.buttonOpacity),
               borderRadius: BorderRadius.circular(0),
             ),
             child: Text(

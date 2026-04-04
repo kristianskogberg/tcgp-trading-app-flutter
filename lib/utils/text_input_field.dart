@@ -92,6 +92,11 @@ class _TextInputFieldState extends State<TextInputField> {
                 preferBelow: false,
                 triggerMode: TooltipTriggerMode.tap,
                 showDuration: const Duration(seconds: 6),
+                decoration: BoxDecoration(
+                  color: Colors.grey[900],
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                textStyle: const TextStyle(color: Colors.white),
                 child: Icon(
                   PhosphorIcons.info(),
                   size: 16,
@@ -128,7 +133,9 @@ class _TextInputFieldState extends State<TextInputField> {
             suffixIcon: widget.obscureText
                 ? IconButton(
                     icon: Icon(
-                      _obscured ? PhosphorIcons.eyeSlash() : PhosphorIcons.eye(),
+                      _obscured
+                          ? PhosphorIcons.eyeSlash()
+                          : PhosphorIcons.eye(),
                       size: 20,
                       color: hasError
                           ? errorColor

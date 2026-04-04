@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/utils/set_image_url.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
@@ -12,19 +13,10 @@ class CardDetailHeader extends StatelessWidget {
 
   const CardDetailHeader({super.key, required this.card, this.heroTag});
 
-  Widget _buildTradeCost(String rarity, String pack) {
+  String _tradeCostMessage(String rarity, String pack) {
     final cost = getTradeCost(rarity, pack: pack);
-    if (cost == null) {
-      return const Text('—', style: TextStyle(color: Colors.white));
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(cost, style: const TextStyle(color: Colors.white)),
-        const SizedBox(width: 4),
-        Image.asset('images/shinedust.png', height: 18, fit: BoxFit.contain),
-      ],
-    );
+    if (cost == null) return 'Not tradeable';
+    return 'Requires $cost Shinedust to trade';
   }
 
   @override
@@ -65,13 +57,19 @@ class CardDetailHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _InfoRow(
+                  label: 'Card type',
+                  child: Text(card.cardType,
+                      style: const TextStyle(color: Colors.white)),
+                ),
+                const SizedBox(height: 12),
+                _InfoRow(
                   label: 'Set',
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       CachedNetworkImage(
                         imageUrl: setImageUrl(card.set),
-                        height: 30,
+                        height: UIConstants.setImageHeight,
                         fit: BoxFit.contain,
                         errorWidget: (context, url, error) => Text(card.set),
                       ),
@@ -81,25 +79,42 @@ class CardDetailHeader extends StatelessWidget {
                 const SizedBox(height: 12),
                 _InfoRow(
                   label: 'Rarity',
-                  child: getRarityAsset(card.rarity) != null
-                      ? Image.asset(
-                          getRarityAsset(card.rarity)!,
-                          height: 20,
-                          fit: BoxFit.contain,
-                        )
-                      : Text(card.rarity,
-                          style: const TextStyle(color: Colors.white)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      getRarityAsset(card.rarity) != null
+                          ? Image.asset(
+                              getRarityAsset(card.rarity)!,
+                              height: 20,
+                              fit: BoxFit.contain,
+                            )
+                          : Text(card.rarity,
+                              style: const TextStyle(color: Colors.white)),
+                      const SizedBox(width: 6),
+                      Tooltip(
+                        message: _tradeCostMessage(card.rarity, card.pack),
+                        preferBelow: false,
+                        triggerMode: TooltipTriggerMode.tap,
+                        showDuration: const Duration(seconds: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[900],
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        textStyle: const TextStyle(color: Colors.white),
+                        child: PhosphorIcon(
+                          PhosphorIcons.info(),
+                          size: 14,
+                          color: Colors.white54,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _InfoRow(
                   label: 'Pack',
                   child: Text(card.pack,
                       style: const TextStyle(color: Colors.white)),
-                ),
-                const SizedBox(height: 12),
-                _InfoRow(
-                  label: 'Trade cost',
-                  child: _buildTradeCost(card.rarity, card.pack),
                 ),
               ],
             ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
-import 'package:tcgp_trading_app/utils/time_format.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
 
 class ChatTradeResultBubble extends StatelessWidget {

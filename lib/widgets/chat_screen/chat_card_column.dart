@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
+import 'package:tcgp_trading_app/utils/constants.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 
 class ChatCardColumn extends StatelessWidget {
@@ -62,7 +63,7 @@ class ChatCardColumn extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.8),
+                    color: Colors.black.withOpacity(UIConstants.buttonOpacity),
                     borderRadius: BorderRadius.circular(2),
                   ),
                   child: Text(

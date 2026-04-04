@@ -66,23 +66,39 @@ class SortSelector extends StatelessWidget {
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             itemBuilder: (_) => [
               PopupMenuItem(
+                height: 44,
                 value: false,
-                child: Text(
-                  'Newest set',
-                  style: TextStyle(
-                    color: !sortAscending ? AppColors.primary : Colors.white70,
-                    fontSize: 13,
-                  ),
+                child: Row(
+                  children: [
+                    PhosphorIcon(PhosphorIcons.sortDescending(),
+                        size: 20, color: Colors.white70),
+                    SizedBox(width: 12),
+                    Text(
+                      'Newest set',
+                      style: TextStyle(
+                        color:
+                            !sortAscending ? AppColors.primary : Colors.white70,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               PopupMenuItem(
+                height: 44,
                 value: true,
-                child: Text(
-                  'Oldest set',
-                  style: TextStyle(
-                    color: sortAscending ? AppColors.primary : Colors.white70,
-                    fontSize: 13,
-                  ),
+                child: Row(
+                  children: [
+                    PhosphorIcon(PhosphorIcons.sortAscending(),
+                        size: 20, color: Colors.white70),
+                    SizedBox(width: 12),
+                    Text(
+                      'Oldest set',
+                      style: TextStyle(
+                        color:
+                            sortAscending ? AppColors.primary : Colors.white70,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -127,7 +143,8 @@ class SortSelector extends StatelessWidget {
                   PhosphorIcon(
                     PhosphorIcons.heartStraight(),
                     size: 12,
-                    color: showWishlistOnly ? AppColors.primary : Colors.white54,
+                    color:
+                        showWishlistOnly ? AppColors.primary : Colors.white54,
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -160,7 +177,8 @@ class SortSelector extends StatelessWidget {
                   Text(
                     'Listings',
                     style: TextStyle(
-                      color: showOwnedOnly ? AppColors.secondary : Colors.white54,
+                      color:
+                          showOwnedOnly ? AppColors.secondary : Colors.white54,
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
                     ),
