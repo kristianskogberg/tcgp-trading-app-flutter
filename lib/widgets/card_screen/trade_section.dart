@@ -21,23 +21,19 @@ import 'package:flutter/gestures.dart';
 
 class TradeSection extends StatefulWidget {
   final PocketCard card;
+  final int activeTab;
 
-  const TradeSection({super.key, required this.card});
+  const TradeSection({super.key, required this.card, required this.activeTab});
 
   @override
   TradeSectionState createState() => TradeSectionState();
 }
 
-class TradeSectionState extends State<TradeSection>
-    with SingleTickerProviderStateMixin {
+class TradeSectionState extends State<TradeSection> {
   static const _pageSize = 30;
 
-  late final TabController _tabController;
-  final activeColor = AppColors.primary;
-  final inactiveColor = Colors.white60;
   final _userCardService = UserCardService();
   final _langFilterService = LanguageFilterService();
-  int _activeTab = 0;
   bool _isWishlisted = false;
   bool _isOwned = false;
   List<(PocketCard, TradeMatch)>? _wantMatches;
@@ -64,7 +60,7 @@ class TradeSectionState extends State<TradeSection>
   bool _hasProposal(PocketCard matchCard, TradeMatch tradeMatch) {
     final String offerCardId;
     final String receiveCardId;
-    if (_activeTab == 0) {
+    if (widget.activeTab == 0) {
       // "I want this card" → user offers matchCard, receives contextCard
       offerCardId = matchCard.id;
       receiveCardId = widget.card.id;
@@ -80,12 +76,6 @@ class TradeSectionState extends State<TradeSection>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        setState(() => _activeTab = _tabController.index);
-      }
-    });
     _loadLanguageFilter();
     _loadState();
   }
@@ -118,71 +108,12 @@ class TradeSectionState extends State<TradeSection>
   }
 
   @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final card = widget.card;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          child: TabBar(
-            controller: _tabController,
-            indicator: UnderlineTabIndicator(
-              borderSide: BorderSide(
-                color:
-                    _activeTab == 0 ? AppColors.primary : AppColors.secondary,
-                width: 2,
-              ),
-            ),
-            indicatorSize: TabBarIndicatorSize.tab,
-            dividerHeight: 0,
-            labelColor:
-                _activeTab == 0 ? AppColors.primary : AppColors.secondary,
-            unselectedLabelColor: Colors.white60,
-            labelStyle: const TextStyle(
-              fontWeight: FontWeight.w400,
-              fontSize: 14,
-            ),
-            unselectedLabelStyle: const TextStyle(
-              fontWeight: FontWeight.w400,
-              fontSize: 14,
-            ),
-            splashFactory: NoSplash.splashFactory,
-            overlayColor: WidgetStateProperty.all(Colors.transparent),
-            tabs: [
-              Tab(
-                height: 36,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    PhosphorIcon(PhosphorIcons.heartStraight(), size: 16),
-                    SizedBox(width: 6),
-                    Text('I want this card'),
-                  ],
-                ),
-              ),
-              Tab(
-                height: 36,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    PhosphorIcon(PhosphorIcons.checkCircle(), size: 16),
-                    SizedBox(width: 6),
-                    Text('I have this card'),
-                  ],
-                ),
-              )
-            ],
-          ),
-        ),
         Container(
           width: double.infinity,
           margin: const EdgeInsets.fromLTRB(6, 10, 6, 4),
@@ -200,7 +131,7 @@ class TradeSectionState extends State<TradeSection>
                 child: Text.rich(
                   TextSpan(
                     style: const TextStyle(fontSize: 12, color: Colors.white54),
-                    children: _activeTab == 0
+                    children: widget.activeTab == 0
                         ? (_isWishlisted
                             ? [
                                 const TextSpan(text: 'You have wishlisted '),
@@ -321,7 +252,7 @@ class TradeSectionState extends State<TradeSection>
                 child: Text.rich(
                   TextSpan(
                     style: const TextStyle(fontSize: 12, color: Colors.white54),
-                    children: _activeTab == 0
+                    children: widget.activeTab == 0
                         ? [
                             const TextSpan(text: 'If you want '),
                             TextSpan(
@@ -491,7 +422,7 @@ class TradeSectionState extends State<TradeSection>
           child: Row(
             children: [
               Text(
-                _activeTab == 0 ? 'My listings only' : 'My wishlist only',
+                widget.activeTab == 0 ? 'My listings only' : 'My wishlist only',
                 style: const TextStyle(fontSize: 13, color: Colors.white70),
               ),
               const SizedBox(width: 6),
@@ -499,10 +430,10 @@ class TradeSectionState extends State<TradeSection>
                 height: 32,
                 child: FittedBox(
                   child: Switch(
-                    value: _activeTab == 0 ? _myListedOnly : _myWishlistedOnly,
+                    value: widget.activeTab == 0 ? _myListedOnly : _myWishlistedOnly,
                     onChanged: (value) {
                       setState(() {
-                        if (_activeTab == 0) {
+                        if (widget.activeTab == 0) {
                           _myListedOnly = value;
                         } else {
                           _myWishlistedOnly = value;
@@ -526,8 +457,8 @@ class TradeSectionState extends State<TradeSection>
   }
 
   Widget _buildMatchGrid() {
-    var matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
-    final hasMore = _activeTab == 0 ? _wantHasMore : _ownedHasMore;
+    var matches = widget.activeTab == 0 ? _wantMatches : _ownedMatches;
+    final hasMore = widget.activeTab == 0 ? _wantHasMore : _ownedHasMore;
 
     if (_loadingMatches) {
       return const Padding(
@@ -539,7 +470,7 @@ class TradeSectionState extends State<TradeSection>
     if (matches == null) return const SizedBox.shrink();
 
     // Apply trade conditions filter on "I have this card" tab
-    if (_activeTab == 1 &&
+    if (widget.activeTab == 1 &&
         _userCardService.hasTradeConditions(widget.card.id)) {
       final conditions = _userCardService.getTradeConditions(widget.card.id);
       matches = matches.where((m) => conditions.containsKey(m.$1.id)).toList();
@@ -547,12 +478,12 @@ class TradeSectionState extends State<TradeSection>
 
     // Apply client-side filter: "My listings only" / "My wishlist only"
     // Uses language-aware check (same logic as the checkmark icon overlay).
-    if (_activeTab == 0 && _myListedOnly) {
+    if (widget.activeTab == 0 && _myListedOnly) {
       matches = matches
           .where(
               (m) => _userCardService.isOwned(m.$1.id, language: m.$2.language))
           .toList();
-    } else if (_activeTab == 1 && _myWishlistedOnly) {
+    } else if (widget.activeTab == 1 && _myWishlistedOnly) {
       matches = matches
           .where((m) =>
               _userCardService.isWishlisted(m.$1.id, language: m.$2.language))
@@ -682,7 +613,7 @@ class TradeSectionState extends State<TradeSection>
     final String receiveLanguage;
     final String offerCardId;
     final String receiveCardId;
-    if (_activeTab == 0) {
+    if (widget.activeTab == 0) {
       // "I want this card" tab: offerCard=matchCard, receiveCard=contextCard
       offerCardId = matchCard.id;
       receiveCardId = widget.card.id;
@@ -707,7 +638,7 @@ class TradeSectionState extends State<TradeSection>
           contextCard: widget.card,
           matchCard: matchCard,
           tradeMatch: tradeMatch,
-          isWantTab: _activeTab == 0,
+          isWantTab: widget.activeTab == 0,
           offerLanguage: offerLanguage,
           receiveLanguage: receiveLanguage,
         ),
@@ -732,7 +663,7 @@ class TradeSectionState extends State<TradeSection>
       return;
     }
 
-    final needsWarning = _activeTab == 0
+    final needsWarning = widget.activeTab == 0
         ? !_userCardService.isOwned(
             matchCard.id,
             language: tradeMatch.language,
@@ -747,7 +678,7 @@ class TradeSectionState extends State<TradeSection>
     final PocketCard receiveCard;
     final String sendLanguage;
     final String receiveLanguage;
-    if (_activeTab == 0) {
+    if (widget.activeTab == 0) {
       // "I want this card" → user sends matchCard, receives contextCard
       sendCard = matchCard;
       receiveCard = widget.card;
@@ -800,7 +731,7 @@ class TradeSectionState extends State<TradeSection>
                             const TextStyle(fontSize: 12, color: Colors.amber),
                         children: [
                           TextSpan(
-                            text: _activeTab == 0
+                            text: widget.activeTab == 0
                                 ? 'You have not listed '
                                 : 'You have not added ',
                           ),
@@ -829,7 +760,7 @@ class TradeSectionState extends State<TradeSection>
                             ),
                           ),
                           TextSpan(
-                            text: _activeTab == 0
+                            text: widget.activeTab == 0
                                 ? ' for trade'
                                 : ' to your wishlist',
                           ),
@@ -952,8 +883,8 @@ class TradeSectionState extends State<TradeSection>
 
   void loadMore() {
     if (_loadingMatches || _loadingMore) return;
-    final hasMore = _activeTab == 0 ? _wantHasMore : _ownedHasMore;
-    final matches = _activeTab == 0 ? _wantMatches : _ownedMatches;
+    final hasMore = widget.activeTab == 0 ? _wantHasMore : _ownedHasMore;
+    final matches = widget.activeTab == 0 ? _wantMatches : _ownedMatches;
     if (!hasMore || matches == null) return;
     _loadMoreMatches();
   }
@@ -967,10 +898,10 @@ class TradeSectionState extends State<TradeSection>
       final cardMap = CardService().getCardMap();
       final langList = _appliedLanguages.toList();
       final fullartOnly = _trainersOnly && _isFullArtSupporter;
-      final offset = _activeTab == 0 ? _wantOffset : _ownedOffset;
+      final offset = widget.activeTab == 0 ? _wantOffset : _ownedOffset;
 
       final List<TradeMatch> matches;
-      if (_activeTab == 0) {
+      if (widget.activeTab == 0) {
         matches = await _userCardService.getTradeMatchesForWanted(
           cardId,
           langList,
@@ -995,7 +926,7 @@ class TradeSectionState extends State<TradeSection>
 
       if (!mounted) return;
       setState(() {
-        if (_activeTab == 0) {
+        if (widget.activeTab == 0) {
           _wantMatches!.addAll(mapped);
           _wantOffset += _pageSize;
           _wantHasMore = matches.length >= _pageSize;

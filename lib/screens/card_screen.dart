@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/feedback_submission.dart';
 import 'package:tcgp_trading_app/services/feedback_service.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/widgets/card_screen/card_detail_header.dart';
+import 'package:tcgp_trading_app/widgets/card_screen/sticky_tab_bar_delegate.dart';
 import 'package:tcgp_trading_app/widgets/card_screen/trade_section.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
@@ -17,13 +19,22 @@ class CardScreen extends StatefulWidget {
   State<CardScreen> createState() => _CardScreenState();
 }
 
-class _CardScreenState extends State<CardScreen> {
+class _CardScreenState extends State<CardScreen>
+    with SingleTickerProviderStateMixin {
   final _scrollController = ScrollController();
   final _tradeSectionKey = GlobalKey<TradeSectionState>();
+  late final TabController _tabController;
+  int _activeTab = 0;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() => _activeTab = _tabController.index);
+      }
+    });
     _scrollController.addListener(_onScroll);
   }
 
@@ -31,6 +42,7 @@ class _CardScreenState extends State<CardScreen> {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -103,6 +115,65 @@ class _CardScreenState extends State<CardScreen> {
     );
   }
 
+  Widget _buildTabBar() {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      padding: const EdgeInsets.only(top: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+        child: TabBar(
+          controller: _tabController,
+          indicator: UnderlineTabIndicator(
+            borderSide: BorderSide(
+              color:
+                  _activeTab == 0 ? AppColors.primary : AppColors.secondary,
+              width: 2,
+            ),
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          dividerHeight: 0,
+          labelColor:
+              _activeTab == 0 ? AppColors.primary : AppColors.secondary,
+          unselectedLabelColor: Colors.white60,
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontWeight: FontWeight.w400,
+            fontSize: 14,
+          ),
+          splashFactory: NoSplash.splashFactory,
+          overlayColor: WidgetStateProperty.all(Colors.transparent),
+          tabs: [
+            Tab(
+              height: 36,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  PhosphorIcon(PhosphorIcons.heartStraight(), size: 16),
+                  SizedBox(width: 6),
+                  Text('I want this card'),
+                ],
+              ),
+            ),
+            Tab(
+              height: 36,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  PhosphorIcon(PhosphorIcons.checkCircle(), size: 16),
+                  SizedBox(width: 6),
+                  Text('I have this card'),
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isUntradable = isCardUntradable(widget.card.rarity, widget.card.pack);
@@ -162,14 +233,16 @@ class _CardScreenState extends State<CardScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: CustomScrollView(
         controller: _scrollController,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            CardDetailHeader(card: widget.card, heroTag: widget.heroTag),
-            if (isUntradable)
-              Container(
+        slivers: [
+          SliverToBoxAdapter(
+            child: CardDetailHeader(
+                card: widget.card, heroTag: widget.heroTag),
+          ),
+          if (isUntradable)
+            SliverToBoxAdapter(
+              child: Container(
                 width: double.infinity,
                 margin: const EdgeInsets.fromLTRB(6, 10, 6, 24),
                 padding: const EdgeInsets.all(16),
@@ -191,11 +264,25 @@ class _CardScreenState extends State<CardScreen> {
                     ),
                   ],
                 ),
-              )
-            else
-              TradeSection(key: _tradeSectionKey, card: widget.card),
+              ),
+            )
+          else ...[
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: StickyTabBarDelegate(
+                height: 44,
+                child: _buildTabBar(),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: TradeSection(
+                key: _tradeSectionKey,
+                card: widget.card,
+                activeTab: _activeTab,
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
