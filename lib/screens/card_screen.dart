@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
@@ -31,7 +33,7 @@ class _CardScreenState extends State<CardScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
+      if (!_tabController.indexIsChanging && mounted) {
         setState(() => _activeTab = _tabController.index);
       }
     });
@@ -53,66 +55,28 @@ class _CardScreenState extends State<CardScreen>
     }
   }
 
-  void _showReportDialog(BuildContext context) {
-    final controller = TextEditingController();
-    showAppDialog(
+  Future<void> _showReportDialog(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final description = await showDialog<String>(
       context: context,
-      title: 'Report card issue',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '${widget.card.name} (${widget.card.set} #${widget.card.number})',
-            style: const TextStyle(color: Colors.white54, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: controller,
-            maxLines: 3,
-            maxLength: 100,
-            style: const TextStyle(color: Colors.white, fontSize: 14),
-            decoration: InputDecoration(
-              hintText:
-                  'Describe the issue (e.g. wrong image, incorrect name or set…)',
-              hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
-              filled: true,
-              fillColor: const Color(0xFF141418),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Colors.white12),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Colors.white12),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Colors.white24),
-              ),
-            ),
-          ),
-        ],
-      ),
-      primaryText: 'Submit',
-      onPrimaryAction: () {
-        final description = controller.text.trim();
-        if (description.isEmpty) return;
-        FeedbackService()
-            .submitFeedback(
-          type: FeedbackType.cardReport,
-          description: description,
-          cardId: widget.card.id,
-        )
-            .then((_) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Report submitted. Thank you!')),
-            );
-          }
-        });
-      },
+      builder: (_) => _ReportDialog(card: widget.card),
     );
+    if (description == null || description.isEmpty) return;
+    try {
+      await FeedbackService().submitFeedback(
+        type: FeedbackType.cardReport,
+        description: description,
+        cardId: widget.card.id,
+      );
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Report submitted. Thank you!')),
+      );
+    } catch (e) {
+      debugPrint('Failed to submit report: $e');
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Failed to submit report. Try again.')),
+      );
+    }
   }
 
   Widget _buildTabBar() {
@@ -212,7 +176,7 @@ class _CardScreenState extends State<CardScreen>
             position: PopupMenuPosition.under,
             onSelected: (value) {
               if (value == 'report') {
-                _showReportDialog(context);
+                unawaited(_showReportDialog(context));
               }
             },
             itemBuilder: (context) => [
@@ -284,6 +248,69 @@ class _CardScreenState extends State<CardScreen>
           ],
         ],
       ),
+    );
+  }
+}
+
+class _ReportDialog extends StatefulWidget {
+  final PocketCard card;
+  const _ReportDialog({required this.card});
+
+  @override
+  State<_ReportDialog> createState() => _ReportDialogState();
+}
+
+class _ReportDialogState extends State<_ReportDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppDialog<String>(
+      title: 'Report card issue',
+      primaryText: 'Submit',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${widget.card.name} (${widget.card.set} #${widget.card.number})',
+            style: const TextStyle(color: Colors.white54, fontSize: 13),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            maxLines: 3,
+            maxLength: 100,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              hintText:
+                  'Describe the issue (e.g. wrong image, incorrect name or set…)',
+              hintStyle: const TextStyle(color: Colors.white30, fontSize: 13),
+              filled: true,
+              fillColor: const Color(0xFF141418),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.white12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.white12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Colors.white24),
+              ),
+            ),
+          ),
+        ],
+      ),
+      onPrimaryPressed: () => _controller.text.trim(),
     );
   }
 }

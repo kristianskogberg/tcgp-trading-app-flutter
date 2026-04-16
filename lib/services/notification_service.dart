@@ -68,33 +68,38 @@ class NotificationService {
   }
 
   Future<void> _openConversation(String conversationId, String senderId) async {
+    String playerName = 'Unknown';
+    String? icon;
     try {
-      // Fetch sender's profile for display
+      // Fetch sender's profile for display — bounded timeout so notification
+      // navigation can't hang indefinitely on slow networks.
       final profile = await _client
           .from('profiles')
           .select('player_name, icon')
           .eq('user_id', senderId)
-          .single();
+          .single()
+          .timeout(const Duration(seconds: 5));
 
-      final playerName = profile['player_name'] as String? ?? 'Unknown';
-      final icon = profile['icon'] as String?;
-
-      final nav = navigatorKey.currentState;
-      if (nav == null) return;
-
-      nav.push(
-        MaterialPageRoute(
-          builder: (_) => ChatScreen.fromConversation(
-            conversationId: conversationId,
-            otherUserId: senderId,
-            otherPlayerName: playerName,
-            otherIcon: icon,
-          ),
-        ),
-      );
+      playerName = profile['player_name'] as String? ?? 'Unknown';
+      icon = profile['icon'] as String?;
     } catch (e) {
-      debugPrint('Failed to open conversation from notification: $e');
+      debugPrint(
+          'Failed to fetch sender profile, using fallback display: $e');
     }
+
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+
+    nav.push(
+      MaterialPageRoute(
+        builder: (_) => ChatScreen.fromConversation(
+          conversationId: conversationId,
+          otherUserId: senderId,
+          otherPlayerName: playerName,
+          otherIcon: icon,
+        ),
+      ),
+    );
   }
 
   Future<void> _saveToken(String token) async {

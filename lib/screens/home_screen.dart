@@ -82,7 +82,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _cardsFuture = CardService().getAllCards();
-    _userCardService.loadMyCards();
+    _userCardService
+        .loadMyCards()
+        .catchError((e) => debugPrint('Failed to load user cards: $e'));
   }
 
   @override
@@ -107,6 +109,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _populateCards(List<PocketCard> cards) {
     if (_allCards.isNotEmpty) return; // already populated
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _applyCardData(cards);
       CardService().precacheCardImages();
     });
@@ -395,7 +398,13 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isSaving = true);
     final additions = Map<String, PendingCardEdit>.from(_pendingEdits);
     final removals = Set<String>.from(_pendingRemovals);
-    int failCount = 0;
+    final conditions =
+        Map<String, Map<String, Set<String>>>.from(_pendingConditions);
+
+    // Track which edits failed so we can keep them in the pending set for retry
+    final failedAdditions = <String>{};
+    final failedRemovals = <String>{};
+    final failedConditions = <String>{};
 
     // Capture languages to remove BEFORE mutating the cache
     final removalLangs = <String, Set<String>>{};
@@ -420,7 +429,8 @@ class _HomeScreenState extends State<HomeScreen> {
         try {
           await _userCardService.removeCard(cardId, type, lang);
         } catch (e) {
-          failCount++;
+          debugPrint('Failed to remove $cardId ($type, $lang): $e');
+          failedRemovals.add(key);
         }
       }
     }
@@ -430,31 +440,41 @@ class _HomeScreenState extends State<HomeScreen> {
         try {
           await _userCardService.addCard(edit.cardId, edit.type, lang);
         } catch (e) {
-          failCount++;
+          debugPrint('Failed to add ${edit.cardId} (${edit.type}, $lang): $e');
+          failedAdditions.add('${edit.cardId}:${edit.type}');
         }
       }
     }
 
     // Persist trade conditions
-    for (final entry in Map.from(_pendingConditions).entries) {
+    for (final entry in conditions.entries) {
       try {
         await _userCardService.setTradeConditions(entry.key, entry.value);
       } catch (e) {
-        failCount++;
+        debugPrint('Failed to set conditions for ${entry.key}: $e');
+        failedConditions.add(entry.key);
       }
     }
 
     if (!mounted) return;
+    final totalFailed = failedAdditions.length +
+        failedRemovals.length +
+        failedConditions.length;
     setState(() {
       _isSaving = false;
-      _pendingEdits.clear();
-      _pendingRemovals.clear();
-      _pendingConditions.clear();
-      _currentMode = HomeMode.browse;
+      // Only clear successful edits. Keep failed ones so the user can retry.
+      _pendingEdits.removeWhere((k, _) => !failedAdditions.contains(k));
+      _pendingRemovals.removeWhere((k) => !failedRemovals.contains(k));
+      _pendingConditions
+          .removeWhere((k, _) => !failedConditions.contains(k));
+      if (totalFailed == 0) {
+        _currentMode = HomeMode.browse;
+      }
     });
 
-    final message =
-        failCount == 0 ? 'Changes saved' : 'Some changes failed to save';
+    final message = totalFailed == 0
+        ? 'Changes saved'
+        : '$totalFailed ${totalFailed == 1 ? 'change' : 'changes'} failed — try again';
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -490,8 +510,40 @@ class _HomeScreenState extends State<HomeScreen> {
   // Build
   // ---------------------------------------------------------------------------
 
+  Future<bool> _confirmDiscardEdits() async {
+    final discard = await showAppDialog<bool>(
+      context: context,
+      title: 'Heads up',
+      content: const Text(
+          'You have unsaved changes. Do you want to discard them?'),
+      cancelText: 'Keep editing',
+      primaryText: 'Discard',
+      onPrimaryPressed: () => true,
+    );
+    return discard == true;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hasUnsaved = _currentMode == HomeMode.edit && _hasPendingChanges;
+    return PopScope(
+      canPop: !hasUnsaved,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop || !hasUnsaved) return;
+        if (await _confirmDiscardEdits() && mounted) {
+          setState(() {
+            _currentMode = HomeMode.browse;
+            _pendingEdits.clear();
+            _pendingRemovals.clear();
+            _pendingConditions.clear();
+          });
+        }
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       appBar: HomeAppBar(
         searchController: _searchController,

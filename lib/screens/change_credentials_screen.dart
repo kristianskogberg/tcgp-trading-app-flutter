@@ -77,7 +77,7 @@ class _ChangeCredentialsScreenState extends State<ChangeCredentialsScreen> {
     String? passwordErr;
     String? confirmErr;
 
-    if (password.isEmpty) {
+    if (password.isEmpty || password.trim().isEmpty) {
       passwordErr = 'Please enter a new password.';
     } else if (password.length < 6) {
       passwordErr = 'Password must be at least 6 characters.';

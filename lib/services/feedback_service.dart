@@ -15,7 +15,8 @@ class FeedbackService {
     String? description,
     String? cardId,
   }) async {
-    final userId = _client.auth.currentUser!.id;
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw const AuthException('Not authenticated');
     final info = await PackageInfo.fromPlatform();
     final trimmedDescription =
         description?.trim().isEmpty == true ? null : description?.trim();

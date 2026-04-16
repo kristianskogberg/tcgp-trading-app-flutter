@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -26,7 +27,9 @@ class ProfileService {
     if (raw != null) {
       try {
         _cachedProfile = jsonDecode(raw) as Map<String, dynamic>;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Failed to decode cached profile: $e');
+      }
     }
   }
 

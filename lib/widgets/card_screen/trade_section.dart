@@ -52,6 +52,9 @@ class TradeSectionState extends State<TradeSection> {
   Set<String> _selectedLanguages = {...languages.keys};
   Set<String> _appliedLanguages = {...languages.keys};
 
+  int _fetchRequestId = 0;
+  bool _navigatingToMatch = false;
+
   bool get _isFullArtSupporter =>
       widget.card.rarity == '☆☆' &&
       widget.card.cardType.toLowerCase() == 'supporter';
@@ -608,6 +611,9 @@ class TradeSectionState extends State<TradeSection> {
 
   Future<void> _navigateToChat(
       PocketCard matchCard, TradeMatch tradeMatch) async {
+    if (_navigatingToMatch) return;
+    _navigatingToMatch = true;
+
     // Determine languages for the trade message
     final String offerLanguage;
     final String receiveLanguage;
@@ -631,28 +637,34 @@ class TradeSectionState extends State<TradeSection> {
       receiveLanguage = tradeMatch.language;
     }
 
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChatScreen(
-          contextCard: widget.card,
-          matchCard: matchCard,
-          tradeMatch: tradeMatch,
-          isWantTab: widget.activeTab == 0,
-          offerLanguage: offerLanguage,
-          receiveLanguage: receiveLanguage,
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            contextCard: widget.card,
+            matchCard: matchCard,
+            tradeMatch: tradeMatch,
+            isWantTab: widget.activeTab == 0,
+            offerLanguage: offerLanguage,
+            receiveLanguage: receiveLanguage,
+          ),
         ),
-      ),
-    );
+      );
 
-    // Trade proposal is auto-sent when ChatScreen opens, so mark it locally
-    if (!mounted) return;
-    setState(() {
-      _pendingProposals.add('${tradeMatch.userId}:$offerCardId:$receiveCardId');
-    });
+      // Trade proposal is auto-sent when ChatScreen opens, so mark it locally
+      if (!mounted) return;
+      setState(() {
+        _pendingProposals
+            .add('${tradeMatch.userId}:$offerCardId:$receiveCardId');
+      });
+    } finally {
+      _navigatingToMatch = false;
+    }
   }
 
   void _onMatchTapped(PocketCard matchCard, TradeMatch tradeMatch) {
+    if (_navigatingToMatch) return;
     if (_hasProposal(matchCard, tradeMatch)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -805,6 +817,8 @@ class TradeSectionState extends State<TradeSection> {
         _isOwned = _userCardService.isOwned(widget.card.id);
       });
       _fetchMatches();
+    }).catchError((e) {
+      debugPrint('Failed to load user cards in trade section: $e');
     });
   }
 
@@ -828,6 +842,7 @@ class TradeSectionState extends State<TradeSection> {
     final ownedNeeded = _ownedMatches == null;
     if (!wantNeeded && !ownedNeeded) return;
 
+    final requestId = ++_fetchRequestId;
     setState(() => _loadingMatches = true);
 
     try {
@@ -835,6 +850,7 @@ class TradeSectionState extends State<TradeSection> {
       final futures = <Future>[];
 
       futures.add(_userCardService.getMyPendingProposals().then((proposals) {
+        if (requestId != _fetchRequestId) return;
         _pendingProposals = proposals;
       }));
 
@@ -846,6 +862,7 @@ class TradeSectionState extends State<TradeSection> {
             .getTradeMatchesForWanted(cardId, langList,
                 fullartOnly: fullartOnly, limit: _pageSize, offset: 0)
             .then((matches) {
+          if (requestId != _fetchRequestId) return;
           final mapped = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
@@ -861,6 +878,7 @@ class TradeSectionState extends State<TradeSection> {
             .getTradeMatchesForOwned(cardId, langList,
                 fullartOnly: fullartOnly, limit: _pageSize, offset: 0)
             .then((matches) {
+          if (requestId != _fetchRequestId) return;
           final mapped = matches
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
@@ -873,11 +891,12 @@ class TradeSectionState extends State<TradeSection> {
 
       await Future.wait(futures);
     } catch (e) {
+      debugPrint('Failed to fetch trade matches: $e');
       _wantMatches ??= [];
       _ownedMatches ??= [];
     }
 
-    if (!mounted) return;
+    if (!mounted || requestId != _fetchRequestId) return;
     setState(() => _loadingMatches = false);
   }
 
@@ -927,17 +946,26 @@ class TradeSectionState extends State<TradeSection> {
       if (!mounted) return;
       setState(() {
         if (widget.activeTab == 0) {
-          _wantMatches!.addAll(mapped);
+          if (_wantMatches == null) {
+            _wantMatches = mapped;
+          } else {
+            _wantMatches!.addAll(mapped);
+          }
           _wantOffset += _pageSize;
           _wantHasMore = matches.length >= _pageSize;
         } else {
-          _ownedMatches!.addAll(mapped);
+          if (_ownedMatches == null) {
+            _ownedMatches = mapped;
+          } else {
+            _ownedMatches!.addAll(mapped);
+          }
           _ownedOffset += _pageSize;
           _ownedHasMore = matches.length >= _pageSize;
         }
         _loadingMore = false;
       });
     } catch (e) {
+      debugPrint('Failed to load more trade matches: $e');
       if (!mounted) return;
       setState(() => _loadingMore = false);
     }

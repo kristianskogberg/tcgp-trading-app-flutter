@@ -57,6 +57,7 @@ class ActiveFilterChips extends StatelessWidget {
       return CachedNetworkImage(
         imageUrl: setImageUrl(label),
         height: 20,
+        memCacheHeight: 60,
         fit: BoxFit.contain,
         errorWidget: (context, url, error) => Text(label,
             style: const TextStyle(color: AppColors.primary, fontSize: 12)),

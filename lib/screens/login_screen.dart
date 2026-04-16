@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _turnstileController = TurnstileController();
 
   String? _captchaToken;
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -32,19 +33,30 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _signInWithGoogle() async {
+    if (_loading) return;
+    setState(() => _loading = true);
     try {
       await authService.signInWithGoogle();
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted && !e.toString().contains('cancelled')) {
+      // The Google sign-in package throws our own Exception with the word
+      // 'cancelled' when the user backs out of the Google picker — that's
+      // not an error we want to surface. Any other throwable is a real
+      // failure and should show a snackbar.
+      final isCancel =
+          e is Exception && e.toString().toLowerCase().contains('cancel');
+      if (mounted && !isCancel) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Google sign-in failed')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> login() async {
+    if (_loading) return;
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -69,6 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    setState(() => _loading = true);
     try {
       await authService.signInWithEmailPassword(email, password,
           captchaToken: _captchaToken);
@@ -81,6 +94,8 @@ class _LoginScreenState extends State<LoginScreen> {
         _turnstileController.refreshToken();
         setState(() => _captchaToken = null);
       }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -118,8 +133,14 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: login,
-              child: const Text('Login'),
+              onPressed: _loading ? null : login,
+              child: _loading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Login'),
             ),
             const SizedBox(height: 20),
             Row(
@@ -134,8 +155,14 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 20),
             OutlinedButton.icon(
-              onPressed: _signInWithGoogle,
-              icon: PhosphorIcon(PhosphorIcons.googleLogo(), size: 24),
+              onPressed: _loading ? null : _signInWithGoogle,
+              icon: _loading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : PhosphorIcon(PhosphorIcons.googleLogo(), size: 24),
               label: const Text('Sign in with Google'),
             ),
             const SizedBox(height: 20),

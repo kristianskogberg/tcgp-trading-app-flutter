@@ -36,12 +36,13 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   Timer? _cooldownTimer;
   Timer? _showResendTimer;
 
-  late final StreamSubscription<AuthState> _authSub;
+  StreamSubscription<AuthState>? _authSub;
 
   @override
   void initState() {
     super.initState();
     _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((state) {
+      if (!mounted) return;
       if (state.event == AuthChangeEvent.userUpdated &&
           _authService.isEmailVerified) {
         _onVerified();
@@ -55,7 +56,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   @override
   void dispose() {
-    _authSub.cancel();
+    _authSub?.cancel();
     _cooldownTimer?.cancel();
     _showResendTimer?.cancel();
     _turnstileController.dispose();
@@ -87,7 +88,15 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                   Text('Email not verified yet. Please check your inbox.')),
         );
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Failed to refresh session: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content:
+                  Text('Could not check verification status. Try again.')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _checking = false);
     }

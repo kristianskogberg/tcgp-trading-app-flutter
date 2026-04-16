@@ -70,6 +70,7 @@ class CardDetailHeader extends StatelessWidget {
                       CachedNetworkImage(
                         imageUrl: setImageUrl(card.set),
                         height: UIConstants.setImageHeight,
+                        memCacheHeight: 80,
                         fit: BoxFit.contain,
                         errorWidget: (context, url, error) => Text(card.set),
                       ),

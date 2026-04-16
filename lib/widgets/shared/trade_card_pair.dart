@@ -159,6 +159,7 @@ class TradeCardPair extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: setImageUrl(card.set),
                   height: 20,
+                  memCacheHeight: 60,
                   fit: BoxFit.contain,
                   errorWidget: (_, __, ___) => const SizedBox.shrink(),
                   placeholder: (_, __) => const SizedBox(height: 20),

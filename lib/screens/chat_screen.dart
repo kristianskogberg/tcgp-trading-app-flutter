@@ -82,7 +82,7 @@ class _ChatScreenState extends State<ChatScreen> {
   String _myFriendId = '';
   bool _otherUserDeleted = false;
 
-  String get _currentUserId => Supabase.instance.client.auth.currentUser!.id;
+  String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
 
   late final AppLifecycleListener _lifecycleListener;
 
@@ -169,7 +169,8 @@ class _ChatScreenState extends State<ChatScreen> {
       NotificationService().activeConversationId = conversationId;
 
       // Mark conversation as read
-      _chatService.markConversationAsRead(conversationId).catchError((_) {});
+      _chatService.markConversationAsRead(conversationId).catchError(
+          (e) => debugPrint('Failed to mark conversation as read: $e'));
 
       // Auto-send trade message when opened from trade section
       if (widget.conversationId == null) {
@@ -225,7 +226,8 @@ class _ChatScreenState extends State<ChatScreen> {
         setState(() => _messages.insertAll(0, toAdd));
       }
       // Also mark as read since the user is looking at the chat
-      _chatService.markConversationAsRead(_conversationId!).catchError((_) {});
+      _chatService.markConversationAsRead(_conversationId!).catchError(
+          (e) => debugPrint('Failed to mark conversation as read: $e'));
       // Check if the other user still exists
       if (!_otherUserDeleted) await _checkOtherUserExists();
     } catch (e) {
@@ -489,8 +491,41 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Future<bool> _confirmDiscardDraft() async {
+    final discard = await showAppDialog<bool>(
+      context: context,
+      title: 'Discard draft?',
+      content: const Text('You have an unsent message. Leave anyway?'),
+      cancelText: 'Keep editing',
+      primaryText: 'Discard',
+      onPrimaryPressed: () => true,
+    );
+    return discard == true;
+  }
+
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _textController,
+      builder: (_, child) {
+        final hasDraft = _textController.text.trim().isNotEmpty;
+        return PopScope(
+          canPop: !hasDraft,
+          onPopInvokedWithResult: (didPop, _) async {
+            if (didPop || !hasDraft) return;
+            if (await _confirmDiscardDraft() && mounted) {
+              _textController.clear();
+              if (mounted) Navigator.of(this.context).pop();
+            }
+          },
+          child: child!,
+        );
+      },
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       appBar: ChatAppBar(
         displayName: _otherPlayerName,

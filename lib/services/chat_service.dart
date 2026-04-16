@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/models/message.dart';
 import 'package:safe_text/safe_text.dart';
@@ -49,7 +50,8 @@ class ChatService {
   }
 
   Future<Message> sendMessage(String conversationId, String content) async {
-    final userId = _client.auth.currentUser!.id;
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw const AuthException('Not authenticated');
     final trimmed = content.trim();
     if (trimmed.isEmpty) throw Exception('Message cannot be empty');
     final isSpecial = trimmed.startsWith('TRADE:') ||
@@ -92,8 +94,11 @@ class ChatService {
           'last_message_text': displayText,
         })
         .eq('id', conversationId)
-        .then((_) {})
-        .catchError((_) {});
+        .then(
+          (_) {},
+          onError: (e) =>
+              debugPrint('Failed to update conversation metadata: $e'),
+        );
 
     return Message.fromJson(row);
   }
@@ -105,7 +110,7 @@ class ChatService {
         .eq('id', messageId)
         .single();
 
-    final content = row['content'] as String;
+    final content = (row['content'] as String?) ?? '';
     final parts = content.split(':');
     // Replace or append status segment (index 5)
     if (parts.length > 5) {
@@ -160,7 +165,8 @@ class ChatService {
   }
 
   Future<List<Map<String, dynamic>>> getConversations() async {
-    final userId = _client.auth.currentUser!.id;
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw const AuthException('Not authenticated');
     final rows = await _client
         .from('conversations')
         .select()
@@ -205,7 +211,8 @@ class ChatService {
   }
 
   Future<void> markConversationAsRead(String conversationId) async {
-    final userId = _client.auth.currentUser!.id;
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw const AuthException('Not authenticated');
     final row = await _client
         .from('conversations')
         .select('user_a')
@@ -219,7 +226,8 @@ class ChatService {
   }
 
   Future<int> getTotalUnreadCount() async {
-    final userId = _client.auth.currentUser!.id;
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw const AuthException('Not authenticated');
     final rows = await _client
         .from('conversations')
         .select('user_a, unread_count_a, unread_count_b')
@@ -236,7 +244,8 @@ class ChatService {
   RealtimeChannel subscribeToNewMessages(
     void Function() onNewMessage,
   ) {
-    final userId = _client.auth.currentUser!.id;
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw const AuthException('Not authenticated');
     return _client
         .channel('all_messages:$userId')
         .onPostgresChanges(

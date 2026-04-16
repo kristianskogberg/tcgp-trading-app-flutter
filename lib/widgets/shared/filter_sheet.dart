@@ -90,6 +90,7 @@ void openFilterSheet({
                             iconBuilder: (option) => CachedNetworkImage(
                               imageUrl: setImageUrl(option),
                               height: 20,
+                              memCacheHeight: 60,
                               fit: BoxFit.contain,
                               errorWidget: (context, url, error) => Text(option,
                                   style: const TextStyle(

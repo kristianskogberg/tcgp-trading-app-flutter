@@ -69,11 +69,13 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Link Account'),
-        automaticallyImplyLeading: !_isFromOnboarding,
-      ),
+    return PopScope(
+      canPop: !_loading,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Link Account'),
+          automaticallyImplyLeading: !_isFromOnboarding && !_loading,
+        ),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -170,8 +172,9 @@ class _OptionalLinkScreenState extends State<OptionalLinkScreen> {
                 ),
               ],
             ],
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );

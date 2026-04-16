@@ -90,7 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
+      if (!_tabController.indexIsChanging && mounted) {
         setState(() => _activeTab = _tabController.index);
       }
     });
@@ -139,17 +139,27 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   Future<void> _loadCards() async {
     setState(() => _loadingCards = true);
-    await _userCardService.loadMyCards();
-    final allCards = await CardService().getAllCards();
-    final wishlistIds = _userCardService.wishlistCardIds;
-    final ownedIds = _userCardService.ownedCardIds;
-    if (!mounted) return;
-    setState(() {
-      _wishlistCards =
-          allCards.where((c) => wishlistIds.contains(c.id)).toList();
-      _listingCards = allCards.where((c) => ownedIds.contains(c.id)).toList();
-      _loadingCards = false;
-    });
+    try {
+      await _userCardService.loadMyCards();
+      final allCards = await CardService().getAllCards();
+      final wishlistIds = _userCardService.wishlistCardIds;
+      final ownedIds = _userCardService.ownedCardIds;
+      if (!mounted) return;
+      setState(() {
+        _wishlistCards =
+            allCards.where((c) => wishlistIds.contains(c.id)).toList();
+        _listingCards = allCards.where((c) => ownedIds.contains(c.id)).toList();
+      });
+    } catch (e) {
+      debugPrint('Failed to load cards: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to load your cards')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingCards = false);
+    }
   }
 
   Future<void> _loadOtherProfile() async {
@@ -195,6 +205,10 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void dispose() {
     _userCardService.removeListener(_onCardsChanged);
+    if (!widget.isOtherUser) {
+      _usernameController.removeListener(_onFieldChanged);
+      _friendIdController.removeListener(_onFieldChanged);
+    }
     _tabController.dispose();
     _usernameController.dispose();
     _friendIdController.dispose();
@@ -216,8 +230,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     if (friendId.isEmpty) {
       friendIdErr = "Friend ID cannot be empty.";
-    } else if (friendId.length != 12) {
-      friendIdErr = "Friend ID must be 12 digits.";
+    } else if (!RegExp(r'^\d{12}$').hasMatch(friendId)) {
+      friendIdErr = "Friend ID must be exactly 12 digits.";
     }
 
     setState(() {
@@ -586,6 +600,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     child: CachedNetworkImage(
                       imageUrl: setImageUrl(card.set),
                       height: 20,
+                      memCacheHeight: 60,
                       fit: BoxFit.contain,
                       errorWidget: (_, __, ___) => const SizedBox.shrink(),
                       placeholder: (_, __) =>

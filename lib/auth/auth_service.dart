@@ -47,18 +47,17 @@ class AuthService {
   }
 
   Future<void> deleteAccount() async {
-    // Deletes app data first (while still authenticated so RLS permits it),
-    // then removes the auth user via a SECURITY DEFINER RPC, then signs out.
-    final userId = _client.auth.currentUser!.id;
-    await NotificationService().removeToken();
-    await _client.from('user_cards').delete().eq('user_id', userId);
-    // Delete conversations (messages cascade via ON DELETE CASCADE on conversation_id)
-    await _client
-        .from('conversations')
-        .delete()
-        .or('user_a.eq.$userId,user_b.eq.$userId');
-    await _client.from('profiles').delete().eq('user_id', userId);
-    await _client.rpc('delete_user');
+    // Removing the FCM token is best-effort: we want to stop this device
+    // from receiving notifications tied to the old account, but if the
+    // server is unreachable we still want to proceed with deletion.
+    try {
+      await NotificationService().removeToken();
+    } catch (e) {
+      // Swallow — the DB row will be removed by delete_account() below.
+    }
+    // Single transactional RPC: deletes all app data and the auth user.
+    // See supabase/delete_account.sql.
+    await _client.rpc('delete_account');
     await _client.auth.signOut();
   }
 
@@ -113,22 +112,14 @@ class AuthService {
   }
 
   Future<void> _migrateUserData(String oldId, String newId) async {
-    await _client
-        .from('profiles')
-        .update({'user_id': newId})
-        .eq('user_id', oldId);
-    await _client
-        .from('user_cards')
-        .update({'user_id': newId})
-        .eq('user_id', oldId);
-    await _client
-        .from('conversations')
-        .update({'user_a': newId})
-        .eq('user_a', oldId);
-    await _client
-        .from('conversations')
-        .update({'user_b': newId})
-        .eq('user_b', oldId);
+    // All 4 table rewrites happen inside a single transaction in Postgres
+    // (see supabase/user_migration.sql). A throw here surfaces to
+    // linkGoogleAccount, which rethrows so the UI can tell the user
+    // the link failed — rather than leaving the account half-migrated.
+    await _client.rpc('migrate_user_data', params: {
+      'p_old_id': oldId,
+      'p_new_id': newId,
+    });
   }
 
   Future<AuthResponse> signInWithGoogle() async {

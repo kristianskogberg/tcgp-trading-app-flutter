@@ -87,7 +87,9 @@ class UserCardService extends ChangeNotifier {
         final data = jsonDecode(raw) as Map<String, dynamic>;
         _wishlist = _parseEntries(data['wishlist'] as List);
         _owned = _parseEntries(data['owned'] as List);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Failed to decode cached user cards: $e');
+      }
     }
     final conditionsRaw = prefs.getString(_conditionsCacheKey);
     if (conditionsRaw != null) {
@@ -106,7 +108,9 @@ class UserCardService extends ChangeNotifier {
             ),
           ),
         );
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Failed to decode cached trade conditions: $e');
+      }
     }
     _loaded = true;
   }
@@ -162,8 +166,9 @@ class UserCardService extends ChangeNotifier {
             .putIfAbsent(wantedId, () => {})
             .add(wantedLang);
       }
-    } catch (_) {
+    } catch (e) {
       // Table may not exist yet - conditions will work from cache only
+      debugPrint('Failed to load trade conditions: $e');
     }
 
     await _persistCache();
@@ -336,32 +341,16 @@ class UserCardService extends ChangeNotifier {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('No authenticated user');
 
-    // Clear existing conditions for this card
-    try {
-      await _client
-          .from('trade_conditions')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('listed_card_id', cardId);
-    } catch (_) {}
-
-    // Insert new conditions — one row per (wantedCardId, language) pair
-    if (wantedCards.isNotEmpty) {
-      try {
-        final rows = <Map<String, dynamic>>[];
-        for (final entry in wantedCards.entries) {
-          for (final lang in entry.value) {
-            rows.add({
-              'user_id': user.id,
-              'listed_card_id': cardId,
-              'wanted_card_id': entry.key,
-              'wanted_language': lang,
-            });
-          }
-        }
-        await _client.from('trade_conditions').insert(rows);
-      } catch (_) {}
-    }
+    // Atomic delete-and-insert via RPC; see supabase/trade_conditions.sql.
+    // Throws on failure so the caller can surface it to the user; cache
+    // is only updated on success, so the UI stays consistent with the DB.
+    final payload = wantedCards.map(
+      (k, v) => MapEntry(k, v.toList()),
+    );
+    await _client.rpc('set_trade_conditions', params: {
+      'p_listed_card_id': cardId,
+      'p_wanted': payload,
+    });
 
     // Update cache
     if (wantedCards.isEmpty) {

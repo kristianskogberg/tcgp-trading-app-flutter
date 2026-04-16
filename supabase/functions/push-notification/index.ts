@@ -144,7 +144,7 @@ Deno.serve(async (req) => {
 
     // Format notification body
     let body: string;
-    const content = record.content;
+    const content: string = typeof record.content === "string" ? record.content : "";
     if (content.startsWith("TRADE:")) {
       body = `${senderName} sent you a trade proposal`;
     } else if (content.startsWith("TRADERESULT:accepted:")) {
@@ -153,10 +153,12 @@ Deno.serve(async (req) => {
       body = `${senderName} denied your trade`;
     } else if (content.startsWith("FRIENDID:")) {
       body = `${senderName} shared their Friend ID`;
-    } else {
+    } else if (content.length > 0) {
       const text =
         content.length > 80 ? content.substring(0, 80) + "..." : content;
       body = `${senderName}: ${text}`;
+    } else {
+      body = `${senderName} sent you a message`;
     }
 
     // Get FCM v1 access token

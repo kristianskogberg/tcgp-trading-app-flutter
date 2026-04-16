@@ -109,7 +109,7 @@ class ChatInputBar extends StatelessWidget {
             IconButton(
               onPressed: enabled ? onSend : null,
               icon: Icon(
-                PhosphorIcons.paperPlaneTilt(PhosphorIconsStyle.fill),
+                PhosphorIcons.paperPlaneRight(PhosphorIconsStyle.fill),
                 color: enabled ? AppColors.primary : Colors.white24,
               ),
             ),

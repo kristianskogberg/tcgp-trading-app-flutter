@@ -46,6 +46,13 @@ class _LinkAccountScreenState extends State<LinkAccountScreen> {
       return;
     }
 
+    if (password.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password cannot be blank')),
+      );
+      return;
+    }
+
     if (password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Password must be at least 6 characters')),

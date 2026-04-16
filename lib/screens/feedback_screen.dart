@@ -23,15 +23,30 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   }
 
   Future<void> _submit() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a message.')),
+      );
+      return;
+    }
+    if (text.length > 500) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Message is too long (max 500).')),
+      );
+      return;
+    }
+
     setState(() => _submitting = true);
 
     try {
       await FeedbackService().submitFeedback(
         type: _selectedType,
-        description: _messageController.text,
+        description: text,
       );
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Failed to submit feedback: $e');
       if (mounted) {
         setState(() => _submitting = false);
         ScaffoldMessenger.of(context).showSnackBar(

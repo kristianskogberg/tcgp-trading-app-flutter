@@ -64,8 +64,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
     if (friendId.isEmpty) {
       friendIdErr = 'Friend ID cannot be empty.';
-    } else if (friendId.length != 12) {
-      friendIdErr = 'Friend ID must be 12 digits.';
+    } else if (!RegExp(r'^\d{12}$').hasMatch(friendId)) {
+      friendIdErr = 'Friend ID must be exactly 12 digits.';
     }
 
     setState(() {

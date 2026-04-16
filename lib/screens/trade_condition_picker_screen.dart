@@ -201,13 +201,12 @@ class _TradeConditionPickerScreenState
       } else {
         _selected[cardId] = {'ANY'};
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_selectedScrollController.hasClients) {
-            _selectedScrollController.animateTo(
-              _selectedScrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-            );
-          }
+          if (!mounted || !_selectedScrollController.hasClients) return;
+          _selectedScrollController.animateTo(
+            _selectedScrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+          );
         });
       }
     });

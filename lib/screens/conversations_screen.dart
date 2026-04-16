@@ -61,13 +61,19 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   }
 
   Future<void> _openConversation(Map<String, dynamic> conversation) async {
-    final conversationId = conversation['id'] as String;
-    final otherUserId = conversation['other_user_id'] as String;
-    final otherPlayerName = conversation['other_player_name'] as String;
+    final conversationId = conversation['id'] as String?;
+    final otherUserId = conversation['other_user_id'] as String?;
+    final otherPlayerName =
+        conversation['other_player_name'] as String? ?? 'Unknown';
     final otherIcon = conversation['other_icon'] as String?;
 
+    if (conversationId == null || otherUserId == null) {
+      debugPrint('Conversation missing required fields: $conversation');
+      return;
+    }
+
     if (!mounted) return;
-    await Navigator.of(context, rootNavigator: true).push(
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ChatScreen.fromConversation(
           conversationId: conversationId,
@@ -133,12 +139,13 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
   }
 
   Widget _buildConversationTile(Map<String, dynamic> conversation) {
-    final playerName = conversation['other_player_name'] as String;
+    final playerName =
+        conversation['other_player_name'] as String? ?? 'Unknown';
     final icon = conversation['other_icon'] as String?;
     final lastMessage = conversation['last_message_text'] as String?;
-    final lastMessageAt = conversation['last_message_at'] != null
-        ? DateTime.parse(conversation['last_message_at'] as String)
-        : null;
+    final lastMessageAtRaw = conversation['last_message_at'] as String?;
+    final lastMessageAt =
+        lastMessageAtRaw != null ? DateTime.tryParse(lastMessageAtRaw) : null;
     final unreadCount = conversation['unread_count'] as int? ?? 0;
     final hasUnread = unreadCount > 0;
 

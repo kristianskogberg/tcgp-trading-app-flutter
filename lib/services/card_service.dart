@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tcgp_trading_app/models/card.dart';
@@ -67,8 +68,9 @@ class CardService {
       _cardMap = null;
       await _persistCache(prefs, rawData: allData);
       return _cards!;
-    } catch (_) {
+    } catch (e) {
       // Fall through to cache
+      debugPrint('Card sync failed, falling back to cache: $e');
     }
 
     // Fallback: load from disk cache
@@ -126,7 +128,8 @@ class CardService {
           .gt('updated_at', lastSync)
           .timeout(const Duration(seconds: 10));
       return data;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Incremental card sync failed: $e');
       return null;
     }
   }
@@ -212,8 +215,9 @@ class CardService {
     for (final url in urls) {
       try {
         await CardImageCacheManager.instance.getSingleFile(url);
-      } catch (_) {
+      } catch (e) {
         // Silently ignore — precaching is best-effort
+        debugPrint('Precache failed for $url: $e');
       }
     }
   }

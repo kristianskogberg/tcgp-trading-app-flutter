@@ -41,8 +41,9 @@ class FeedbackSubmission {
       description: json['description'] as String?,
       appVersion: json['app_version'] as String?,
       platform: json['platform'] as String?,
-      status: json['status'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      status: (json['status'] as String?) ?? 'new',
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+          DateTime.now(),
     );
   }
 }

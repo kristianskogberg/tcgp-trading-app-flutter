@@ -30,6 +30,7 @@ class SetHeader extends StatelessWidget {
             child: CachedNetworkImage(
               imageUrl: setImageUrl(setId),
               height: UIConstants.setImageHeight,
+              memCacheHeight: 80,
               fit: BoxFit.contain,
               errorWidget: (context, url, error) => Text(
                 setId,

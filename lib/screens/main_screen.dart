@@ -32,12 +32,20 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    ProfileService().updateLastActive();
-    NotificationService().initialize();
+    ProfileService()
+        .updateLastActive()
+        .catchError((e) => debugPrint('Failed to update last_active: $e'));
+    NotificationService()
+        .initialize()
+        .catchError((e) => debugPrint('Failed to init notifications: $e'));
     _checkUnread();
-    _conversationsChannel = _chatService.subscribeToNewMessages(() {
-      _checkUnread();
-    });
+    try {
+      _conversationsChannel = _chatService.subscribeToNewMessages(() {
+        _checkUnread();
+      });
+    } catch (e) {
+      debugPrint('Failed to subscribe to new-message channel: $e');
+    }
     if (MainScreen.showLinkPrompt) {
       MainScreen.showLinkPrompt = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -66,7 +74,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      ProfileService().updateLastActive();
+      ProfileService()
+          .updateLastActive()
+          .catchError((e) => debugPrint('Failed to update last_active: $e'));
       _checkUnread();
     }
   }
@@ -76,7 +86,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       final count = await _chatService.getTotalUnreadCount();
       if (!mounted) return;
       setState(() => _hasUnread = count > 0);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Failed to check unread count: $e');
+    }
   }
 
   @override

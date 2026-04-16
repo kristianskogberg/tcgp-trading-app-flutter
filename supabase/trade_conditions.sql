@@ -29,3 +29,38 @@ create table public.trade_conditions (
   create policy "Users can delete own trade conditions"
     on public.trade_conditions for delete
     using (auth.uid() = user_id);
+
+-- Atomic replace of trade conditions for a single listed card.
+-- Delete-then-insert from the client can leave the user with no conditions
+-- if the insert fails. This RPC does both inside a single transaction,
+-- so either the full new set is persisted or nothing changes.
+CREATE OR REPLACE FUNCTION set_trade_conditions(
+  p_listed_card_id text,
+  p_wanted jsonb
+)
+RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  v_user_id uuid := auth.uid();
+  v_entry jsonb;
+  v_wanted_card text;
+  v_lang text;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  DELETE FROM trade_conditions
+  WHERE user_id = v_user_id AND listed_card_id = p_listed_card_id;
+
+  IF p_wanted IS NULL OR jsonb_typeof(p_wanted) <> 'object' THEN
+    RETURN;
+  END IF;
+
+  FOR v_wanted_card, v_entry IN SELECT * FROM jsonb_each(p_wanted) LOOP
+    FOR v_lang IN SELECT jsonb_array_elements_text(v_entry) LOOP
+      INSERT INTO trade_conditions (user_id, listed_card_id, wanted_card_id, wanted_language)
+      VALUES (v_user_id, p_listed_card_id, v_wanted_card, v_lang);
+    END LOOP;
+  END LOOP;
+END;
+$$;

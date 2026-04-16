@@ -37,8 +37,8 @@ class PocketCard {
 
   factory PocketCard.fromJson(Map<String, dynamic> json) {
     return PocketCard(
-      id: json['id'] as String,
-      name: json['name'] as String,
+      id: (json['id'] as String?) ?? '',
+      name: (json['name'] as String?) ?? '',
       rarity: json['rarity'] as String? ?? '',
       pack: json['pack'] as String? ?? '',
       imageUrl: json['image'] as String? ?? '',

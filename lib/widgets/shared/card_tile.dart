@@ -102,7 +102,7 @@ class _CardTileState extends State<CardTile> {
         multiSelect: !widget.isPendingOwned,
       ),
     );
-    if (result != null) {
+    if (result != null && mounted) {
       setState(() => _selectedLanguages = result);
       widget.onLanguagesChanged?.call(widget.card.id, result);
     }

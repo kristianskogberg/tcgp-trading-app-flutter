@@ -218,6 +218,10 @@ class _DestructiveActionDialogState extends State<_DestructiveActionDialog> {
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
       if (_secondsLeft <= 1) {
         t.cancel();
       }

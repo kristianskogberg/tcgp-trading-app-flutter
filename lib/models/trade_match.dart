@@ -25,9 +25,9 @@ class TradeMatch {
         playerName: json['player_name'] as String? ?? 'Unknown',
         friendId: json['friend_id'] as String? ?? '',
         icon: json['icon'] as String?,
-        lastActiveAt: json['last_active_at'] != null
-            ? DateTime.parse(json['last_active_at'] as String)
-            : null,
+        lastActiveAt: DateTime.tryParse(
+          json['last_active_at'] as String? ?? '',
+        ),
         language: json['language'] as String? ?? 'ANY',
         hasMutualMatch: json['has_mutual_match'] as bool? ?? false,
       );
