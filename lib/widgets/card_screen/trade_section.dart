@@ -490,12 +490,34 @@ class TradeSectionState extends State<TradeSection> {
     }
 
     if (matches.isEmpty && !hasMore) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24, horizontal: 6),
+      final hintText = widget.activeTab == 0
+          ? 'Try wishlisting this card in more languages or using the All languages filter above for more trade options.'
+          : 'Try listing this card for trade or using the All languages filter above for more trade options.';
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 6),
         child: Center(
-          child: Text(
-            'No trade matches found',
-            style: TextStyle(color: Colors.white38, fontSize: 13),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 320),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'No trade options found',
+                  style: TextStyle(color: Colors.white38, fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  hintText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white30,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
