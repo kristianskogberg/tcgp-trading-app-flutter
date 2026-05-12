@@ -226,6 +226,7 @@ class _TradeConditionPickerScreenState
         multiSelect: true,
       ),
     );
+    if (!mounted) return;
     if (result != null && result.isNotEmpty) {
       setState(() {
         _selected[cardId] = result;

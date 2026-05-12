@@ -105,10 +105,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _onCardsChanged() {
+    if (!mounted) return;
     if (!_editing) _loadCards();
   }
 
   void _onFieldChanged() {
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -134,10 +136,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-    if (!_editing) _loadCards();
+    if (!mounted) return;
+    if (!_editing) await _loadCards();
   }
 
   Future<void> _loadCards() async {
+    if (!mounted) return;
     setState(() => _loadingCards = true);
     try {
       await _userCardService.loadMyCards();
@@ -180,10 +184,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-    _loadOtherCards();
+    if (!mounted) return;
+    await _loadOtherCards();
   }
 
   Future<void> _loadOtherCards() async {
+    if (!mounted) return;
     setState(() => _loadingCards = true);
     try {
       final cardMap = await _profileService.getOtherUserCards(widget.userId!);
@@ -204,8 +210,8 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   void dispose() {
-    _userCardService.removeListener(_onCardsChanged);
     if (!widget.isOtherUser) {
+      _userCardService.removeListener(_onCardsChanged);
       _usernameController.removeListener(_onFieldChanged);
       _friendIdController.removeListener(_onFieldChanged);
     }
@@ -256,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile saved')),
         );
-        _loadCards();
+        await _loadCards();
       }
     } catch (e) {
       if (mounted) {

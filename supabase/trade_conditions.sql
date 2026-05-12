@@ -38,7 +38,11 @@ CREATE OR REPLACE FUNCTION set_trade_conditions(
   p_listed_card_id text,
   p_wanted jsonb
 )
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 DECLARE
   v_user_id uuid := auth.uid();
   v_entry jsonb;
@@ -49,14 +53,34 @@ BEGIN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
+  IF p_wanted IS NOT NULL AND jsonb_typeof(p_wanted) <> 'object' THEN
+    RAISE EXCEPTION 'Wanted conditions must be a JSON object';
+  END IF;
+
+  IF p_wanted IS NOT NULL AND p_wanted <> '{}'::jsonb THEN
+    IF NOT EXISTS (
+      SELECT 1
+      FROM user_cards uc
+      WHERE uc.user_id = v_user_id
+        AND uc.card_id = p_listed_card_id
+        AND uc.type = 'owned'
+    ) THEN
+      RAISE EXCEPTION 'Listed card must be owned by the current user';
+    END IF;
+  END IF;
+
   DELETE FROM trade_conditions
   WHERE user_id = v_user_id AND listed_card_id = p_listed_card_id;
 
-  IF p_wanted IS NULL OR jsonb_typeof(p_wanted) <> 'object' THEN
+  IF p_wanted IS NULL OR p_wanted = '{}'::jsonb THEN
     RETURN;
   END IF;
 
   FOR v_wanted_card, v_entry IN SELECT * FROM jsonb_each(p_wanted) LOOP
+    IF jsonb_typeof(v_entry) <> 'array' THEN
+      RAISE EXCEPTION 'Wanted languages must be arrays';
+    END IF;
+
     FOR v_lang IN SELECT jsonb_array_elements_text(v_entry) LOOP
       INSERT INTO trade_conditions (user_id, listed_card_id, wanted_card_id, wanted_language)
       VALUES (v_user_id, p_listed_card_id, v_wanted_card, v_lang);
@@ -64,3 +88,6 @@ BEGIN
   END LOOP;
 END;
 $$;
+
+REVOKE EXECUTE ON FUNCTION set_trade_conditions(text, jsonb) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION set_trade_conditions(text, jsonb) TO authenticated;

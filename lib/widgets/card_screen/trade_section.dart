@@ -17,7 +17,6 @@ import 'package:tcgp_trading_app/widgets/shared/trade_card_pair.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
 import 'package:tcgp_trading_app/widgets/shared/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
-import 'package:flutter/gestures.dart';
 
 class TradeSection extends StatefulWidget {
   final PocketCard card;
@@ -110,6 +109,21 @@ class TradeSectionState extends State<TradeSection> {
     _fetchMatches();
   }
 
+  InlineSpan _actionSpan(String text, Color color, VoidCallback onTap) {
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.baseline,
+      baseline: TextBaseline.alphabetic,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Text(
+          text,
+          style: TextStyle(fontSize: 12, color: color),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final card = widget.card;
@@ -148,15 +162,10 @@ class TradeSectionState extends State<TradeSection> {
                                 TextSpan(
                                     text:
                                         ' in ${_formatLanguages(card.id, 'wishlist')}. '),
-                                TextSpan(
-                                  text: 'Edit',
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                  ),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      _showEditCardDialog('wishlist');
-                                    },
+                                _actionSpan(
+                                  'Edit',
+                                  AppColors.primary,
+                                  () => _showEditCardDialog('wishlist'),
                                 ),
                               ]
                             : [
@@ -170,15 +179,10 @@ class TradeSectionState extends State<TradeSection> {
                                   ),
                                 ),
                                 const TextSpan(text: ' yet. '),
-                                TextSpan(
-                                  text: 'Wishlist now',
-                                  style: const TextStyle(
-                                    color: AppColors.primary,
-                                  ),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      _onWantPressed();
-                                    },
+                                _actionSpan(
+                                  'Wishlist now',
+                                  AppColors.primary,
+                                  _onWantPressed,
                                 ),
                               ])
                         : (_isOwned
@@ -200,15 +204,10 @@ class TradeSectionState extends State<TradeSection> {
                                     text:
                                         'Accepting ${_userCardService.getTradeConditionCount(card.id)} specific ${_userCardService.getTradeConditionCount(card.id) == 1 ? 'card' : 'cards'}. ',
                                   ),
-                                TextSpan(
-                                  text: 'Edit',
-                                  style: const TextStyle(
-                                    color: AppColors.secondary,
-                                  ),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      _showEditCardDialog('owned');
-                                    },
+                                _actionSpan(
+                                  'Edit',
+                                  AppColors.secondary,
+                                  () => _showEditCardDialog('owned'),
                                 ),
                               ]
                             : [
@@ -221,15 +220,10 @@ class TradeSectionState extends State<TradeSection> {
                                   ),
                                 ),
                                 const TextSpan(text: ' for trade yet. '),
-                                TextSpan(
-                                  text: 'List now',
-                                  style: const TextStyle(
-                                    color: AppColors.secondary,
-                                  ),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      _onCanTradePressed();
-                                    },
+                                _actionSpan(
+                                  'List now',
+                                  AppColors.secondary,
+                                  _onCanTradePressed,
                                 ),
                               ]),
                   ),
@@ -433,7 +427,9 @@ class TradeSectionState extends State<TradeSection> {
                 height: 32,
                 child: FittedBox(
                   child: Switch(
-                    value: widget.activeTab == 0 ? _myListedOnly : _myWishlistedOnly,
+                    value: widget.activeTab == 0
+                        ? _myListedOnly
+                        : _myWishlistedOnly,
                     onChanged: (value) {
                       setState(() {
                         if (widget.activeTab == 0) {
@@ -505,7 +501,10 @@ class TradeSectionState extends State<TradeSection> {
       );
     }
 
-    final itemCount = matches.length + (_loadingMore ? 1 : 0);
+    // Hoist to a non-nullable local so the itemBuilder closure doesn't
+    // lose null-promotion across the capture boundary.
+    final List<(PocketCard, TradeMatch)> visibleMatches = matches;
+    final itemCount = visibleMatches.length + (_loadingMore ? 1 : 0);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -520,7 +519,7 @@ class TradeSectionState extends State<TradeSection> {
         ),
         itemCount: itemCount,
         itemBuilder: (context, index) {
-          if (index >= matches!.length) {
+          if (index >= visibleMatches.length) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(8),
@@ -533,7 +532,7 @@ class TradeSectionState extends State<TradeSection> {
             );
           }
 
-          final (matchCard, tradeMatch) = matches[index];
+          final (matchCard, tradeMatch) = visibleMatches[index];
           return GestureDetector(
             onTap: () => _onMatchTapped(matchCard, tradeMatch),
             child: Stack(
@@ -617,20 +616,14 @@ class TradeSectionState extends State<TradeSection> {
     // Determine languages for the trade message
     final String offerLanguage;
     final String receiveLanguage;
-    final String offerCardId;
-    final String receiveCardId;
     if (widget.activeTab == 0) {
       // "I want this card" tab: offerCard=matchCard, receiveCard=contextCard
-      offerCardId = matchCard.id;
-      receiveCardId = widget.card.id;
       offerLanguage = tradeMatch.language;
       final contextLangs =
           _userCardService.getLanguages(widget.card.id, 'wishlist');
       receiveLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
     } else {
       // "I have this card" tab: offerCard=contextCard, receiveCard=matchCard
-      offerCardId = widget.card.id;
-      receiveCardId = matchCard.id;
       final contextLangs =
           _userCardService.getLanguages(widget.card.id, 'owned');
       offerLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
@@ -652,12 +645,10 @@ class TradeSectionState extends State<TradeSection> {
         ),
       );
 
-      // Trade proposal is auto-sent when ChatScreen opens, so mark it locally
       if (!mounted) return;
-      setState(() {
-        _pendingProposals
-            .add('${tradeMatch.userId}:$offerCardId:$receiveCardId');
-      });
+      final proposals = await _userCardService.getMyPendingProposals();
+      if (!mounted) return;
+      setState(() => _pendingProposals = proposals);
     } finally {
       _navigatingToMatch = false;
     }
@@ -909,7 +900,7 @@ class TradeSectionState extends State<TradeSection> {
   }
 
   Future<void> _loadMoreMatches() async {
-    if (_loadingMore) return;
+    if (_loadingMore || _navigatingToMatch) return;
     setState(() => _loadingMore = true);
 
     try {

@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:tcgp_trading_app/models/pending_card_edit.dart';
 import 'package:tcgp_trading_app/models/trade_match.dart';
+import 'package:tcgp_trading_app/utils/async_utils.dart';
 
 class UserCardEntry {
   final String cardId;
@@ -39,6 +39,7 @@ class UserCardService extends ChangeNotifier {
   Map<String, Map<String, Set<String>>> _tradeConditions = {};
 
   bool _loaded = false;
+  String? _loadedUserId;
   static const _cacheKey = 'cached_user_cards_v2';
   static const _cacheUserKey = 'cached_user_cards_user_id';
   static const _conditionsCacheKey = 'cached_trade_conditions_v2';
@@ -68,16 +69,23 @@ class UserCardService extends ChangeNotifier {
   }
 
   Future<void> _loadCache() async {
-    if (_loaded) return;
     final prefs = await SharedPreferences.getInstance();
     final cachedUserId = prefs.getString(_cacheUserKey);
     final currentUserId = _client.auth.currentUser?.id;
+
+    if (_loaded && _loadedUserId == currentUserId) return;
+
+    _wishlist = {};
+    _owned = {};
+    _tradeConditions = {};
 
     // Discard cache if it belongs to a different user
     if (cachedUserId != null && cachedUserId != currentUserId) {
       await prefs.remove(_cacheKey);
       await prefs.remove(_cacheUserKey);
+      await prefs.remove(_conditionsCacheKey);
       _loaded = true;
+      _loadedUserId = currentUserId;
       return;
     }
 
@@ -113,6 +121,7 @@ class UserCardService extends ChangeNotifier {
       }
     }
     _loaded = true;
+    _loadedUserId = currentUserId;
   }
 
   Map<String, UserCardEntry> _parseEntries(List list) {
@@ -131,10 +140,10 @@ class UserCardService extends ChangeNotifier {
     await _loadCache();
     if (!forceRefresh && (_wishlist.isNotEmpty || _owned.isNotEmpty)) return;
 
-    final rows = await _client
+    final rows = await withTimeout(_client
         .from('user_cards')
         .select('card_id, type, language')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id));
 
     _wishlist = {};
     _owned = {};
@@ -152,10 +161,10 @@ class UserCardService extends ChangeNotifier {
 
     // Load trade conditions
     try {
-      final conditionRows = await _client
+      final conditionRows = await withTimeout(_client
           .from('trade_conditions')
           .select('listed_card_id, wanted_card_id, wanted_language')
-          .eq('user_id', user.id);
+          .eq('user_id', user.id));
       _tradeConditions = {};
       for (final row in conditionRows) {
         final listedId = row['listed_card_id'] as String;
@@ -172,6 +181,7 @@ class UserCardService extends ChangeNotifier {
     }
 
     await _persistCache();
+    notifyListeners();
   }
 
   Set<String> get wishlistCardIds =>
@@ -221,14 +231,15 @@ class UserCardService extends ChangeNotifier {
     final entry = UserCardEntry(cardId: cardId, language: language);
     final map = type == 'wishlist' ? _wishlist : _owned;
 
-    await _client.from('user_cards').upsert({
+    await withTimeout(_client.from('user_cards').upsert({
       'user_id': user.id,
       'card_id': cardId,
       'type': type,
       'language': language,
-    });
+    }));
     map[entry.key] = entry;
     await _persistCache();
+    notifyListeners();
   }
 
   Future<void> removeCard(String cardId, String type, String language) async {
@@ -238,13 +249,13 @@ class UserCardService extends ChangeNotifier {
     final key = '$cardId:$language';
     final map = type == 'wishlist' ? _wishlist : _owned;
 
-    await _client
+    await withTimeout(_client
         .from('user_cards')
         .delete()
         .eq('user_id', user.id)
         .eq('card_id', cardId)
         .eq('type', type)
-        .eq('language', language);
+        .eq('language', language));
     map.remove(key);
 
     // Clear trade conditions when removing the last owned entry for this card
@@ -253,6 +264,7 @@ class UserCardService extends ChangeNotifier {
     }
 
     await _persistCache();
+    notifyListeners();
   }
 
   /// Find users who own [cardId], then return their wishlist cards with profile info.
@@ -263,17 +275,16 @@ class UserCardService extends ChangeNotifier {
     required int limit,
     required int offset,
   }) async {
-    final user = _client.auth.currentUser;
-    if (user == null) return [];
+    if (_client.auth.currentUser == null) return [];
 
-    final rows = await _client.rpc('get_trade_matches_for_wanted', params: {
+    final rows =
+        await withTimeout(_client.rpc('get_trade_matches_for_wanted', params: {
       'p_card_id': cardId,
-      'p_user_id': user.id,
       'p_languages': languages,
       'p_fullart_only': fullartOnly,
       'p_limit': limit,
       'p_offset': offset,
-    });
+    }));
 
     return (rows as List)
         .map((r) => TradeMatch.fromJson(r as Map<String, dynamic>))
@@ -288,17 +299,16 @@ class UserCardService extends ChangeNotifier {
     required int limit,
     required int offset,
   }) async {
-    final user = _client.auth.currentUser;
-    if (user == null) return [];
+    if (_client.auth.currentUser == null) return [];
 
-    final rows = await _client.rpc('get_trade_matches_for_owned', params: {
+    final rows =
+        await withTimeout(_client.rpc('get_trade_matches_for_owned', params: {
       'p_card_id': cardId,
-      'p_user_id': user.id,
       'p_languages': languages,
       'p_fullart_only': fullartOnly,
       'p_limit': limit,
       'p_offset': offset,
-    });
+    }));
 
     return (rows as List)
         .map((r) => TradeMatch.fromJson(r as Map<String, dynamic>))
@@ -308,7 +318,7 @@ class UserCardService extends ChangeNotifier {
   /// Returns a set of "userId:offerCardId:receiveCardId" keys for all
   /// pending trade proposals sent by the current user.
   Future<Set<String>> getMyPendingProposals() async {
-    final rows = await _client.rpc('get_my_pending_proposals');
+    final rows = await withTimeout(_client.rpc('get_my_pending_proposals'));
     return (rows as List).map((r) {
       final m = r as Map<String, dynamic>;
       return '${m['other_user_id']}:${m['offer_card_id']}:${m['receive_card_id']}';
@@ -347,10 +357,10 @@ class UserCardService extends ChangeNotifier {
     final payload = wantedCards.map(
       (k, v) => MapEntry(k, v.toList()),
     );
-    await _client.rpc('set_trade_conditions', params: {
+    await withTimeout(_client.rpc('set_trade_conditions', params: {
       'p_listed_card_id': cardId,
       'p_wanted': payload,
-    });
+    }));
 
     // Update cache
     if (wantedCards.isEmpty) {
@@ -359,42 +369,23 @@ class UserCardService extends ChangeNotifier {
       _tradeConditions[cardId] = wantedCards;
     }
     await _persistCache();
+    notifyListeners();
   }
 
   Future<void> clearTradeConditions(String cardId) async {
     await setTradeConditions(cardId, {});
   }
 
-  void applyBulkEditsToCache({
-    required Map<String, PendingCardEdit> additions,
-    required Set<String> removals,
-  }) {
-    // Process removals - remove all language entries for each cardId:type
-    for (final key in removals) {
-      final lastColon = key.lastIndexOf(':');
-      final cardId = key.substring(0, lastColon);
-      final type = key.substring(lastColon + 1);
-      final map = type == 'wishlist' ? _wishlist : _owned;
-      map.removeWhere((_, e) => e.cardId == cardId);
-    }
-    // Process additions
-    for (final edit in additions.values) {
-      final map = edit.type == 'wishlist' ? _wishlist : _owned;
-      // Remove old entries for this card+type first
-      map.removeWhere((_, e) => e.cardId == edit.cardId);
-      for (final lang in edit.languages) {
-        final entry = UserCardEntry(cardId: edit.cardId, language: lang);
-        map[entry.key] = entry;
-      }
-    }
-    _persistCache(); // single persist
-    notifyListeners();
-  }
-
   Future<void> deleteAllUserCards() async {
     final user = _client.auth.currentUser;
     if (user == null) return;
-    await _client.from('user_cards').delete().eq('user_id', user.id);
+    await withTimeout(
+        _client.from('user_cards').delete().eq('user_id', user.id));
+    _wishlist = {};
+    _owned = {};
+    _tradeConditions = {};
+    await _persistCache();
+    notifyListeners();
   }
 
   Future<void> clearCache() async {
@@ -402,9 +393,11 @@ class UserCardService extends ChangeNotifier {
     _owned = {};
     _tradeConditions = {};
     _loaded = false;
+    _loadedUserId = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_cacheKey);
     await prefs.remove(_cacheUserKey);
     await prefs.remove(_conditionsCacheKey);
+    notifyListeners();
   }
 }

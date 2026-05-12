@@ -2,6 +2,22 @@
 
 A new Flutter project.
 
+## Android setup
+
+Create a local `.env` file from `.env.example` before running or building the
+app. The app now fails fast on startup if any required `.env` value is empty.
+
+Firebase files are intentionally local-only because they identify your Firebase
+project. Generate them with FlutterFire instead of committing them:
+
+```powershell
+dart pub global activate flutterfire_cli
+flutterfire configure --project <your-firebase-project-id>
+```
+
+After configuration, Android builds require `android/app/google-services.json`
+and Flutter imports `lib/firebase_options.dart`.
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.

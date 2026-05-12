@@ -60,29 +60,82 @@ CREATE POLICY "Users insert messages in own conversations" ON messages FOR INSER
     )
   );
 
--- Only the receiver (non-sender, conversation participant) can update message content
-CREATE POLICY "Receiver can update trade status" ON messages FOR UPDATE
-  USING (
-    sender_id != auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM conversations c
-      WHERE c.id = messages.conversation_id
-      AND (c.user_a = auth.uid() OR c.user_b = auth.uid())
-    )
-  )
-  WITH CHECK (
-    sender_id != auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM conversations c
-      WHERE c.id = messages.conversation_id
-      AND (c.user_a = auth.uid() OR c.user_b = auth.uid())
-    )
-  );
+-- Message content is immutable from clients. Trade proposal responses go
+-- through respond_to_trade_message(), which verifies the receiver and format.
+DROP POLICY IF EXISTS "Receiver can update trade status" ON messages;
+
+CREATE OR REPLACE FUNCTION respond_to_trade_message(
+  p_message_id UUID,
+  p_status TEXT
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_user_id UUID := auth.uid();
+  v_sender_id UUID;
+  v_user_a UUID;
+  v_user_b UUID;
+  v_content TEXT;
+  v_parts TEXT[];
+  v_updated_content TEXT;
+BEGIN
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF p_status NOT IN ('accepted', 'denied') THEN
+    RAISE EXCEPTION 'Invalid trade status';
+  END IF;
+
+  SELECT m.sender_id, m.content, c.user_a, c.user_b
+    INTO v_sender_id, v_content, v_user_a, v_user_b
+  FROM messages m
+  JOIN conversations c ON c.id = m.conversation_id
+  WHERE m.id = p_message_id
+  FOR UPDATE OF m;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Message not found';
+  END IF;
+
+  IF v_user_id NOT IN (v_user_a, v_user_b) OR v_sender_id = v_user_id THEN
+    RAISE EXCEPTION 'Not authorized to respond to this trade';
+  END IF;
+
+  v_parts := string_to_array(v_content, ':');
+  IF array_length(v_parts, 1) < 6 OR v_parts[1] <> 'TRADE' THEN
+    RAISE EXCEPTION 'Message is not a trade proposal';
+  END IF;
+
+  IF v_parts[6] <> 'pending' THEN
+    RAISE EXCEPTION 'Trade proposal is no longer pending';
+  END IF;
+
+  v_parts[6] := p_status;
+  v_updated_content := array_to_string(v_parts, ':');
+
+  UPDATE messages
+  SET content = v_updated_content
+  WHERE id = p_message_id;
+
+  RETURN v_updated_content;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION respond_to_trade_message(UUID, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION respond_to_trade_message(UUID, TEXT) TO authenticated;
 
 -- RPC: get-or-create conversation
 -- Handles race conditions and canonical user ordering in a single round-trip
 CREATE OR REPLACE FUNCTION get_or_create_conversation(p_other_user_id UUID)
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, pg_temp
+AS $$
 DECLARE
   v_user_a UUID;
   v_user_b UUID;
@@ -103,6 +156,8 @@ BEGIN
   IF v_id IS NULL THEN
     INSERT INTO conversations (user_a, user_b)
     VALUES (v_user_a, v_user_b)
+    ON CONFLICT (user_a, user_b) DO UPDATE
+      SET user_a = conversations.user_a
     RETURNING id INTO v_id;
   END IF;
 

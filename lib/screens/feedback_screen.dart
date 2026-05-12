@@ -181,7 +181,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                     : Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          PhosphorIcon(PhosphorIcons.paperPlaneTilt(),
+                          PhosphorIcon(PhosphorIcons.paperPlaneRight(),
                               size: 18, color: Colors.black),
                           const SizedBox(width: 8),
                           const Text(

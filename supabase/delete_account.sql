@@ -12,7 +12,11 @@
 -- SECURITY DEFINER so it can delete from auth.users (the caller normally
 -- cannot). We verify the caller is only ever deleting themselves.
 CREATE OR REPLACE FUNCTION delete_account()
-RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
 DECLARE
   v_user_id UUID := auth.uid();
 BEGIN
@@ -36,3 +40,9 @@ BEGIN
   DELETE FROM auth.users WHERE id = v_user_id;
 END;
 $$;
+
+-- Old RPC kept from an earlier version. The app now calls delete_account().
+DROP FUNCTION IF EXISTS delete_user();
+
+REVOKE EXECUTE ON FUNCTION delete_account() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION delete_account() TO authenticated;

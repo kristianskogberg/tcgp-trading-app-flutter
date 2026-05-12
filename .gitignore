@@ -44,6 +44,11 @@ app.*.map.json
 /android/app/release
 /android/app/google-services.json
 
+# Android release signing
+/android/key.properties
+*.keystore
+*.jks
+
 # Firebase
 lib/firebase_options.dart
 **/GoogleService-Info.plist
@@ -53,3 +58,4 @@ firebase.json
 .grepai/
 CLAUDE.md
 skills-lock.json
+supabase/.temp/

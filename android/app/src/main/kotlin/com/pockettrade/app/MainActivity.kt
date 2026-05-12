@@ -1,4 +1,4 @@
-package com.example.tcgp_trading_app
+package com.pockettrade.app
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -7,10 +7,13 @@ DROP FUNCTION IF EXISTS get_trade_matches_for_wanted(text, uuid, text[], boolean
 DROP FUNCTION IF EXISTS get_trade_matches_for_owned(text, uuid, text[], boolean);
 DROP FUNCTION IF EXISTS get_trade_matches_for_wanted(text, uuid, text[], boolean, integer, integer);
 DROP FUNCTION IF EXISTS get_trade_matches_for_owned(text, uuid, text[], boolean, integer, integer);
+DROP FUNCTION IF EXISTS get_trade_matches_for_wanted(text, text[], boolean, integer, integer);
+DROP FUNCTION IF EXISTS get_trade_matches_for_owned(text, text[], boolean, integer, integer);
 
-CREATE OR REPLACE FUNCTION get_trade_matches_for_wanted(p_card_id text, p_user_id uuid, p_languages text[], p_fullart_only boolean, p_limit integer, p_offset integer)
+CREATE OR REPLACE FUNCTION get_trade_matches_for_wanted(p_card_id text, p_languages text[], p_fullart_only boolean, p_limit integer, p_offset integer)
 RETURNS TABLE(card_id text, user_id uuid, player_name text, friend_id text, icon text, last_active_at timestamptz, language text, has_mutual_match boolean)
-LANGUAGE sql STABLE
+LANGUAGE sql STABLE SECURITY INVOKER
+SET search_path = public, pg_temp
 AS $$
   SELECT * FROM (
     -- Case 1: Other user has NO trade conditions for this card → use their wishlist (existing behaviour)
@@ -26,7 +29,7 @@ AS $$
     JOIN user_cards uc_own
       ON uc_own.card_id = p_card_id
      AND uc_own.type = 'owned'
-     AND uc_own.user_id != p_user_id
+     AND uc_own.user_id != auth.uid()
     JOIN profiles p
       ON p.user_id = uc_own.user_id
     JOIN cards target
@@ -43,7 +46,7 @@ AS $$
       FROM user_cards uc_b_own
       JOIN user_cards uc_a_wish
         ON uc_a_wish.card_id = uc_b_own.card_id
-       AND uc_a_wish.user_id = p_user_id
+       AND uc_a_wish.user_id = auth.uid()
        AND uc_a_wish.type = 'wishlist'
       JOIN cards c2 ON c2.id = uc_b_own.card_id AND c2.rarity = target.rarity
       WHERE uc_b_own.user_id = uc_own.user_id
@@ -56,7 +59,7 @@ AS $$
         )
       LIMIT 1
     ) mutual ON true
-    WHERE uc_me.user_id = p_user_id
+    WHERE uc_me.user_id = auth.uid()
       AND uc_me.card_id = p_card_id
       AND uc_me.type = 'wishlist'
       AND (
@@ -87,7 +90,7 @@ AS $$
     JOIN user_cards uc_own
       ON uc_own.card_id = p_card_id
      AND uc_own.type = 'owned'
-     AND uc_own.user_id != p_user_id
+     AND uc_own.user_id != auth.uid()
     JOIN profiles p
       ON p.user_id = uc_own.user_id
     JOIN cards target
@@ -100,7 +103,7 @@ AS $$
      AND c.rarity = target.rarity
     -- Current user must own the condition card in a compatible language
     JOIN user_cards uc_a_own
-      ON uc_a_own.user_id = p_user_id
+      ON uc_a_own.user_id = auth.uid()
      AND uc_a_own.card_id = tc.wanted_card_id
      AND uc_a_own.type = 'owned'
      AND (
@@ -108,7 +111,7 @@ AS $$
        OR uc_a_own.language = 'ANY'
        OR uc_a_own.language = tc.wanted_language
      )
-    WHERE uc_me.user_id = p_user_id
+    WHERE uc_me.user_id = auth.uid()
       AND uc_me.card_id = p_card_id
       AND uc_me.type = 'wishlist'
       AND (
@@ -123,9 +126,13 @@ AS $$
   LIMIT p_limit OFFSET p_offset;
 $$;
 
-CREATE OR REPLACE FUNCTION get_trade_matches_for_owned(p_card_id text, p_user_id uuid, p_languages text[], p_fullart_only boolean, p_limit integer, p_offset integer)
+REVOKE EXECUTE ON FUNCTION get_trade_matches_for_wanted(text, text[], boolean, integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION get_trade_matches_for_wanted(text, text[], boolean, integer, integer) TO authenticated;
+
+CREATE OR REPLACE FUNCTION get_trade_matches_for_owned(p_card_id text, p_languages text[], p_fullart_only boolean, p_limit integer, p_offset integer)
 RETURNS TABLE(card_id text, user_id uuid, player_name text, friend_id text, icon text, last_active_at timestamptz, language text, has_mutual_match boolean)
-LANGUAGE sql STABLE
+LANGUAGE sql STABLE SECURITY INVOKER
+SET search_path = public, pg_temp
 AS $$
   SELECT * FROM (
     -- Case 1: Current user has NO trade conditions for this card → use other users' owned cards (existing behaviour)
@@ -141,7 +148,7 @@ AS $$
     JOIN user_cards uc_want
       ON uc_want.card_id = p_card_id
      AND uc_want.type = 'wishlist'
-     AND uc_want.user_id != p_user_id
+     AND uc_want.user_id != auth.uid()
     JOIN profiles p
       ON p.user_id = uc_want.user_id
     JOIN cards target
@@ -158,7 +165,7 @@ AS $$
       FROM user_cards uc_b_wish
       JOIN user_cards uc_a_own
         ON uc_a_own.card_id = uc_b_wish.card_id
-       AND uc_a_own.user_id = p_user_id
+       AND uc_a_own.user_id = auth.uid()
        AND uc_a_own.type = 'owned'
       JOIN cards c2 ON c2.id = uc_b_wish.card_id AND c2.rarity = target.rarity
       WHERE uc_b_wish.user_id = uc_want.user_id
@@ -171,7 +178,7 @@ AS $$
         )
       LIMIT 1
     ) mutual ON true
-    WHERE uc_me.user_id = p_user_id
+    WHERE uc_me.user_id = auth.uid()
       AND uc_me.card_id = p_card_id
       AND uc_me.type = 'owned'
       AND (
@@ -184,7 +191,7 @@ AS $$
       -- Exclude when current user has conditions (handled in Case 2)
       AND NOT EXISTS (
         SELECT 1 FROM trade_conditions tc
-        WHERE tc.user_id = p_user_id AND tc.listed_card_id = p_card_id
+        WHERE tc.user_id = auth.uid() AND tc.listed_card_id = p_card_id
       )
 
     UNION ALL
@@ -200,12 +207,12 @@ AS $$
       true AS has_mutual_match  -- other user owns the wanted card by definition
     FROM user_cards uc_me
     JOIN trade_conditions tc
-      ON tc.user_id = p_user_id
+      ON tc.user_id = auth.uid()
      AND tc.listed_card_id = p_card_id
     JOIN user_cards uc_want
       ON uc_want.card_id = p_card_id
      AND uc_want.type = 'wishlist'
-     AND uc_want.user_id != p_user_id
+     AND uc_want.user_id != auth.uid()
     JOIN profiles p
       ON p.user_id = uc_want.user_id
     JOIN cards target
@@ -223,7 +230,7 @@ AS $$
        OR uc_other_own.language = 'ANY'
        OR uc_other_own.language = tc.wanted_language
      )
-    WHERE uc_me.user_id = p_user_id
+    WHERE uc_me.user_id = auth.uid()
       AND uc_me.card_id = p_card_id
       AND uc_me.type = 'owned'
       AND (
@@ -238,12 +245,16 @@ AS $$
   LIMIT p_limit OFFSET p_offset;
 $$;
 
+REVOKE EXECUTE ON FUNCTION get_trade_matches_for_owned(text, text[], boolean, integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION get_trade_matches_for_owned(text, text[], boolean, integer, integer) TO authenticated;
+
 -- Returns all pending trade proposals sent by the current user.
 -- Parses the TRADE: message format to extract card IDs and the other user.
 DROP FUNCTION IF EXISTS get_my_pending_proposals();
 CREATE OR REPLACE FUNCTION get_my_pending_proposals()
 RETURNS TABLE(other_user_id uuid, offer_card_id text, receive_card_id text)
-LANGUAGE sql STABLE SECURITY DEFINER
+LANGUAGE sql STABLE SECURITY INVOKER
+SET search_path = public, pg_temp
 AS $$
   SELECT
     CASE WHEN c.user_a = auth.uid() THEN c.user_b ELSE c.user_a END AS other_user_id,

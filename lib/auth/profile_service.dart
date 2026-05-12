@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tcgp_trading_app/utils/async_utils.dart';
 
 class ProfileService {
   static final ProfileService _instance = ProfileService._internal();
@@ -43,11 +44,11 @@ class ProfileService {
       if (_cachedProfile?['user_id'] == user.id) return _cachedProfile;
     }
 
-    final data = await _client
+    final data = await withTimeout(_client
         .from('profiles')
         .select('user_id, player_name, friend_id, icon')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .maybeSingle());
 
     _cachedProfile = data;
     await _persistCache();
@@ -72,11 +73,11 @@ class ProfileService {
     // Pre-populate cache synchronously so reads don't race the DB write.
     _cachedProfile = payload;
 
-    final saved = await _client
+    final saved = await withTimeout(_client
         .from('profiles')
         .upsert(payload, onConflict: 'user_id')
         .select()
-        .single();
+        .single());
 
     _cachedProfile = saved;
     await _persistCache();
@@ -88,7 +89,7 @@ class ProfileService {
             const Duration(minutes: 5)) {
       return;
     }
-    await _client.rpc('update_last_active');
+    await withTimeout(_client.rpc('update_last_active'));
     _lastActiveUpdate = DateTime.now();
   }
 
@@ -99,19 +100,19 @@ class ProfileService {
   }
 
   Future<Map<String, dynamic>?> getOtherUserProfile(String userId) async {
-    final data = await _client
+    final data = await withTimeout(_client
         .from('profiles')
         .select('user_id, player_name, icon')
         .eq('user_id', userId)
-        .maybeSingle();
+        .maybeSingle());
     return data;
   }
 
   Future<Map<String, List<String>>> getOtherUserCards(String userId) async {
-    final rows = await _client
+    final rows = await withTimeout(_client
         .from('user_cards')
         .select('card_id, type')
-        .eq('user_id', userId);
+        .eq('user_id', userId));
 
     final wishlist = <String>[];
     final owned = <String>[];
@@ -127,6 +128,7 @@ class ProfileService {
 
   Future<void> clearProfileCache() async {
     _cachedProfile = null;
+    _lastActiveUpdate = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_cacheKey);
   }

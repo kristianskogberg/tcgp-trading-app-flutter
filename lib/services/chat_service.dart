@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/models/message.dart';
+import 'package:tcgp_trading_app/utils/async_utils.dart';
 import 'package:safe_text/safe_text.dart';
 
 class ChatService {
@@ -11,11 +12,14 @@ class ChatService {
   final SupabaseClient _client = Supabase.instance.client;
 
   Future<String> getOrCreateConversation(String otherUserId) async {
-    final result = await _client.rpc(
+    final result = await withTimeout(_client.rpc(
       'get_or_create_conversation',
       params: {'p_other_user_id': otherUserId},
-    );
-    return result as String;
+    ));
+    if (result is! String) {
+      throw StateError('Unexpected result from get_or_create_conversation');
+    }
+    return result;
   }
 
   Future<Message> sendTradeMessage(
@@ -43,7 +47,8 @@ class ChatService {
       query = query.lt('created_at', before.toIso8601String());
     }
 
-    final rows = await query.order('created_at', ascending: false).limit(limit);
+    final rows = await withTimeout(
+        query.order('created_at', ascending: false).limit(limit));
     return (rows as List)
         .map((r) => Message.fromJson(r as Map<String, dynamic>))
         .toList();
@@ -65,7 +70,7 @@ class ChatService {
           'Message contains inappropriate language. Please rephrase.');
     }
 
-    final row = await _client
+    final row = await withTimeout(_client
         .from('messages')
         .insert({
           'conversation_id': conversationId,
@@ -73,9 +78,12 @@ class ChatService {
           'content': trimmed,
         })
         .select()
-        .single();
+        .single());
 
-    // Update conversation metadata (fire-and-forget)
+    // Update conversation metadata. The message has already been inserted, so
+    // failures here shouldn't throw to the caller — the UI still shows the
+    // message. Await so errors can be logged and a stale last_message_text
+    // doesn't get masked by a hot-path exception being swallowed.
     final displayText = trimmed.startsWith('TRADE:')
         ? 'Trade proposal'
         : trimmed.startsWith('FRIENDID:')
@@ -87,41 +95,29 @@ class ChatService {
                 : (trimmed.length > 100
                     ? '${trimmed.substring(0, 100)}...'
                     : trimmed);
-    _client
-        .from('conversations')
-        .update({
-          'last_message_at': DateTime.now().toUtc().toIso8601String(),
-          'last_message_text': displayText,
-        })
-        .eq('id', conversationId)
-        .then(
-          (_) {},
-          onError: (e) =>
-              debugPrint('Failed to update conversation metadata: $e'),
-        );
+    try {
+      await withTimeout(_client
+          .from('conversations')
+          .update({
+            'last_message_at': DateTime.now().toUtc().toIso8601String(),
+            'last_message_text': displayText,
+          })
+          .eq('id', conversationId));
+    } catch (e) {
+      debugPrint('Failed to update conversation metadata: $e');
+    }
 
     return Message.fromJson(row);
   }
 
   Future<void> updateTradeStatus(String messageId, String newStatus) async {
-    final row = await _client
-        .from('messages')
-        .select('content')
-        .eq('id', messageId)
-        .single();
-
-    final content = (row['content'] as String?) ?? '';
-    final parts = content.split(':');
-    // Replace or append status segment (index 5)
-    if (parts.length > 5) {
-      parts[5] = newStatus;
-    } else {
-      parts.add(newStatus);
-    }
-
-    await _client
-        .from('messages')
-        .update({'content': parts.join(':')}).eq('id', messageId);
+    await withTimeout(_client.rpc(
+      'respond_to_trade_message',
+      params: {
+        'p_message_id': messageId,
+        'p_status': newStatus,
+      },
+    ));
   }
 
   RealtimeChannel subscribeToMessages(
@@ -167,11 +163,13 @@ class ChatService {
   Future<List<Map<String, dynamic>>> getConversations() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw const AuthException('Not authenticated');
-    final rows = await _client
+    final rows = await withTimeout(_client
         .from('conversations')
-        .select()
+        .select(
+            'id, user_a, user_b, last_message_at, last_message_text, unread_count_a, unread_count_b')
         .or('user_a.eq.$userId,user_b.eq.$userId')
-        .order('last_message_at', ascending: false, nullsFirst: false);
+        .order('last_message_at', ascending: false, nullsFirst: false)
+        .limit(100));
 
     // Collect other-user IDs to fetch their profile names
     final otherUserIds = (rows as List).map((r) {
@@ -181,10 +179,11 @@ class ChatService {
 
     if (otherUserIds.isEmpty) return [];
 
-    final profiles = await _client
+    final profiles = await withTimeout(_client
         .from('profiles')
         .select('user_id, player_name, icon')
-        .inFilter('user_id', otherUserIds.toList());
+        .inFilter('user_id', otherUserIds.toList())
+        .limit(100));
 
     final profileMap = <String, Map<String, dynamic>>{};
     for (final p in profiles) {
@@ -213,25 +212,25 @@ class ChatService {
   Future<void> markConversationAsRead(String conversationId) async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw const AuthException('Not authenticated');
-    final row = await _client
+    final row = await withTimeout(_client
         .from('conversations')
         .select('user_a')
         .eq('id', conversationId)
-        .single();
+        .single());
 
     final isUserA = row['user_a'] == userId;
-    await _client.from('conversations').update({
+    await withTimeout(_client.from('conversations').update({
       if (isUserA) 'unread_count_a': 0 else 'unread_count_b': 0,
-    }).eq('id', conversationId);
+    }).eq('id', conversationId));
   }
 
   Future<int> getTotalUnreadCount() async {
     final userId = _client.auth.currentUser?.id;
     if (userId == null) throw const AuthException('Not authenticated');
-    final rows = await _client
+    final rows = await withTimeout(_client
         .from('conversations')
         .select('user_a, unread_count_a, unread_count_b')
-        .or('user_a.eq.$userId,user_b.eq.$userId');
+        .or('user_a.eq.$userId,user_b.eq.$userId'));
 
     int total = 0;
     for (final row in rows) {

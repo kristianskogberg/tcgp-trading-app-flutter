@@ -24,6 +24,7 @@ DROP POLICY IF EXISTS "Users can insert own profile" ON profiles;     -- covered
 
 -- profiles ------------------------------------------------------
 DROP POLICY IF EXISTS "Anyone can read profiles" ON profiles;
+DROP POLICY IF EXISTS "Authenticated users can read profiles" ON profiles;
 CREATE POLICY "Authenticated users can read profiles" ON profiles
   FOR SELECT TO authenticated
   USING (true);
@@ -36,22 +37,25 @@ CREATE POLICY "Users can manage their own profile" ON profiles
 
 -- user_cards ----------------------------------------------------
 DROP POLICY IF EXISTS "Anyone can view user_cards" ON user_cards;
+DROP POLICY IF EXISTS "Authenticated users can view user_cards" ON user_cards;
 CREATE POLICY "Authenticated users can view user_cards" ON user_cards
   FOR SELECT TO authenticated
   USING (true);
 
-DROP POLICY IF EXISTS "Users manage own cards" ON user_cards;
+DROP POLICY IF EXISTS "Users insert own cards" ON user_cards;
 CREATE POLICY "Users insert own cards" ON user_cards
   FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users delete own cards" ON user_cards;
+DROP POLICY IF EXISTS "Users can delete own cards" ON user_cards;
 CREATE POLICY "Users delete own cards" ON user_cards
   FOR DELETE TO authenticated
   USING (auth.uid() = user_id);
 
 -- trade_conditions ---------------------------------------------
 DROP POLICY IF EXISTS "Anyone can read trade conditions" ON trade_conditions;
+DROP POLICY IF EXISTS "Authenticated users can read trade conditions" ON trade_conditions;
 CREATE POLICY "Authenticated users can read trade conditions" ON trade_conditions
   FOR SELECT TO authenticated
   USING (true);
@@ -110,24 +114,9 @@ CREATE POLICY "Users insert messages in own conversations" ON messages
   );
 
 DROP POLICY IF EXISTS "Receiver can update trade status" ON messages;
-CREATE POLICY "Receiver can update trade status" ON messages
-  FOR UPDATE TO authenticated
-  USING (
-    sender_id <> auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM conversations c
-      WHERE c.id = messages.conversation_id
-        AND (c.user_a = auth.uid() OR c.user_b = auth.uid())
-    )
-  )
-  WITH CHECK (
-    sender_id <> auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM conversations c
-      WHERE c.id = messages.conversation_id
-        AND (c.user_a = auth.uid() OR c.user_b = auth.uid())
-    )
-  );
+-- Message updates are intentionally not exposed through RLS. Trade proposal
+-- responses are handled by respond_to_trade_message(), which verifies format,
+-- pending status, receiver identity, and conversation membership.
 
 -- device_tokens -------------------------------------------------
 DROP POLICY IF EXISTS "Users can manage their own tokens" ON device_tokens;
@@ -139,11 +128,13 @@ CREATE POLICY "Users can manage their own tokens" ON device_tokens
 -- =============================================================
 -- 3. Pin search_path on functions (prevents search_path injection)
 -- =============================================================
-ALTER FUNCTION public.migrate_user_data              SET search_path = public, pg_temp;
+ALTER FUNCTION public.migrate_user_data(UUID, UUID, TEXT) SET search_path = public, extensions, pg_temp;
 ALTER FUNCTION public.update_cards_timestamp         SET search_path = public, pg_temp;
 ALTER FUNCTION public.increment_unread_count         SET search_path = public, pg_temp;
 ALTER FUNCTION public.get_or_create_conversation     SET search_path = public, pg_temp;
+ALTER FUNCTION public.respond_to_trade_message(UUID, TEXT) SET search_path = public, pg_temp;
+ALTER FUNCTION public.set_trade_conditions(TEXT, JSONB) SET search_path = public, pg_temp;
 ALTER FUNCTION public.update_last_active             SET search_path = public, pg_temp;
-ALTER FUNCTION public.get_trade_matches_for_wanted   SET search_path = public, pg_temp;
-ALTER FUNCTION public.get_trade_matches_for_owned    SET search_path = public, pg_temp;
+ALTER FUNCTION public.get_trade_matches_for_wanted(TEXT, TEXT[], BOOLEAN, INTEGER, INTEGER) SET search_path = public, pg_temp;
+ALTER FUNCTION public.get_trade_matches_for_owned(TEXT, TEXT[], BOOLEAN, INTEGER, INTEGER) SET search_path = public, pg_temp;
 ALTER FUNCTION public.get_my_pending_proposals       SET search_path = public, pg_temp;

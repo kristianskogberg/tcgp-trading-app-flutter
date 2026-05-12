@@ -19,6 +19,8 @@ class NotificationService {
 
   bool _initialized = false;
   StreamSubscription<String>? _tokenRefreshSub;
+  StreamSubscription<RemoteMessage>? _foregroundMessageSub;
+  StreamSubscription<RemoteMessage>? _messageOpenedSub;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -27,6 +29,7 @@ class NotificationService {
     final settings = await _messaging.requestPermission();
     if (settings.authorizationStatus != AuthorizationStatus.authorized) {
       debugPrint('Notification permission denied');
+      _initialized = false;
       return;
     }
 
@@ -35,16 +38,21 @@ class NotificationService {
       await _saveToken(token);
     }
 
+    await _tokenRefreshSub?.cancel();
     _tokenRefreshSub = _messaging.onTokenRefresh.listen(
       _saveToken,
       onError: (e) => debugPrint('Token refresh error: $e'),
     );
 
     // Handle foreground messages
-    FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+    await _foregroundMessageSub?.cancel();
+    _foregroundMessageSub =
+        FirebaseMessaging.onMessage.listen(_onForegroundMessage);
 
     // Handle notification tap when app is in background
-    FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTap);
+    await _messageOpenedSub?.cancel();
+    _messageOpenedSub =
+        FirebaseMessaging.onMessageOpenedApp.listen(_onNotificationTap);
 
     // Handle notification tap when app was terminated
     final initialMessage = await _messaging.getInitialMessage();
@@ -83,8 +91,7 @@ class NotificationService {
       playerName = profile['player_name'] as String? ?? 'Unknown';
       icon = profile['icon'] as String?;
     } catch (e) {
-      debugPrint(
-          'Failed to fetch sender profile, using fallback display: $e');
+      debugPrint('Failed to fetch sender profile, using fallback display: $e');
     }
 
     final nav = navigatorKey.currentState;
@@ -148,8 +155,12 @@ class NotificationService {
     }
 
     // Cancel subscription and allow re-initialization on next login
-    _tokenRefreshSub?.cancel();
+    await _tokenRefreshSub?.cancel();
     _tokenRefreshSub = null;
+    await _foregroundMessageSub?.cancel();
+    _foregroundMessageSub = null;
+    await _messageOpenedSub?.cancel();
+    _messageOpenedSub = null;
     _initialized = false;
   }
 }

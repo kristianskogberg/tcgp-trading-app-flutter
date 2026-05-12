@@ -19,6 +19,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: ".env");
+  _validateRequiredEnv();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -30,6 +31,24 @@ void main() async {
   await SafeTextFilter.init(language: Language.english);
 
   runApp(const MyApp());
+}
+
+void _validateRequiredEnv() {
+  const requiredKeys = [
+    'SUPABASE_URL',
+    'SUPABASE_API_KEY',
+    'TURNSTILE_SITE_KEY',
+    'GOOGLE_WEB_CLIENT_ID',
+  ];
+  final missing = requiredKeys
+      .where((key) => (dotenv.env[key] ?? '').trim().isEmpty)
+      .toList();
+  if (missing.isNotEmpty) {
+    throw StateError(
+      'Missing required environment values: ${missing.join(', ')}. '
+      'Create a local .env from .env.example before running the app.',
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {

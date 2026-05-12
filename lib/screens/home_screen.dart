@@ -415,12 +415,6 @@ class _HomeScreenState extends State<HomeScreen> {
       removalLangs[key] = _userCardService.getLanguages(cardId, type);
     }
 
-    // Update in-memory cache immediately so UI reflects changes
-    _userCardService.applyBulkEditsToCache(
-      additions: additions,
-      removals: removals,
-    );
-
     for (final key in removals) {
       final lastColon = key.lastIndexOf(':');
       final cardId = key.substring(0, lastColon);
@@ -465,8 +459,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Only clear successful edits. Keep failed ones so the user can retry.
       _pendingEdits.removeWhere((k, _) => !failedAdditions.contains(k));
       _pendingRemovals.removeWhere((k) => !failedRemovals.contains(k));
-      _pendingConditions
-          .removeWhere((k, _) => !failedConditions.contains(k));
+      _pendingConditions.removeWhere((k, _) => !failedConditions.contains(k));
       if (totalFailed == 0) {
         _currentMode = HomeMode.browse;
       }
@@ -514,8 +507,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final discard = await showAppDialog<bool>(
       context: context,
       title: 'Heads up',
-      content: const Text(
-          'You have unsaved changes. Do you want to discard them?'),
+      content:
+          const Text('You have unsaved changes. Do you want to discard them?'),
       cancelText: 'Keep editing',
       primaryText: 'Discard',
       onPrimaryPressed: () => true,

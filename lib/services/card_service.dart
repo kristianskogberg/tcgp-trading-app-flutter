@@ -41,14 +41,17 @@ class CardService {
         final updated = await _fetchUpdatedCards(lastSync);
         if (updated != null) {
           _mergeUpdatedCards(updated);
-          await _persistCache(prefs);
+          await _persistCache(
+            prefs,
+            syncCursor: _nextSyncCursor(lastSync, updated),
+          );
           return _cards!;
         }
       }
 
       // Load from disk cache if in-memory is empty
       if (_cards == null || _cards!.isEmpty) {
-        _loadFromDiskCache(prefs);
+        await _loadFromDiskCache(prefs);
       }
 
       // Try incremental sync with disk cache
@@ -57,7 +60,10 @@ class CardService {
         final updated = await _fetchUpdatedCards(diskLastSync);
         if (updated != null) {
           _mergeUpdatedCards(updated);
-          await _persistCache(prefs);
+          await _persistCache(
+            prefs,
+            syncCursor: _nextSyncCursor(diskLastSync, updated),
+          );
           return _cards!;
         }
       }
@@ -66,7 +72,11 @@ class CardService {
       final allData = await _fetchAllCardsParallel();
       _cards = allData.map((e) => PocketCard.fromJson(e)).toList();
       _cardMap = null;
-      await _persistCache(prefs, rawData: allData);
+      await _persistCache(
+        prefs,
+        rawData: allData,
+        syncCursor: _maxUpdatedAt(allData),
+      );
       return _cards!;
     } catch (e) {
       // Fall through to cache
@@ -75,7 +85,7 @@ class CardService {
 
     // Fallback: load from disk cache
     if (_cards == null || _cards!.isEmpty) {
-      _loadFromDiskCache(prefs);
+      await _loadFromDiskCache(prefs);
     }
     return _cards ?? [];
   }
@@ -159,27 +169,65 @@ class CardService {
 
   /// Persist current cards to SharedPreferences.
   Future<void> _persistCache(SharedPreferences prefs,
-      {List<dynamic>? rawData}) async {
+      {List<dynamic>? rawData, String? syncCursor}) async {
     final data = rawData ?? _cards!.map((c) => c.toJson()).toList();
     await prefs.setString(_cacheKey, json.encode(data));
-    _cachedAt ??= DateTime.now();
+    _cachedAt = DateTime.now();
     await prefs.setInt(_cacheTimestampKey, _cachedAt!.millisecondsSinceEpoch);
-    await prefs.setString(
-        _lastSyncKey, DateTime.now().toUtc().toIso8601String());
+    final nextSyncCursor = syncCursor ?? prefs.getString(_lastSyncKey);
+    if (nextSyncCursor != null) {
+      await prefs.setString(_lastSyncKey, nextSyncCursor);
+    }
+  }
+
+  String _nextSyncCursor(String currentCursor, List<dynamic> updatedRows) {
+    final maxUpdatedAt = _maxUpdatedAt(updatedRows);
+    if (maxUpdatedAt == null) return currentCursor;
+    final current = DateTime.tryParse(currentCursor);
+    final next = DateTime.tryParse(maxUpdatedAt);
+    if (current == null || next == null || next.isAfter(current)) {
+      return maxUpdatedAt;
+    }
+    return currentCursor;
+  }
+
+  String? _maxUpdatedAt(Iterable<dynamic> rows) {
+    DateTime? max;
+    for (final row in rows) {
+      if (row is! Map<String, dynamic>) continue;
+      final raw = row['updated_at'] as String?;
+      if (raw == null) continue;
+      final parsed = DateTime.tryParse(raw);
+      if (parsed == null) continue;
+      if (max == null || parsed.isAfter(max)) {
+        max = parsed;
+      }
+    }
+    return max?.toUtc().toIso8601String();
   }
 
   /// Load cards from SharedPreferences disk cache into memory.
-  void _loadFromDiskCache(SharedPreferences prefs) {
+  Future<void> _loadFromDiskCache(SharedPreferences prefs) async {
     final cached = prefs.getString(_cacheKey);
     if (cached != null) {
-      final List<dynamic> jsonList = json.decode(cached);
-      _cards = jsonList
-          .map((e) => PocketCard.fromJson(e as Map<String, dynamic>))
-          .toList();
-      _cardMap = null;
-      final timestamp = prefs.getInt(_cacheTimestampKey);
-      if (timestamp != null) {
-        _cachedAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
+      try {
+        final List<dynamic> jsonList = json.decode(cached);
+        _cards = jsonList
+            .map((e) => PocketCard.fromJson(e as Map<String, dynamic>))
+            .toList();
+        _cardMap = null;
+        final timestamp = prefs.getInt(_cacheTimestampKey);
+        if (timestamp != null) {
+          _cachedAt = DateTime.fromMillisecondsSinceEpoch(timestamp);
+        }
+      } catch (e) {
+        debugPrint('Failed to decode cached cards, clearing cache: $e');
+        _cards = null;
+        _cardMap = null;
+        _cachedAt = null;
+        await prefs.remove(_cacheKey);
+        await prefs.remove(_cacheTimestampKey);
+        await prefs.remove(_lastSyncKey);
       }
     }
   }
