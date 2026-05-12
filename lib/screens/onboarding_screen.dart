@@ -1,7 +1,4 @@
-import 'package:cloudflare_turnstile/cloudflare_turnstile.dart';
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/screens/main_screen.dart';
@@ -21,13 +18,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final _playerNameController = TextEditingController();
   final _friendIdController = TextEditingController();
-  final _turnstileController = TurnstileController();
 
   String? _playerNameError;
   String? _friendIdError;
-  String? _captchaToken;
   bool _loading = false;
-  bool _captchaError = false;
 
   @override
   void initState() {
@@ -40,13 +34,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void dispose() {
     _playerNameController.dispose();
     _friendIdController.dispose();
-    _turnstileController.dispose();
     super.dispose();
-  }
-
-  void _retryCaptcha() {
-    setState(() => _captchaError = false);
-    _turnstileController.refreshToken();
   }
 
   bool _validate() {
@@ -83,7 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     MainScreen.showLinkPrompt = true;
     try {
       await _authService
-          .signInAnonymously(captchaToken: _captchaToken)
+          .signInAnonymously()
           .timeout(const Duration(seconds: 15));
       await _profileService
           .saveProfile(
@@ -99,19 +87,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: $e')),
         );
-        _turnstileController.refreshToken();
-        setState(() {
-          _loading = false;
-          _captchaToken = null;
-        });
+        setState(() => _loading = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final siteKey = dotenv.env['TURNSTILE_SITE_KEY'] ?? '';
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Get Started'),
@@ -136,33 +118,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             errorText: _friendIdError,
           ),
           const SizedBox(height: 24),
-          Center(
-            child: SizedBox(
-              child: CloudFlareTurnstile(
-                siteKey: siteKey,
-                controller: _turnstileController,
-                options: TurnstileOptions(
-                    theme: TurnstileTheme.dark, mode: TurnstileMode.managed),
-                onTokenRecived: (token) => setState(() {
-                  _captchaToken = token;
-                  _captchaError = false;
-                }),
-                onTokenExpired: () => setState(() => _captchaToken = null),
-                onError: (_) => setState(() => _captchaError = true),
-              ),
-            ),
-          ),
-          if (_captchaError)
-            Center(
-              child: TextButton.icon(
-                onPressed: _retryCaptcha,
-                icon: PhosphorIcon(PhosphorIcons.arrowCounterClockwise()),
-                label: const Text('Retry security check'),
-              ),
-            ),
-          const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: (_loading || _captchaToken == null) ? null : _getStarted,
+            onPressed: _loading ? null : _getStarted,
             child: _loading
                 ? const SizedBox(
                     height: 18,

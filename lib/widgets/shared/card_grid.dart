@@ -59,6 +59,7 @@ class CardGrid extends StatelessWidget {
 
             return CustomScrollView(
               controller: scrollController,
+              cacheExtent: constraints.maxHeight * 1.25,
               slivers: [
                 for (int i = 0; i < setOrder.length; i++) ...[
                   SliverToBoxAdapter(

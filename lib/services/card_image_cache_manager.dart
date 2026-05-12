@@ -6,8 +6,8 @@ class CardImageCacheManager {
   static final instance = CacheManager(
     Config(
       _key,
-      stalePeriod: const Duration(days: 30),
-      maxNrOfCacheObjects: 500,
+      stalePeriod: const Duration(days: 90),
+      maxNrOfCacheObjects: 2500,
     ),
   );
 }

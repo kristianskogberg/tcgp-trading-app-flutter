@@ -37,7 +37,6 @@ void _validateRequiredEnv() {
   const requiredKeys = [
     'SUPABASE_URL',
     'SUPABASE_API_KEY',
-    'TURNSTILE_SITE_KEY',
     'GOOGLE_WEB_CLIENT_ID',
   ];
   final missing = requiredKeys

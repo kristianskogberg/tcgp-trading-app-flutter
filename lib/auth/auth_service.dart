@@ -10,26 +10,28 @@ import 'package:tcgp_trading_app/utils/async_utils.dart';
 class AuthService {
   final SupabaseClient _client = Supabase.instance.client;
 
-  Future<AuthResponse> signInWithEmailPassword(String email, String password,
-      {String? captchaToken}) async {
+  Future<AuthResponse> signInWithEmailPassword(
+    String email,
+    String password,
+  ) async {
     return await _client.auth.signInWithPassword(
       email: email,
       password: password,
-      captchaToken: captchaToken,
     );
   }
 
-  Future<AuthResponse> signUpWithEmailPassword(String email, String password,
-      {String? captchaToken}) async {
+  Future<AuthResponse> signUpWithEmailPassword(
+    String email,
+    String password,
+  ) async {
     return await _client.auth.signUp(
       email: email,
       password: password,
-      captchaToken: captchaToken,
     );
   }
 
-  Future<AuthResponse> signInAnonymously({String? captchaToken}) async {
-    return await _client.auth.signInAnonymously(captchaToken: captchaToken);
+  Future<AuthResponse> signInAnonymously() async {
+    return await _client.auth.signInAnonymously();
   }
 
   Future<UserResponse> linkEmail(String email, String password) async {
@@ -67,12 +69,10 @@ class AuthService {
     await _client.auth.signOut();
   }
 
-  Future<void> resendVerificationEmail(String email,
-      {String? captchaToken}) async {
+  Future<void> resendVerificationEmail(String email) async {
     await _client.auth.resend(
       type: OtpType.emailChange,
       email: email,
-      captchaToken: captchaToken,
     );
   }
 

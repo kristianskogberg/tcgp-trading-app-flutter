@@ -111,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _applyCardData(cards);
-      CardService().precacheCardImages();
+      CardService().precacheCardImages(cards: _filteredCards);
     });
   }
 

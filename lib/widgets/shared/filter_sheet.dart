@@ -1,8 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
-import 'package:tcgp_trading_app/utils/set_image_url.dart';
+import 'package:tcgp_trading_app/widgets/shared/set_logo_label.dart';
 
 import 'dart:developer' as developer;
 
@@ -87,14 +86,10 @@ void openFilterSheet({
                                   ? draftSets.remove(val)
                                   : draftSets.add(val);
                             }),
-                            iconBuilder: (option) => CachedNetworkImage(
-                              imageUrl: setImageUrl(option),
-                              height: 20,
-                              memCacheHeight: 60,
-                              fit: BoxFit.contain,
-                              errorWidget: (context, url, error) => Text(option,
-                                  style: const TextStyle(
-                                      fontSize: 13, color: Colors.white70)),
+                            iconBuilder: (option) => SetLogoLabel(
+                              setId: option,
+                              width: 70,
+                              height: 22,
                             ),
                           ),
                           const SizedBox(height: 16),

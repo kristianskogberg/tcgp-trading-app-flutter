@@ -359,8 +359,8 @@ class TradeSectionState extends State<TradeSection> {
                     height: 32,
                     child: FilledButton.icon(
                       onPressed: _applyLanguageFilter,
-                      icon: PhosphorIcon(PhosphorIcons.checkSquare(),
-                          size: 14, color: Colors.white38),
+                      icon: PhosphorIcon(PhosphorIcons.check(),
+                          size: 14, color: Colors.black),
                       label:
                           const Text('Apply', style: TextStyle(fontSize: 12)),
                       style: FilledButton.styleFrom(
@@ -512,9 +512,9 @@ class TradeSectionState extends State<TradeSection> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
+          crossAxisCount: 3,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
           childAspectRatio: 0.72,
         ),
         itemCount: itemCount,

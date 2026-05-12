@@ -1,9 +1,8 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
-import 'package:tcgp_trading_app/utils/set_image_url.dart';
+import 'package:tcgp_trading_app/widgets/shared/set_logo_label.dart';
 
 class ActiveFilterChips extends StatelessWidget {
   final Set<String> selectedSets;
@@ -54,13 +53,11 @@ class ActiveFilterChips extends StatelessWidget {
       }
     }
     if (type == 'set') {
-      return CachedNetworkImage(
-        imageUrl: setImageUrl(label),
+      return SetLogoLabel(
+        setId: label,
+        fallbackColor: AppColors.primary,
+        width: 64,
         height: 20,
-        memCacheHeight: 60,
-        fit: BoxFit.contain,
-        errorWidget: (context, url, error) => Text(label,
-            style: const TextStyle(color: AppColors.primary, fontSize: 12)),
       );
     }
     if (type == 'cardType') {

@@ -1,11 +1,7 @@
-import 'package:cloudflare_turnstile/cloudflare_turnstile.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
-
-
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,16 +15,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _turnstileController = TurnstileController();
 
-  String? _captchaToken;
   bool _loading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
-    _turnstileController.dispose();
     super.dispose();
   }
 
@@ -74,25 +67,15 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    if (_captchaToken == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please complete the CAPTCHA')),
-      );
-      return;
-    }
-
     setState(() => _loading = true);
     try {
-      await authService.signInWithEmailPassword(email, password,
-          captchaToken: _captchaToken);
+      await authService.signInWithEmailPassword(email, password);
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid email or password')),
         );
-        _turnstileController.refreshToken();
-        setState(() => _captchaToken = null);
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -101,75 +84,57 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final siteKey = dotenv.env['TURNSTILE_SITE_KEY'] ?? '';
-
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Login'),
-        ),
-        body: ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            EmailField(controller: _emailController),
-            const SizedBox(height: 20),
-            PasswordField(controller: _passwordController),
-            const SizedBox(height: 20),
-            Center(
-              child: SizedBox(
-                width: 300,
-                child: CloudFlareTurnstile(
-                  siteKey: siteKey,
-                  controller: _turnstileController,
-                  options: TurnstileOptions(
-                      theme: TurnstileTheme.dark, mode: TurnstileMode.managed),
-                  onTokenRecived: (token) {
-                    setState(() => _captchaToken = token);
-                  },
-                  onTokenExpired: () {
-                    setState(() => _captchaToken = null);
-                  },
-                ),
+      appBar: AppBar(
+        title: const Text('Login'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          EmailField(controller: _emailController),
+          const SizedBox(height: 20),
+          PasswordField(controller: _passwordController),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: _loading ? null : login,
+            child: _loading
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Login'),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              const Expanded(child: Divider(color: Colors.white24)),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text('or', style: TextStyle(color: Colors.white54)),
               ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loading ? null : login,
-              child: _loading
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Login'),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                const Expanded(child: Divider(color: Colors.white24)),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text('or', style: TextStyle(color: Colors.white54)),
-                ),
-                const Expanded(child: Divider(color: Colors.white24)),
-              ],
-            ),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: _loading ? null : _signInWithGoogle,
-              icon: _loading
-                  ? const SizedBox(
-                      height: 18,
-                      width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : PhosphorIcon(PhosphorIcons.googleLogo(), size: 24),
-              label: const Text('Sign in with Google'),
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Center(child: Text("New user? Get started")))
-          ],
-        ));
+              const Expanded(child: Divider(color: Colors.white24)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: _loading ? null : _signInWithGoogle,
+            icon: _loading
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : PhosphorIcon(PhosphorIcons.googleLogo(), size: 24),
+            label: const Text('Sign in with Google'),
+          ),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: const Center(child: Text('New user? Get started')),
+          )
+        ],
+      ),
+    );
   }
 }

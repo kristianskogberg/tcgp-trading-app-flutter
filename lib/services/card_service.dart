@@ -255,18 +255,31 @@ class CardService {
     return _cardMap!;
   }
 
-  /// Precache the first [count] card images to disk for instant loading.
-  Future<void> precacheCardImages({int count = 30}) async {
-    final cards = _cards;
-    if (cards == null || cards.isEmpty) return;
-    final urls = cards.take(count).map((c) => c.imageUrl);
-    for (final url in urls) {
-      try {
-        await CardImageCacheManager.instance.getSingleFile(url);
-      } catch (e) {
-        // Silently ignore — precaching is best-effort
-        debugPrint('Precache failed for $url: $e');
-      }
+  /// Precache the first [count] card images to disk for faster initial scrolling.
+  Future<void> precacheCardImages({
+    List<PocketCard>? cards,
+    int count = 48,
+  }) async {
+    final sourceCards = cards ?? _cards;
+    if (sourceCards == null || sourceCards.isEmpty) return;
+    final urls = sourceCards
+        .take(count)
+        .map((c) => c.imageUrl)
+        .where((url) => url.isNotEmpty)
+        .toList();
+    const batchSize = 6;
+    for (var start = 0; start < urls.length; start += batchSize) {
+      final batch = urls.skip(start).take(batchSize);
+      await Future.wait(
+        batch.map((url) async {
+          try {
+            await CardImageCacheManager.instance.getSingleFile(url);
+          } catch (e) {
+            // Precaching is best-effort; visible widgets will still retry.
+            debugPrint('Precache failed for $url: $e');
+          }
+        }),
+      );
     }
   }
 

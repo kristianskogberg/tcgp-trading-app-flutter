@@ -1,9 +1,7 @@
 import 'dart:async';
 
-import 'package:cloudflare_turnstile/cloudflare_turnstile.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/auth/auth_service.dart';
 
@@ -24,13 +22,11 @@ class EmailVerificationScreen extends StatefulWidget {
 
 class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   final _authService = AuthService();
-  final _turnstileController = TurnstileController();
 
   bool _checking = false;
   bool _resending = false;
   bool _showResend = false;
   String? _resendError;
-  String? _captchaToken;
 
   int _resendCooldownSeconds = 0;
   Timer? _cooldownTimer;
@@ -59,7 +55,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
     _authSub?.cancel();
     _cooldownTimer?.cancel();
     _showResendTimer?.cancel();
-    _turnstileController.dispose();
     super.dispose();
   }
 
@@ -93,8 +88,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content:
-                  Text('Could not check verification status. Try again.')),
+              content: Text('Could not check verification status. Try again.')),
         );
       }
     } finally {
@@ -103,20 +97,12 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
   }
 
   Future<void> _resend() async {
-    if (_captchaToken == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please complete the CAPTCHA')),
-      );
-      return;
-    }
-
     setState(() {
       _resending = true;
       _resendError = null;
     });
     try {
-      await _authService.resendVerificationEmail(widget.email,
-          captchaToken: _captchaToken);
+      await _authService.resendVerificationEmail(widget.email);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Verification email resent.')),
@@ -127,11 +113,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
       if (mounted) setState(() => _resendError = 'Failed to resend: $e');
     } finally {
       if (mounted) {
-        _turnstileController.refreshToken();
-        setState(() {
-          _resending = false;
-          _captchaToken = null;
-        });
+        setState(() => _resending = false);
       }
     }
   }
@@ -150,8 +132,6 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final siteKey = dotenv.env['TURNSTILE_SITE_KEY'] ?? '';
-
     return Scaffold(
       appBar: AppBar(title: const Text('Verify Email')),
       body: Padding(
@@ -201,31 +181,10 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 style: TextStyle(color: Colors.white54, fontSize: 13),
               ),
               const SizedBox(height: 12),
-              Center(
-                child: SizedBox(
-                  width: 300,
-                  child: CloudFlareTurnstile(
-                    siteKey: siteKey,
-                    controller: _turnstileController,
-                    options: TurnstileOptions(
-                        theme: TurnstileTheme.dark,
-                        mode: TurnstileMode.managed),
-                    onTokenRecived: (token) {
-                      setState(() => _captchaToken = token);
-                    },
-                    onTokenExpired: () {
-                      setState(() => _captchaToken = null);
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
-                  onPressed: (_resending ||
-                          _resendCooldownSeconds > 0 ||
-                          _captchaToken == null)
+                  onPressed: (_resending || _resendCooldownSeconds > 0)
                       ? null
                       : _resend,
                   child: _resending
