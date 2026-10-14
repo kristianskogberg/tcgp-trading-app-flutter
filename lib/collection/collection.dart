@@ -6,13 +6,7 @@ const anyLanguage = 'ANY';
 /// Whether a collection item is a wishlist entry or a listing.
 enum CollectionItemKind {
   wishlist,
-  listing;
-
-  /// The other kind: a card is either a wishlist entry or a listing.
-  CollectionItemKind get opposite => switch (this) {
-        CollectionItemKind.wishlist => CollectionItemKind.listing,
-        CollectionItemKind.listing => CollectionItemKind.wishlist,
-      };
+  listing,
 }
 
 bool _languagesMatch(String a, String b) =>
@@ -72,10 +66,22 @@ class Listing {
 @immutable
 sealed class CardState {
   const CardState();
+
+  /// The card's languages, or none if it isn't in the collection.
+  Set<String> get languages;
+
+  /// The trade conditions of a listing, or none for any other card.
+  List<TradeCondition> get tradeConditions;
 }
 
 final class NotInCollection extends CardState {
   const NotInCollection();
+
+  @override
+  Set<String> get languages => const {};
+
+  @override
+  List<TradeCondition> get tradeConditions => const [];
 
   @override
   bool operator ==(Object other) => other is NotInCollection;
@@ -85,9 +91,13 @@ final class NotInCollection extends CardState {
 }
 
 final class Wishlisted extends CardState {
+  @override
   final Set<String> languages;
 
   Wishlisted(Set<String> languages) : languages = Set.unmodifiable(languages);
+
+  @override
+  List<TradeCondition> get tradeConditions => const [];
 
   @override
   bool operator ==(Object other) =>
@@ -99,10 +109,14 @@ final class Wishlisted extends CardState {
 
 final class Listed extends CardState {
   final String language;
+  @override
   final List<TradeCondition> tradeConditions;
 
   Listed(this.language, {List<TradeCondition> tradeConditions = const []})
       : tradeConditions = List.unmodifiable(tradeConditions);
+
+  @override
+  Set<String> get languages => {language};
 
   @override
   bool operator ==(Object other) =>
@@ -154,12 +168,6 @@ class Collection {
     return _languagesMatch(listing.language, language);
   }
 
-  /// Whether [cardId] is in the collection as a [kind], in any language.
-  bool has(String cardId, CollectionItemKind kind) => switch (kind) {
-        CollectionItemKind.wishlist => isWishlisted(cardId),
-        CollectionItemKind.listing => isListed(cardId),
-      };
-
   /// The trade conditions on [cardId]'s listing, or none if it isn't listed.
   List<TradeCondition> tradeConditionsOf(String cardId) =>
       _listings[cardId]?.tradeConditions ?? const [];
@@ -171,72 +179,6 @@ class Collection {
         CollectionItemKind.listing =>
           {if (_listings[cardId] case final l?) l.language},
       };
-
-  /// The collection with [language] added to [cardId] as a [kind]. A listing
-  /// has one language, so adding one replaces it and keeps the trade
-  /// conditions.
-  Collection withLanguageAdded(
-    String cardId,
-    CollectionItemKind kind,
-    String language,
-  ) =>
-      switch (kind) {
-        CollectionItemKind.wishlist => _copy(wishlist: {
-            ..._wishlist,
-            cardId: WishlistEntry(
-              cardId: cardId,
-              languages: {...languagesOf(cardId, kind), language},
-            ),
-          }),
-        CollectionItemKind.listing => _copy(listings: {
-            ..._listings,
-            cardId: Listing(
-              cardId: cardId,
-              language: language,
-              tradeConditions: _listings[cardId]?.tradeConditions ?? const [],
-            ),
-          }),
-      };
-
-  /// The collection with [language] removed from [cardId] as a [kind]. An
-  /// item left without languages is removed, and a removed listing loses its
-  /// trade conditions.
-  Collection withLanguageRemoved(
-    String cardId,
-    CollectionItemKind kind,
-    String language,
-  ) {
-    final remaining = languagesOf(cardId, kind).difference({language});
-    switch (kind) {
-      case CollectionItemKind.wishlist:
-        final wishlist = {..._wishlist}..remove(cardId);
-        if (remaining.isNotEmpty) {
-          wishlist[cardId] = WishlistEntry(cardId: cardId, languages: remaining);
-        }
-        return _copy(wishlist: wishlist);
-      case CollectionItemKind.listing:
-        if (remaining.isNotEmpty) return this;
-        return _copy(listings: {..._listings}..remove(cardId));
-    }
-  }
-
-  /// The collection with [cardId]'s trade conditions replaced. Only a listing
-  /// has trade conditions, so this changes nothing for any other card.
-  Collection withTradeConditions(
-    String cardId,
-    List<TradeCondition> tradeConditions,
-  ) {
-    final listing = _listings[cardId];
-    if (listing == null) return this;
-    return _copy(listings: {
-      ..._listings,
-      cardId: Listing(
-        cardId: cardId,
-        language: listing.language,
-        tradeConditions: tradeConditions,
-      ),
-    });
-  }
 
   /// The state of [cardId]. A card stored as both a listing and a wishlist
   /// entry reads as the listing.

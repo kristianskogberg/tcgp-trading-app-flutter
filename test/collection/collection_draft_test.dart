@@ -273,6 +273,67 @@ void main() {
     });
   });
 
+  test('setting trade conditions and then unlisting changes only the listing',
+      () {
+    final draft = _draft()
+        .setTradeConditions('listed', [
+          TradeCondition(cardId: 'A1-003', languages: {'ANY'}),
+        ])
+        .toggleListing('listed');
+    expect(draft.changes, {'listed': const NotInCollection()});
+    expect(draft.isTradeConditionTarget('A1-003'), isFalse);
+  });
+
+  group('rebasedOn', () {
+    test('keeps unsaved changes on top of a newly loaded collection', () {
+      final draft = CollectionDraft(Collection())
+          .toggleWishlist('new')
+          .rebasedOn(_saved);
+      _expectWishlisted(draft.stateOf('new'), {'ANY'});
+      _expectListed(draft.stateOf('listed'), 'FRA',
+          tradeConditions: [_condition]);
+      expect(draft.changes.keys, ['new']);
+    });
+
+    test('drops changes made to a card whose saved state changed', () {
+      // Wanted before the collection loaded, but the card is a listing.
+      final draft = CollectionDraft(Collection())
+          .toggleWishlist('listed')
+          .rebasedOn(_saved);
+      expect(draft.hasChanges, isFalse);
+      _expectListed(draft.stateOf('listed'), 'FRA',
+          tradeConditions: [_condition]);
+    });
+
+    test('drops changes to cards the new collection no longer has', () {
+      final draft = _draft().toggleListing('listed').rebasedOn(Collection());
+      expect(draft.hasChanges, isFalse);
+      expect(draft.stateOf('listed'), isA<NotInCollection>());
+    });
+
+    test('drops changes the new collection already has', () {
+      final draft = CollectionDraft(Collection())
+          .toggleWishlist('wish-any')
+          .rebasedOn(_saved);
+      expect(draft.hasChanges, isFalse);
+    });
+
+    test('restores toggled cards to the new saved state', () {
+      final draft = CollectionDraft(Collection())
+          .rebasedOn(_saved)
+          .toggleListing('listed')
+          .toggleListing('listed');
+      _expectListed(draft.stateOf('listed'), 'FRA',
+          tradeConditions: [_condition]);
+    });
+
+    test('keeps the preferred language', () {
+      final draft = CollectionDraft(Collection(), preferredLanguage: 'KOR')
+          .rebasedOn(_saved);
+      expect(draft.preferredLanguage, 'KOR');
+    });
+  });
+
   test('trade-condition targets include unsaved listings', () {
     final draft = _draft()
         .toggleListing('new')

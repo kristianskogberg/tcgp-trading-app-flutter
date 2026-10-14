@@ -57,18 +57,15 @@ class _EditCardDialogState extends State<EditCardDialog> {
 
   /// The languages shown on the card. A card that is turned off shows the
   /// default it would get when turned back on as a new entry.
-  Set<String> get _languages => switch (_state) {
-        Wishlisted(:final languages) => languages,
-        Listed(:final language) => {language},
-        NotInCollection() => widget.kind == CollectionItemKind.wishlist
-            ? {anyLanguage}
-            : {_draft.preferredLanguage},
-      };
+  Set<String> get _languages {
+    final languages = _state.languages;
+    if (languages.isNotEmpty) return languages;
+    return widget.kind == CollectionItemKind.wishlist
+        ? {anyLanguage}
+        : {_draft.preferredLanguage};
+  }
 
-  List<TradeCondition> get _tradeConditions => switch (_state) {
-        Listed(:final tradeConditions) => tradeConditions,
-        _ => const [],
-      };
+  List<TradeCondition> get _tradeConditions => _state.tradeConditions;
 
   void _update(CollectionDraft Function(CollectionDraft) intent) {
     if (_saving) return;
@@ -139,13 +136,14 @@ class _EditCardDialogState extends State<EditCardDialog> {
                 isPendingWishlist: state is Wishlisted,
                 isPendingListing: state is Listed,
                 pendingLanguages: _languages,
+                languageChoices: _draft.languageChoicesFor(_cardId),
                 tradeConditionCount: _tradeConditions.length,
                 onConditionsPressed: _openConditionsPicker,
                 onWishlistToggle: widget.kind == CollectionItemKind.wishlist
-                    ? (_) => _update((d) => d.toggleWishlist(_cardId))
+                    ? () => _update((d) => d.toggleWishlist(_cardId))
                     : null,
                 onListingToggle: widget.kind == CollectionItemKind.listing
-                    ? (_) => _update((d) => d.toggleListing(_cardId))
+                    ? () => _update((d) => d.toggleListing(_cardId))
                     : null,
                 onLanguagesChanged: (_, langs) =>
                     _update((d) => d.setLanguages(_cardId, langs)),

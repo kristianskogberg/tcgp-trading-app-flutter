@@ -84,6 +84,7 @@ class CollectionStore extends ChangeNotifier {
     await _loadCache();
     if (!forceRefresh &&
         (_collection.wishlist.isNotEmpty || _collection.listings.isNotEmpty)) {
+      notifyListeners();
       return;
     }
 
@@ -133,78 +134,6 @@ class CollectionStore extends ChangeNotifier {
     }));
 
     _collection = _collection.withChanges(changes);
-    await _persistCache();
-    notifyListeners();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Per-row writes. Deleted once every caller saves through the Collection
-  // draft (see docs/adr/0001-collection-writes-via-atomic-rpc.md).
-  // ---------------------------------------------------------------------------
-
-  Future<void> addCard(
-    String cardId,
-    CollectionItemKind kind,
-    String language,
-  ) async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw Exception('No authenticated user');
-
-    await withTimeout(_client.from('user_cards').upsert({
-      'user_id': user.id,
-      'card_id': cardId,
-      'type': typeValueOf(kind),
-      'language': language,
-    }));
-    _collection = _collection.withLanguageAdded(cardId, kind, language);
-    await _persistCache();
-    notifyListeners();
-  }
-
-  Future<void> removeCard(
-    String cardId,
-    CollectionItemKind kind,
-    String language,
-  ) async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw Exception('No authenticated user');
-
-    await withTimeout(_client
-        .from('user_cards')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('card_id', cardId)
-        .eq('type', typeValueOf(kind))
-        .eq('language', language));
-    _collection = _collection.withLanguageRemoved(cardId, kind, language);
-
-    // Clear trade conditions when removing the last listing entry for this card
-    if (kind == CollectionItemKind.listing && !_collection.isListed(cardId)) {
-      await setTradeConditions(cardId, const []);
-    }
-
-    await _persistCache();
-    notifyListeners();
-  }
-
-  Future<void> setTradeConditions(
-    String cardId,
-    List<TradeCondition> tradeConditions,
-  ) async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw Exception('No authenticated user');
-
-    // Atomic delete-and-insert via RPC; see supabase/trade_conditions.sql.
-    // Throws on failure so the caller can surface it to the user; cache
-    // is only updated on success, so the UI stays consistent with the DB.
-    await withTimeout(_client.rpc('set_trade_conditions', params: {
-      'p_listed_card_id': cardId,
-      'p_wanted': {
-        for (final c in tradeConditions) c.cardId: c.languages.toList(),
-      },
-    }));
-
-    _collection = _collection.withTradeConditions(cardId, tradeConditions);
     await _persistCache();
     notifyListeners();
   }

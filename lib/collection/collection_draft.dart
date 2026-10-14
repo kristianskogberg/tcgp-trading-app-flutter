@@ -150,6 +150,21 @@ class CollectionDraft {
   CollectionDraft discard() =>
       CollectionDraft._(_saved, preferredLanguage, const {});
 
+  /// This draft's changes on top of [saved], for when the saved collection
+  /// changes during an edit session (it finished loading, say). A change is
+  /// kept only if its card's saved state is the same in [saved]: one made
+  /// against a different saved state is dropped rather than overwriting
+  /// what the user never saw.
+  CollectionDraft rebasedOn(Collection saved) => CollectionDraft._(
+        saved,
+        preferredLanguage,
+        {
+          for (final MapEntry(key: cardId, value: state) in _changes.entries)
+            if (saved.stateOf(cardId) == _saved.stateOf(cardId))
+              cardId: state,
+        },
+      );
+
   // ---------------------------------------------------------------------------
 
   CollectionDraft _with(String cardId, CardState state) {

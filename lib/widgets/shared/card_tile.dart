@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:tcgp_trading_app/collection/collection_draft.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
@@ -18,8 +19,12 @@ class CardTile extends StatefulWidget {
   final bool isPendingListing;
   final bool isConditionTarget;
   final Set<String> pendingLanguages;
-  final void Function(Set<String> languages)? onWishlistToggle;
-  final void Function(Set<String> languages)? onListingToggle;
+
+  /// The language choices the card allows, from the Collection draft. Null
+  /// when it isn't in the collection, which disables the language picker.
+  final LanguageChoices? languageChoices;
+  final VoidCallback? onWishlistToggle;
+  final VoidCallback? onListingToggle;
   final void Function(String cardId, Set<String> languages)? onLanguagesChanged;
   final int tradeConditionCount;
   final VoidCallback? onConditionsPressed;
@@ -38,6 +43,7 @@ class CardTile extends StatefulWidget {
     this.isPendingListing = false,
     this.isConditionTarget = false,
     this.pendingLanguages = const {'ANY'},
+    this.languageChoices,
     this.onWishlistToggle,
     this.onListingToggle,
     this.onLanguagesChanged,
@@ -54,22 +60,6 @@ class CardTile extends StatefulWidget {
 }
 
 class _CardTileState extends State<CardTile> {
-  late Set<String> _selectedLanguages;
-
-  @override
-  void initState() {
-    super.initState();
-    _selectedLanguages = Set.from(widget.pendingLanguages);
-  }
-
-  @override
-  void didUpdateWidget(CardTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.pendingLanguages != widget.pendingLanguages) {
-      _selectedLanguages = Set.from(widget.pendingLanguages);
-    }
-  }
-
   void _navigateToCard(BuildContext context) {
     FocusScope.of(context).unfocus();
     Navigator.push(
@@ -90,6 +80,9 @@ class _CardTileState extends State<CardTile> {
   bool get _hasPending => widget.isPendingWishlist || widget.isPendingListing;
 
   Future<void> _showLanguagePicker() async {
+    final choices = widget.languageChoices;
+    if (choices == null) return;
+    final anyOrSeveral = choices == LanguageChoices.anyOrSeveral;
     final result = await showModalBottomSheet<Set<String>>(
       context: context,
       backgroundColor: const Color(0xFF1E1E24),
@@ -97,13 +90,12 @@ class _CardTileState extends State<CardTile> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) => LanguagePickerSheet(
-        selected: Set.from(_selectedLanguages),
-        showAny: widget.isPendingWishlist,
-        multiSelect: !widget.isPendingListing,
+        selected: Set.from(widget.pendingLanguages),
+        showAny: anyOrSeveral,
+        multiSelect: anyOrSeveral,
       ),
     );
     if (result != null && mounted) {
-      setState(() => _selectedLanguages = result);
       widget.onLanguagesChanged?.call(widget.card.id, result);
     }
   }
@@ -225,7 +217,7 @@ class _CardTileState extends State<CardTile> {
               left: 3,
               right: 3,
               child: CardLanguageButton(
-                languages: _selectedLanguages,
+                languages: widget.pendingLanguages,
                 color: AppColors.condition,
                 onTap: widget.onPickerLanguageTap,
               ),
@@ -282,7 +274,7 @@ class _CardTileState extends State<CardTile> {
                           children: [
                             Expanded(
                               child: CardLanguageButton(
-                                languages: _selectedLanguages,
+                                languages: widget.pendingLanguages,
                                 color: chipColor,
                                 onTap: _showLanguagePicker,
                               ),
@@ -345,7 +337,7 @@ class _CardTileState extends State<CardTile> {
                           ],
                         )
                       : CardLanguageButton(
-                          languages: _selectedLanguages,
+                          languages: widget.pendingLanguages,
                           color: chipColor,
                           onTap: _hasPending ? _showLanguagePicker : null,
                         ),
@@ -359,8 +351,7 @@ class _CardTileState extends State<CardTile> {
                         label: 'Want',
                         isActive: widget.isPendingWishlist,
                         activeColor: AppColors.primary,
-                        onTap: () =>
-                            widget.onWishlistToggle?.call(_selectedLanguages),
+                        onTap: widget.onWishlistToggle,
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -371,20 +362,7 @@ class _CardTileState extends State<CardTile> {
                         label: 'Have',
                         isActive: widget.isPendingListing,
                         activeColor: AppColors.secondary,
-                        onTap: () {
-                          if (widget.onListingToggle == null) return;
-                          if (_selectedLanguages.contains('ANY') ||
-                              _selectedLanguages.length > 1) {
-                            final firstValid = _selectedLanguages
-                                .where((l) => l != 'ANY')
-                                .firstOrNull;
-                            final reset = {firstValid ?? 'ENG'};
-                            setState(() => _selectedLanguages = reset);
-                            widget.onLanguagesChanged
-                                ?.call(widget.card.id, reset);
-                          }
-                          widget.onListingToggle?.call(_selectedLanguages);
-                        },
+                        onTap: widget.onListingToggle,
                       ),
                     ),
                   ],

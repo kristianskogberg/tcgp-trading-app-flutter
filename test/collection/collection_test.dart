@@ -51,53 +51,42 @@ void main() {
     expect(sameTradeConditions(a, a.take(1).toList()), isFalse);
   });
 
-  group('applying a saved change', () {
-    test('wishlist languages are added and removed one at a time', () {
-      var collection = Collection()
-          .withLanguageAdded('A1-001', CollectionItemKind.wishlist, 'ENG')
-          .withLanguageAdded('A1-001', CollectionItemKind.wishlist, 'JPN');
-      expect(
-        collection.languagesOf('A1-001', CollectionItemKind.wishlist),
-        {'ENG', 'JPN'},
-      );
-
-      collection = collection
-          .withLanguageRemoved('A1-001', CollectionItemKind.wishlist, 'ENG')
-          .withLanguageRemoved('A1-001', CollectionItemKind.wishlist, 'JPN');
-      expect(collection.wishlistEntryFor('A1-001'), isNull);
-    });
-
-    test('a listing keeps one language and its trade conditions', () {
-      final collection = Collection()
-          .withLanguageAdded('A1-002', CollectionItemKind.listing, 'ENG')
-          .withTradeConditions('A1-002', [
-            TradeCondition(cardId: 'A1-010', languages: {'ANY'}),
-          ]).withLanguageAdded('A1-002', CollectionItemKind.listing, 'JPN');
-
-      expect(
-        collection.languagesOf('A1-002', CollectionItemKind.listing),
-        {'JPN'},
-      );
-      expect(collection.isTradeConditionTarget('A1-010'), isTrue);
-    });
-
-    test('removing a listing removes its trade conditions', () {
-      final collection = Collection(listings: [
+  group('applying saved changes', () {
+    final collection = Collection(
+      wishlist: [
+        WishlistEntry(cardId: 'A1-001', languages: {'ENG', 'JPN'}),
+      ],
+      listings: [
         Listing(cardId: 'A1-002', language: 'ENG', tradeConditions: [
           TradeCondition(cardId: 'A1-010', languages: {'ANY'}),
         ]),
-      ]).withLanguageRemoved('A1-002', CollectionItemKind.listing, 'ENG');
+      ],
+    );
 
-      expect(collection.isListed('A1-002'), isFalse);
-      expect(collection.isTradeConditionTarget('A1-010'), isFalse);
+    test('a changed card takes its new state', () {
+      final changed = collection.withChanges({
+        'A1-001': Listed('JPN'),
+        'A1-003': Wishlisted({'ANY'}),
+      });
+
+      expect(changed.isWishlisted('A1-001'), isFalse);
+      expect(changed.isListed('A1-001', language: 'JPN'), isTrue);
+      expect(changed.wishlistEntryFor('A1-003')!.languages, {'ANY'});
     });
 
-    test('removing a language the listing is not in changes nothing', () {
-      final collection = Collection(listings: [
-        Listing(cardId: 'A1-002', language: 'ENG'),
-      ]).withLanguageRemoved('A1-002', CollectionItemKind.listing, 'JPN');
+    test('a listing that is removed or wishlisted loses its trade conditions',
+        () {
+      for (final state in [const NotInCollection(), Wishlisted({'ENG'})]) {
+        final changed = collection.withChanges({'A1-002': state});
+        expect(changed.isListed('A1-002'), isFalse);
+        expect(changed.isTradeConditionTarget('A1-010'), isFalse);
+      }
+    });
 
-      expect(collection.isListed('A1-002', language: 'ENG'), isTrue);
+    test('cards without a change are kept', () {
+      final changed = collection.withChanges({'A1-003': Listed('FRA')});
+      expect(changed.wishlistEntryFor('A1-001')!.languages, {'ENG', 'JPN'});
+      expect(changed.stateOf('A1-002'), collection.stateOf('A1-002'));
     });
   });
 }

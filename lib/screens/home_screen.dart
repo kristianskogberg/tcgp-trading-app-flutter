@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
-import 'package:tcgp_trading_app/models/pending_card_edit.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/collection/collection.dart';
+import 'package:tcgp_trading_app/collection/collection_draft.dart';
 import 'package:tcgp_trading_app/collection/collection_store.dart';
 import 'package:tcgp_trading_app/widgets/shared/active_filter_chips.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
@@ -17,9 +16,6 @@ import 'package:tcgp_trading_app/widgets/home_screen/home_app_bar.dart';
 import 'package:tcgp_trading_app/widgets/shared/sort_selector.dart';
 import 'package:tcgp_trading_app/screens/trade_condition_picker_screen.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
-
-/// Identifies one pending wishlist entry or listing edit for a card.
-typedef _ItemKey = (String cardId, CollectionItemKind kind);
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -50,10 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showWishlistOnly = false;
   bool _showListingsOnly = false;
 
-  // Pending edits for edit mode
-  final Map<_ItemKey, PendingCardEdit> _pendingEdits = {};
-  final Set<_ItemKey> _pendingRemovals = {};
-  final Map<String, List<TradeCondition>> _pendingConditions = {};
+  // Edit mode: one Collection draft for the whole session, null otherwise.
+  CollectionDraft? _draft;
 
   // Available filter options (extracted from data)
   List<String> _availableSets = [];
@@ -76,10 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool get _isFiltering =>
       _hasActiveFilters || _searchController.text.isNotEmpty;
 
-  bool get _hasPendingChanges =>
-      _pendingEdits.isNotEmpty ||
-      _pendingRemovals.isNotEmpty ||
-      _pendingConditions.isNotEmpty;
+  bool get _hasUnsavedChanges => _draft?.hasChanges ?? false;
 
   bool _isSaving = false;
 
@@ -87,6 +78,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _cardsFuture = CardService().getAllCards();
+    _collectionStore.addListener(_onCollectionChanged);
     _collectionStore
         .load()
         .catchError((e) => debugPrint('Failed to load user cards: $e'));
@@ -94,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _collectionStore.removeListener(_onCollectionChanged);
     _searchController.dispose();
     _scrollController.dispose();
     _debounceTimer?.cancel();
@@ -253,236 +246,98 @@ class _HomeScreenState extends State<HomeScreen> {
   // Edit mode logic
   // ---------------------------------------------------------------------------
 
-  bool _effectiveWishlist(String cardId) {
-    final key = (cardId, CollectionItemKind.wishlist);
-    if (_pendingEdits.containsKey(key)) return true;
-    if (_pendingRemovals.contains(key)) return false;
-    return _collectionStore.collection.isWishlisted(cardId);
+  /// Keeps an edit session on top of the latest saved collection, for
+  /// example when it finishes loading after edit mode was entered.
+  void _onCollectionChanged() {
+    if (!mounted) return;
+    setState(() => _draft = _draft?.rebasedOn(_collectionStore.collection));
   }
 
-  bool _effectiveListing(String cardId) {
-    final key = (cardId, CollectionItemKind.listing);
-    if (_pendingEdits.containsKey(key)) return true;
-    if (_pendingRemovals.contains(key)) return false;
-    return _collectionStore.collection.isListed(cardId);
-  }
+  CardState _stateOf(String cardId) =>
+      _draft?.stateOf(cardId) ?? _collectionStore.collection.stateOf(cardId);
+
+  bool _effectiveWishlist(String cardId) => _stateOf(cardId) is Wishlisted;
+
+  bool _effectiveListing(String cardId) => _stateOf(cardId) is Listed;
 
   Set<String> _effectiveLanguages(String cardId) {
-    for (final kind in CollectionItemKind.values) {
-      final edit = _pendingEdits[(cardId, kind)];
-      if (edit != null) return edit.languages;
-    }
-    for (final kind in CollectionItemKind.values) {
-      final langs = _collectionStore.collection.languagesOf(cardId, kind);
-      if (langs.isNotEmpty) return langs;
-    }
-    return {'ENG'};
+    final languages = _stateOf(cardId).languages;
+    if (languages.isNotEmpty) return languages;
+    return {_draft?.preferredLanguage ?? fallbackPreferredLanguage};
   }
 
-  void _togglePending(
-    String cardId,
-    CollectionItemKind kind,
-    Set<String> languages,
-  ) {
-    setState(() {
-      final key = (cardId, kind);
-      final oppositeKind = kind.opposite;
-      final oppositeKey = (cardId, oppositeKind);
+  bool _isConditionTarget(String cardId) =>
+      _draft?.isTradeConditionTarget(cardId) ??
+      _collectionStore.collection.isTradeConditionTarget(cardId);
 
-      final isExisting = _collectionStore.collection.has(cardId, kind);
-
-      if (isExisting && !_pendingRemovals.contains(key)) {
-        _pendingRemovals.add(key);
-        _pendingEdits.remove(key);
-      } else if (isExisting && _pendingRemovals.contains(key)) {
-        _pendingRemovals.remove(key);
-        _pendingEdits.remove(oppositeKey);
-      } else if (_pendingEdits.containsKey(key)) {
-        _pendingEdits.remove(key);
-      } else {
-        _pendingEdits.remove(oppositeKey);
-        if (_collectionStore.collection.has(cardId, oppositeKind)) {
-          _pendingRemovals.add(oppositeKey);
-        }
-        _pendingEdits[key] = PendingCardEdit(
-          cardId: cardId,
-          kind: kind,
-          languages: languages,
-        );
-      }
-    });
-  }
-
-  void _updatePendingLanguages(String cardId, Set<String> languages) {
-    setState(() {
-      for (final kind in CollectionItemKind.values) {
-        final key = (cardId, kind);
-        final effectiveLangs =
-            kind == CollectionItemKind.listing && languages.length > 1
-                ? {
-                    languages.where((l) => l != anyLanguage).firstOrNull ??
-                        'ENG'
-                  }
-                : languages;
-        if (_pendingEdits.containsKey(key)) {
-          _pendingEdits[key] =
-              _pendingEdits[key]!.copyWith(languages: effectiveLangs);
-        } else {
-          // Card already exists in DB — create a pending edit to update languages
-          if (_collectionStore.collection.has(cardId, kind) && !_pendingRemovals.contains(key)) {
-            final currentLangs =
-                _collectionStore.collection.languagesOf(cardId, kind);
-            if (!setEquals(currentLangs, effectiveLangs)) {
-              _pendingRemovals.add(key);
-              _pendingEdits[key] = PendingCardEdit(
-                cardId: cardId,
-                kind: kind,
-                languages: effectiveLangs,
-              );
-            }
-          }
-        }
-      }
-    });
-  }
-
-  List<TradeCondition> _storedTradeConditions(String cardId) =>
-      _collectionStore.collection.tradeConditionsOf(cardId);
-
-  int _effectiveConditionCount(String cardId) =>
-      (_pendingConditions[cardId] ?? _storedTradeConditions(cardId)).length;
-
-  bool _isConditionTarget(String cardId) {
-    // Check pending conditions first
-    for (final conditions in _pendingConditions.values) {
-      if (conditions.any((c) => c.cardId == cardId)) return true;
-    }
-    return _collectionStore.collection.isTradeConditionTarget(cardId);
+  /// Applies [intent] to the edit session's draft.
+  void _edit(CollectionDraft Function(CollectionDraft draft) intent) {
+    final draft = _draft;
+    if (draft == null || _isSaving) return;
+    setState(() => _draft = intent(draft));
   }
 
   Future<void> _openConditionsPicker(String cardId) async {
     final card = _allCards.firstWhere((c) => c.id == cardId);
-    final currentConditions =
-        _pendingConditions[cardId] ?? _storedTradeConditions(cardId);
-
     final result = await Navigator.push<List<TradeCondition>>(
       context,
       MaterialPageRoute(
         builder: (_) => TradeConditionPickerScreen(
           listedCard: card,
-          initialConditions: currentConditions,
+          initialConditions: _stateOf(cardId).tradeConditions,
         ),
       ),
     );
 
     if (result == null || !mounted) return;
-
-    setState(() {
-      if (sameTradeConditions(result, _storedTradeConditions(cardId))) {
-        _pendingConditions.remove(cardId);
-      } else {
-        _pendingConditions[cardId] = result;
-      }
-    });
+    _edit((d) => d.setTradeConditions(cardId, result));
   }
 
-  Future<void> _submitPendingEdits() async {
+  /// Saves the whole session in one atomic call. On failure nothing is
+  /// saved and the session stays open with every change.
+  Future<void> _saveDraft() async {
+    final draft = _draft;
+    if (draft == null || !draft.hasChanges) return;
     setState(() => _isSaving = true);
-    final additions = Map<_ItemKey, PendingCardEdit>.from(_pendingEdits);
-    final removals = Set<_ItemKey>.from(_pendingRemovals);
-    final conditions =
-        Map<String, List<TradeCondition>>.from(_pendingConditions);
 
-    // Track which edits failed so we can keep them in the pending set for retry
-    final failedAdditions = <_ItemKey>{};
-    final failedRemovals = <_ItemKey>{};
-    final failedConditions = <String>{};
-
-    // Capture languages to remove BEFORE mutating the cache
-    final removalLangs = {
-      for (final key in removals)
-        key: _collectionStore.collection.languagesOf(key.$1, key.$2),
-    };
-
-    for (final key in removals) {
-      final (cardId, kind) = key;
-      for (final lang in removalLangs[key]!) {
-        try {
-          await _collectionStore.removeCard(cardId, kind, lang);
-        } catch (e) {
-          debugPrint('Failed to remove $cardId (${kind.name}, $lang): $e');
-          failedRemovals.add(key);
-        }
-      }
-    }
-
-    for (final edit in additions.values) {
-      for (final lang in edit.languages) {
-        try {
-          await _collectionStore.addCard(edit.cardId, edit.kind, lang);
-        } catch (e) {
-          debugPrint(
-              'Failed to add ${edit.cardId} (${edit.kind.name}, $lang): $e');
-          failedAdditions.add((edit.cardId, edit.kind));
-        }
-      }
-    }
-
-    // Persist trade conditions
-    for (final entry in conditions.entries) {
-      try {
-        await _collectionStore.setTradeConditions(entry.key, entry.value);
-      } catch (e) {
-        debugPrint('Failed to set conditions for ${entry.key}: $e');
-        failedConditions.add(entry.key);
-      }
+    final messenger = ScaffoldMessenger.of(context)..hideCurrentSnackBar();
+    try {
+      await _collectionStore.commit(draft.changes);
+    } catch (e) {
+      debugPrint('Failed to save collection changes: $e');
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      messenger.showSnackBar(const SnackBar(
+        content: Text(
+            "Couldn't save your changes. Check your connection and try again."),
+      ));
+      return;
     }
 
     if (!mounted) return;
-    final totalFailed = failedAdditions.length +
-        failedRemovals.length +
-        failedConditions.length;
     setState(() {
       _isSaving = false;
-      // Only clear successful edits. Keep failed ones so the user can retry.
-      _pendingEdits.removeWhere((k, _) => !failedAdditions.contains(k));
-      _pendingRemovals.removeWhere((k) => !failedRemovals.contains(k));
-      _pendingConditions.removeWhere((k, _) => !failedConditions.contains(k));
-      if (totalFailed == 0) {
-        _currentMode = HomeMode.browse;
-      }
+      _exitEditMode();
     });
+    messenger.showSnackBar(const SnackBar(content: Text('Changes saved')));
+  }
 
-    final message = totalFailed == 0
-        ? 'Changes saved'
-        : '$totalFailed ${totalFailed == 1 ? 'change' : 'changes'} failed — try again';
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+  /// Ends the edit session, dropping its draft. Call inside setState.
+  void _exitEditMode() {
+    _currentMode = HomeMode.browse;
+    _draft = null;
   }
 
   Future<void> _toggleEditMode() async {
-    if (_currentMode == HomeMode.edit && _hasPendingChanges) {
-      final discard = await showAppDialog<bool>(
-        context: context,
-        title: 'Heads up',
-        content: const Text(
-            'You have unsaved changes. Do you want to discard them?'),
-        cancelText: 'Keep editing',
-        primaryText: 'Discard',
-        onPrimaryPressed: () => true,
-      );
-      if (discard != true) return;
+    if (_currentMode == HomeMode.edit && _hasUnsavedChanges) {
+      if (!await _confirmDiscardEdits()) return;
     }
     setState(() {
       if (_currentMode == HomeMode.edit) {
-        _currentMode = HomeMode.browse;
-        _pendingEdits.clear();
-        _pendingRemovals.clear();
-        _pendingConditions.clear();
+        _exitEditMode();
       } else {
         _currentMode = HomeMode.edit;
+        _draft = CollectionDraft(_collectionStore.collection);
       }
     });
   }
@@ -490,6 +345,11 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---------------------------------------------------------------------------
   // Build
   // ---------------------------------------------------------------------------
+
+  String get _saveLabel {
+    final count = _draft?.changes.length ?? 0;
+    return 'Save $count ${count == 1 ? 'change' : 'changes'}';
+  }
 
   Future<bool> _confirmDiscardEdits() async {
     final discard = await showAppDialog<bool>(
@@ -506,18 +366,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final hasUnsaved = _currentMode == HomeMode.edit && _hasPendingChanges;
+    final hasUnsaved = _currentMode == HomeMode.edit && _hasUnsavedChanges;
     return PopScope(
       canPop: !hasUnsaved,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop || !hasUnsaved) return;
         if (await _confirmDiscardEdits() && mounted) {
-          setState(() {
-            _currentMode = HomeMode.browse;
-            _pendingEdits.clear();
-            _pendingRemovals.clear();
-            _pendingConditions.clear();
-          });
+          setState(_exitEditMode);
         }
       },
       child: _buildScaffold(context),
@@ -630,11 +485,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             cards: displayCards,
                             scrollController: _scrollController,
                             bottomPadding: _currentMode == HomeMode.edit &&
-                                    _hasPendingChanges
+                                    _hasUnsavedChanges
                                 ? 72
                                 : 6,
                             bottomOverlay: _currentMode == HomeMode.edit &&
-                                    (_hasPendingChanges || _isSaving)
+                                    (_hasUnsavedChanges || _isSaving)
                                 ? Positioned(
                                     left: 16,
                                     right: 16,
@@ -642,7 +497,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     child: ElevatedButton(
                                       onPressed: _isSaving
                                           ? null
-                                          : _submitPendingEdits,
+                                          : _saveDraft,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: AppColors.primary,
                                         foregroundColor: Colors.black,
@@ -675,8 +530,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     size: 18,
                                                     color: Colors.black),
                                                 const SizedBox(width: 8),
-                                                const Text(
-                                                  'Save changes',
+                                                Text(
+                                                  _saveLabel,
                                                   style: TextStyle(
                                                     color: Colors.black,
                                                     fontSize: 16,
@@ -695,19 +550,22 @@ class _HomeScreenState extends State<HomeScreen> {
                               isPendingListing: _effectiveListing(card.id),
                               isConditionTarget: _isConditionTarget(card.id),
                               pendingLanguages: _effectiveLanguages(card.id),
+                              languageChoices:
+                                  _draft?.languageChoicesFor(card.id),
                               onWishlistToggle: _isSaving
                                   ? null
-                                  : (langs) => _togglePending(
-                                      card.id, CollectionItemKind.wishlist, langs),
+                                  : () => _edit(
+                                      (d) => d.toggleWishlist(card.id)),
                               onListingToggle: _isSaving
                                   ? null
-                                  : (langs) =>
-                                      _togglePending(
-                                          card.id, CollectionItemKind.listing, langs),
-                              onLanguagesChanged:
-                                  _isSaving ? null : _updatePendingLanguages,
+                                  : () =>
+                                      _edit((d) => d.toggleListing(card.id)),
+                              onLanguagesChanged: _isSaving
+                                  ? null
+                                  : (cardId, languages) => _edit(
+                                      (d) => d.setLanguages(cardId, languages)),
                               tradeConditionCount:
-                                  _effectiveConditionCount(card.id),
+                                  _stateOf(card.id).tradeConditions.length,
                               onConditionsPressed: _isSaving
                                   ? null
                                   : () => _openConditionsPicker(card.id),

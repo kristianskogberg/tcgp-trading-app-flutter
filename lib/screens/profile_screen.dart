@@ -565,8 +565,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   isPendingListing: false,
                   pendingLanguages: const {},
                   heroTag: 'profile-card-hero-${card.id}',
-                  onWishlistToggle: (_) {},
-                  onListingToggle: (_) {},
+                  onWishlistToggle: () {},
+                  onListingToggle: () {},
                   onLanguagesChanged: (_, __) {},
                 ),
                 if (langLabel.isNotEmpty)
