@@ -5,20 +5,20 @@ import 'package:tcgp_trading_app/config/app_colors.dart';
 class SortSelector extends StatelessWidget {
   final bool sortAscending;
   final bool showWishlistOnly;
-  final bool showOwnedOnly;
+  final bool showListingsOnly;
   final ValueChanged<bool> onSortAscendingChanged;
   final VoidCallback onToggleWishlist;
-  final VoidCallback onToggleOwned;
+  final VoidCallback onToggleListings;
   final bool showQuickFilters;
 
   const SortSelector({
     super.key,
     required this.sortAscending,
     this.showWishlistOnly = false,
-    this.showOwnedOnly = false,
+    this.showListingsOnly = false,
     required this.onSortAscendingChanged,
     this.onToggleWishlist = _noop,
-    this.onToggleOwned = _noop,
+    this.onToggleListings = _noop,
     this.showQuickFilters = true,
   });
 
@@ -160,25 +160,27 @@ class SortSelector extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 6),
-            // Owned filter toggle
+            // Listings filter toggle
             _pill(
-              isActive: showOwnedOnly,
+              isActive: showListingsOnly,
               activeColor: AppColors.secondary,
-              onTap: onToggleOwned,
+              onTap: onToggleListings,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   PhosphorIcon(
                     PhosphorIcons.checkCircle(),
                     size: 12,
-                    color: showOwnedOnly ? AppColors.secondary : Colors.white54,
+                    color:
+                        showListingsOnly ? AppColors.secondary : Colors.white54,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     'Listings',
                     style: TextStyle(
-                      color:
-                          showOwnedOnly ? AppColors.secondary : Colors.white54,
+                      color: showListingsOnly
+                          ? AppColors.secondary
+                          : Colors.white54,
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
                     ),

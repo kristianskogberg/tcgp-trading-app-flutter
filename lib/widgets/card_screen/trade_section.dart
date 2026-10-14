@@ -34,15 +34,15 @@ class TradeSectionState extends State<TradeSection> {
   final _userCardService = UserCardService();
   final _langFilterService = LanguageFilterService();
   bool _isWishlisted = false;
-  bool _isOwned = false;
+  bool _isListed = false;
   List<(PocketCard, TradeMatch)>? _wantMatches;
-  List<(PocketCard, TradeMatch)>? _ownedMatches;
+  List<(PocketCard, TradeMatch)>? _listingMatches;
   bool _loadingMatches = false;
   bool _loadingMore = false;
   int _wantOffset = 0;
-  int _ownedOffset = 0;
+  int _listingOffset = 0;
   bool _wantHasMore = true;
-  bool _ownedHasMore = true;
+  bool _listingHasMore = true;
   bool _trainersOnly = false;
   bool _myListedOnly = false;
   bool _myWishlistedOnly = false;
@@ -99,11 +99,11 @@ class TradeSectionState extends State<TradeSection> {
     setState(() {
       _appliedLanguages = {..._selectedLanguages};
       _wantMatches = null;
-      _ownedMatches = null;
+      _listingMatches = null;
       _wantOffset = 0;
-      _ownedOffset = 0;
+      _listingOffset = 0;
       _wantHasMore = true;
-      _ownedHasMore = true;
+      _listingHasMore = true;
     });
     _langFilterService.setSelectedLanguages(_selectedLanguages);
     _fetchMatches();
@@ -185,7 +185,7 @@ class TradeSectionState extends State<TradeSection> {
                                   _onWantPressed,
                                 ),
                               ])
-                        : (_isOwned
+                        : (_isListed
                             ? [
                                 const TextSpan(text: 'You have listed '),
                                 TextSpan(
@@ -197,7 +197,7 @@ class TradeSectionState extends State<TradeSection> {
                                 ),
                                 TextSpan(
                                     text:
-                                        ' for trade in ${_formatLanguages(card.id, 'owned')}. '),
+                                        ' for trade in ${_formatLanguages(card.id, 'listing')}. '),
                                 if (_userCardService
                                     .hasTradeConditions(card.id))
                                   TextSpan(
@@ -207,7 +207,7 @@ class TradeSectionState extends State<TradeSection> {
                                 _actionSpan(
                                   'Edit',
                                   AppColors.secondary,
-                                  () => _showEditCardDialog('owned'),
+                                  () => _showEditCardDialog('listing'),
                                 ),
                               ]
                             : [
@@ -263,7 +263,7 @@ class TradeSectionState extends State<TradeSection> {
                                     ', these are the cards you could offer for it.'),
                           ]
                         : [
-                            const TextSpan(text: 'If you own '),
+                            const TextSpan(text: 'If you list '),
                             TextSpan(
                               text: card.name,
                               style: const TextStyle(
@@ -396,11 +396,11 @@ class TradeSectionState extends State<TradeSection> {
                         setState(() {
                           _trainersOnly = value;
                           _wantMatches = null;
-                          _ownedMatches = null;
+                          _listingMatches = null;
                           _wantOffset = 0;
-                          _ownedOffset = 0;
+                          _listingOffset = 0;
                           _wantHasMore = true;
-                          _ownedHasMore = true;
+                          _listingHasMore = true;
                         });
                         _fetchMatches();
                       },
@@ -456,8 +456,8 @@ class TradeSectionState extends State<TradeSection> {
   }
 
   Widget _buildMatchGrid() {
-    var matches = widget.activeTab == 0 ? _wantMatches : _ownedMatches;
-    final hasMore = widget.activeTab == 0 ? _wantHasMore : _ownedHasMore;
+    var matches = widget.activeTab == 0 ? _wantMatches : _listingMatches;
+    final hasMore = widget.activeTab == 0 ? _wantHasMore : _listingHasMore;
 
     if (_loadingMatches) {
       return const Padding(
@@ -479,8 +479,8 @@ class TradeSectionState extends State<TradeSection> {
     // Uses language-aware check (same logic as the checkmark icon overlay).
     if (widget.activeTab == 0 && _myListedOnly) {
       matches = matches
-          .where(
-              (m) => _userCardService.isOwned(m.$1.id, language: m.$2.language))
+          .where((m) =>
+              _userCardService.isListed(m.$1.id, language: m.$2.language))
           .toList();
     } else if (widget.activeTab == 1 && _myWishlistedOnly) {
       matches = matches
@@ -600,7 +600,7 @@ class TradeSectionState extends State<TradeSection> {
                       matchCard.id,
                       language: tradeMatch.language,
                     ) ||
-                    _userCardService.isOwned(
+                    _userCardService.isListed(
                       matchCard.id,
                       language: tradeMatch.language,
                     ))
@@ -608,11 +608,11 @@ class TradeSectionState extends State<TradeSection> {
                     bottom: 4,
                     right: 4,
                     child: CardBadge(
-                      type: _userCardService.isOwned(
+                      type: _userCardService.isListed(
                         matchCard.id,
                         language: tradeMatch.language,
                       )
-                          ? CardBadgeType.matchOwned
+                          ? CardBadgeType.matchListing
                           : CardBadgeType.matchWishlisted,
                     ),
                   ),
@@ -647,7 +647,7 @@ class TradeSectionState extends State<TradeSection> {
     } else {
       // "I have this card" tab: offerCard=contextCard, receiveCard=matchCard
       final contextLangs =
-          _userCardService.getLanguages(widget.card.id, 'owned');
+          _userCardService.getLanguages(widget.card.id, 'listing');
       offerLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
       receiveLanguage = tradeMatch.language;
     }
@@ -689,7 +689,7 @@ class TradeSectionState extends State<TradeSection> {
     }
 
     final needsWarning = widget.activeTab == 0
-        ? !_userCardService.isOwned(
+        ? !_userCardService.isListed(
             matchCard.id,
             language: tradeMatch.language,
           )
@@ -716,7 +716,7 @@ class TradeSectionState extends State<TradeSection> {
       sendCard = widget.card;
       receiveCard = matchCard;
       final contextLangs =
-          _userCardService.getLanguages(widget.card.id, 'owned');
+          _userCardService.getLanguages(widget.card.id, 'listing');
       sendLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
       receiveLanguage = tradeMatch.language;
     }
@@ -827,7 +827,7 @@ class TradeSectionState extends State<TradeSection> {
       if (!mounted) return;
       setState(() {
         _isWishlisted = _userCardService.isWishlisted(widget.card.id);
-        _isOwned = _userCardService.isOwned(widget.card.id);
+        _isListed = _userCardService.isListed(widget.card.id);
       });
       _fetchMatches();
     }).catchError((e) {
@@ -838,13 +838,13 @@ class TradeSectionState extends State<TradeSection> {
   void _refreshState() {
     setState(() {
       _isWishlisted = _userCardService.isWishlisted(widget.card.id);
-      _isOwned = _userCardService.isOwned(widget.card.id);
+      _isListed = _userCardService.isListed(widget.card.id);
       _wantMatches = null;
-      _ownedMatches = null;
+      _listingMatches = null;
       _wantOffset = 0;
-      _ownedOffset = 0;
+      _listingOffset = 0;
       _wantHasMore = true;
-      _ownedHasMore = true;
+      _listingHasMore = true;
     });
     _fetchMatches();
   }
@@ -852,8 +852,8 @@ class TradeSectionState extends State<TradeSection> {
   Future<void> _fetchMatches() async {
     final cardId = widget.card.id;
     final wantNeeded = _wantMatches == null;
-    final ownedNeeded = _ownedMatches == null;
-    if (!wantNeeded && !ownedNeeded) return;
+    final listingNeeded = _listingMatches == null;
+    if (!wantNeeded && !listingNeeded) return;
 
     final requestId = ++_fetchRequestId;
     setState(() => _loadingMatches = true);
@@ -886,9 +886,9 @@ class TradeSectionState extends State<TradeSection> {
         }));
       }
 
-      if (ownedNeeded) {
+      if (listingNeeded) {
         futures.add(_userCardService
-            .getTradeMatchesForOwned(cardId, langList,
+            .getTradeMatchesForListing(cardId, langList,
                 fullartOnly: fullartOnly, limit: _pageSize, offset: 0)
             .then((matches) {
           if (requestId != _fetchRequestId) return;
@@ -896,9 +896,9 @@ class TradeSectionState extends State<TradeSection> {
               .where((m) => cardMap.containsKey(m.cardId))
               .map((m) => (cardMap[m.cardId]!, m))
               .toList();
-          _ownedMatches = mapped;
-          _ownedOffset = _pageSize;
-          _ownedHasMore = matches.length >= _pageSize;
+          _listingMatches = mapped;
+          _listingOffset = _pageSize;
+          _listingHasMore = matches.length >= _pageSize;
         }));
       }
 
@@ -906,7 +906,7 @@ class TradeSectionState extends State<TradeSection> {
     } catch (e) {
       debugPrint('Failed to fetch trade matches: $e');
       _wantMatches ??= [];
-      _ownedMatches ??= [];
+      _listingMatches ??= [];
     }
 
     if (!mounted || requestId != _fetchRequestId) return;
@@ -915,8 +915,8 @@ class TradeSectionState extends State<TradeSection> {
 
   void loadMore() {
     if (_loadingMatches || _loadingMore) return;
-    final hasMore = widget.activeTab == 0 ? _wantHasMore : _ownedHasMore;
-    final matches = widget.activeTab == 0 ? _wantMatches : _ownedMatches;
+    final hasMore = widget.activeTab == 0 ? _wantHasMore : _listingHasMore;
+    final matches = widget.activeTab == 0 ? _wantMatches : _listingMatches;
     if (!hasMore || matches == null) return;
     _loadMoreMatches();
   }
@@ -930,7 +930,7 @@ class TradeSectionState extends State<TradeSection> {
       final cardMap = CardService().getCardMap();
       final langList = _appliedLanguages.toList();
       final fullartOnly = _trainersOnly && _isFullArtSupporter;
-      final offset = widget.activeTab == 0 ? _wantOffset : _ownedOffset;
+      final offset = widget.activeTab == 0 ? _wantOffset : _listingOffset;
 
       final List<TradeMatch> matches;
       if (widget.activeTab == 0) {
@@ -942,7 +942,7 @@ class TradeSectionState extends State<TradeSection> {
           offset: offset,
         );
       } else {
-        matches = await _userCardService.getTradeMatchesForOwned(
+        matches = await _userCardService.getTradeMatchesForListing(
           cardId,
           langList,
           fullartOnly: fullartOnly,
@@ -967,13 +967,13 @@ class TradeSectionState extends State<TradeSection> {
           _wantOffset += _pageSize;
           _wantHasMore = matches.length >= _pageSize;
         } else {
-          if (_ownedMatches == null) {
-            _ownedMatches = mapped;
+          if (_listingMatches == null) {
+            _listingMatches = mapped;
           } else {
-            _ownedMatches!.addAll(mapped);
+            _listingMatches!.addAll(mapped);
           }
-          _ownedOffset += _pageSize;
-          _ownedHasMore = matches.length >= _pageSize;
+          _listingOffset += _pageSize;
+          _listingHasMore = matches.length >= _pageSize;
         }
         _loadingMore = false;
       });
@@ -989,7 +989,7 @@ class TradeSectionState extends State<TradeSection> {
   }
 
   Future<void> _onCanTradePressed() async {
-    await _showEditCardDialog('owned');
+    await _showEditCardDialog('listing');
   }
 
   Future<void> _showEditCardDialog(String type) async {
@@ -998,30 +998,30 @@ class TradeSectionState extends State<TradeSection> {
 
     // Only show the relevant type active based on which tab opened the dialog
     bool pendingWishlist = isWishlist && _isWishlisted;
-    bool pendingOwned = !isWishlist && _isOwned;
+    bool pendingListing = !isWishlist && _isListed;
     Set<String> pendingLangs = _userCardService.getLanguages(cardId, type);
     if (pendingLangs.isEmpty) {
       pendingLangs = isWishlist ? {'ANY'} : {'ENG'};
       pendingWishlist = isWishlist;
-      pendingOwned = !isWishlist;
+      pendingListing = !isWishlist;
     }
 
-    final isEditing = isWishlist ? _isWishlisted : _isOwned;
-    final hasOppositeEntry = isWishlist ? _isOwned : _isWishlisted;
+    final isEditing = isWishlist ? _isWishlisted : _isListed;
+    final hasOppositeEntry = isWishlist ? _isListed : _isWishlisted;
     final warningText = hasOppositeEntry
         ? isWishlist
             ? 'You have already listed this card for trade. Adding it to your wishlist will remove your listing.'
             : 'You have already wishlisted this card. Creating a listing will remove it from your wishlist.'
         : null;
 
-    final initialConditions = type == 'owned'
+    final initialConditions = type == 'listing'
         ? _userCardService.getTradeConditions(cardId)
         : <String, Set<String>>{};
 
     final result = await showDialog<
         ({
           bool wishlisted,
-          bool owned,
+          bool listed,
           Set<String> languages,
           Map<String, Set<String>> conditions,
         })?>(
@@ -1029,7 +1029,7 @@ class TradeSectionState extends State<TradeSection> {
       builder: (context) => _EditCardDialog(
         card: widget.card,
         initialWishlist: pendingWishlist,
-        initialOwned: pendingOwned,
+        initialListing: pendingListing,
         initialLanguages: pendingLangs,
         initialConditions: initialConditions,
         type: type,
@@ -1042,9 +1042,10 @@ class TradeSectionState extends State<TradeSection> {
 
     try {
       // Sync both types by comparing before/after
-      for (final t in ['wishlist', 'owned']) {
-        final wasActive = t == 'wishlist' ? _isWishlisted : _isOwned;
-        final isNowActive = t == 'wishlist' ? result.wishlisted : result.owned;
+      for (final t in ['wishlist', 'listing']) {
+        final wasActive = t == 'wishlist' ? _isWishlisted : _isListed;
+        final isNowActive =
+            t == 'wishlist' ? result.wishlisted : result.listed;
         final oldLangs = _userCardService.getLanguages(cardId, t);
 
         if (wasActive && !isNowActive) {
@@ -1069,7 +1070,7 @@ class TradeSectionState extends State<TradeSection> {
       }
 
       // Sync trade conditions
-      if (type == 'owned') {
+      if (type == 'listing') {
         final oldConditions = initialConditions;
         final newConditions = result.conditions;
         if (oldConditions.length != newConditions.length ||
@@ -1092,7 +1093,7 @@ class TradeSectionState extends State<TradeSection> {
 class _EditCardDialog extends StatefulWidget {
   final PocketCard card;
   final bool initialWishlist;
-  final bool initialOwned;
+  final bool initialListing;
   final Set<String> initialLanguages;
   final Map<String, Set<String>> initialConditions;
   final String type;
@@ -1102,7 +1103,7 @@ class _EditCardDialog extends StatefulWidget {
   const _EditCardDialog({
     required this.card,
     required this.initialWishlist,
-    required this.initialOwned,
+    required this.initialListing,
     required this.initialLanguages,
     required this.initialConditions,
     required this.type,
@@ -1116,7 +1117,7 @@ class _EditCardDialog extends StatefulWidget {
 
 class _EditCardDialogState extends State<_EditCardDialog> {
   late bool _wishlisted;
-  late bool _owned;
+  late bool _listed;
   late Set<String> _languages;
   late Map<String, Set<String>> _conditions;
 
@@ -1124,7 +1125,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
   void initState() {
     super.initState();
     _wishlisted = widget.initialWishlist;
-    _owned = widget.initialOwned;
+    _listed = widget.initialListing;
     _languages = Set.from(widget.initialLanguages);
     _conditions = Map.from(widget.initialConditions);
   }
@@ -1165,7 +1166,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
               card: widget.card,
               mode: HomeMode.edit,
               isPendingWishlist: _wishlisted,
-              isPendingOwned: _owned,
+              isPendingListing: _listed,
               pendingLanguages: _languages,
               tradeConditionCount: _conditions.length,
               onConditionsPressed: _openConditionsPicker,
@@ -1174,17 +1175,17 @@ class _EditCardDialogState extends State<_EditCardDialog> {
                       setState(() {
                         _wishlisted = !_wishlisted;
                         if (_wishlisted) {
-                          _owned = false;
+                          _listed = false;
                           _languages = langs;
                         }
                       });
                     }
                   : null,
-              onOwnedToggle: widget.type == 'owned'
+              onListingToggle: widget.type == 'listing'
                   ? (langs) {
                       setState(() {
-                        _owned = !_owned;
-                        if (_owned) {
+                        _listed = !_listed;
+                        if (_listed) {
                           _wishlisted = false;
                           _languages = langs;
                         }
@@ -1217,7 +1218,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
       ),
       onPrimaryPressed: () => (
         wishlisted: _wishlisted,
-        owned: _owned,
+        listed: _listed,
         languages: _languages,
         conditions: _conditions,
       ),

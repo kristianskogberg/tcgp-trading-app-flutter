@@ -33,14 +33,14 @@ class UserCardService extends ChangeNotifier {
 
   /// Maps "cardId:language" -> UserCardEntry
   Map<String, UserCardEntry> _wishlist = {};
-  Map<String, UserCardEntry> _owned = {};
+  Map<String, UserCardEntry> _listings = {};
 
   /// Maps listedCardId -> {wantedCardId: Set<language>} (trade conditions)
   Map<String, Map<String, Set<String>>> _tradeConditions = {};
 
   bool _loaded = false;
   String? _loadedUserId;
-  static const _cacheKey = 'cached_user_cards_v2';
+  static const _cacheKey = 'cached_user_cards_v3';
   static const _cacheUserKey = 'cached_user_cards_user_id';
   static const _conditionsCacheKey = 'cached_trade_conditions_v2';
 
@@ -51,7 +51,7 @@ class UserCardService extends ChangeNotifier {
       _cacheKey,
       jsonEncode({
         'wishlist': _wishlist.values.map((e) => e.toJson()).toList(),
-        'owned': _owned.values.map((e) => e.toJson()).toList(),
+        'listing': _listings.values.map((e) => e.toJson()).toList(),
       }),
     );
     await prefs.setString(
@@ -76,7 +76,7 @@ class UserCardService extends ChangeNotifier {
     if (_loaded && _loadedUserId == currentUserId) return;
 
     _wishlist = {};
-    _owned = {};
+    _listings = {};
     _tradeConditions = {};
 
     // Discard cache if it belongs to a different user
@@ -94,7 +94,7 @@ class UserCardService extends ChangeNotifier {
       try {
         final data = jsonDecode(raw) as Map<String, dynamic>;
         _wishlist = _parseEntries(data['wishlist'] as List);
-        _owned = _parseEntries(data['owned'] as List);
+        _listings = _parseEntries(data['listing'] as List);
       } catch (e) {
         debugPrint('Failed to decode cached user cards: $e');
       }
@@ -138,7 +138,9 @@ class UserCardService extends ChangeNotifier {
     if (user == null) return;
 
     await _loadCache();
-    if (!forceRefresh && (_wishlist.isNotEmpty || _owned.isNotEmpty)) return;
+    if (!forceRefresh && (_wishlist.isNotEmpty || _listings.isNotEmpty)) {
+      return;
+    }
 
     final rows = await withTimeout(_client
         .from('user_cards')
@@ -146,7 +148,7 @@ class UserCardService extends ChangeNotifier {
         .eq('user_id', user.id));
 
     _wishlist = {};
-    _owned = {};
+    _listings = {};
     for (final row in rows) {
       final entry = UserCardEntry(
         cardId: row['card_id'] as String,
@@ -154,8 +156,8 @@ class UserCardService extends ChangeNotifier {
       );
       if (row['type'] == 'wishlist') {
         _wishlist[entry.key] = entry;
-      } else if (row['type'] == 'owned') {
-        _owned[entry.key] = entry;
+      } else if (row['type'] == 'listing') {
+        _listings[entry.key] = entry;
       }
     }
 
@@ -187,7 +189,8 @@ class UserCardService extends ChangeNotifier {
   Set<String> get wishlistCardIds =>
       _wishlist.values.map((e) => e.cardId).toSet();
 
-  Set<String> get ownedCardIds => _owned.values.map((e) => e.cardId).toSet();
+  Set<String> get listingCardIds =>
+      _listings.values.map((e) => e.cardId).toSet();
 
   /// Check if a card is wishlisted. If [language] is provided, respects language/ANY semantics.
   bool isWishlisted(String cardId, {String? language}) {
@@ -202,13 +205,13 @@ class UserCardService extends ChangeNotifier {
     );
   }
 
-  /// Check if a card is owned. If [language] is provided, respects language/ANY semantics.
-  bool isOwned(String cardId, {String? language}) {
+  /// Check if a card is listed. If [language] is provided, respects language/ANY semantics.
+  bool isListed(String cardId, {String? language}) {
     if (language == null) {
       // Backwards-compatible: any language counts.
-      return _owned.values.any((e) => e.cardId == cardId);
+      return _listings.values.any((e) => e.cardId == cardId);
     }
-    return _owned.values.any(
+    return _listings.values.any(
       (e) =>
           e.cardId == cardId &&
           (e.language == 'ANY' || language == 'ANY' || e.language == language),
@@ -217,7 +220,7 @@ class UserCardService extends ChangeNotifier {
 
   /// Returns the set of languages for which the user has this card in the given type.
   Set<String> getLanguages(String cardId, String type) {
-    final map = type == 'wishlist' ? _wishlist : _owned;
+    final map = type == 'wishlist' ? _wishlist : _listings;
     return map.values
         .where((e) => e.cardId == cardId)
         .map((e) => e.language)
@@ -229,7 +232,7 @@ class UserCardService extends ChangeNotifier {
     if (user == null) throw Exception('No authenticated user');
 
     final entry = UserCardEntry(cardId: cardId, language: language);
-    final map = type == 'wishlist' ? _wishlist : _owned;
+    final map = type == 'wishlist' ? _wishlist : _listings;
 
     await withTimeout(_client.from('user_cards').upsert({
       'user_id': user.id,
@@ -247,7 +250,7 @@ class UserCardService extends ChangeNotifier {
     if (user == null) throw Exception('No authenticated user');
 
     final key = '$cardId:$language';
-    final map = type == 'wishlist' ? _wishlist : _owned;
+    final map = type == 'wishlist' ? _wishlist : _listings;
 
     await withTimeout(_client
         .from('user_cards')
@@ -258,8 +261,8 @@ class UserCardService extends ChangeNotifier {
         .eq('language', language));
     map.remove(key);
 
-    // Clear trade conditions when removing the last owned entry for this card
-    if (type == 'owned' && !_owned.values.any((e) => e.cardId == cardId)) {
+    // Clear trade conditions when removing the last listing entry for this card
+    if (type == 'listing' && !_listings.values.any((e) => e.cardId == cardId)) {
       await clearTradeConditions(cardId);
     }
 
@@ -267,7 +270,7 @@ class UserCardService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Find users who own [cardId], then return their wishlist cards with profile info.
+  /// Find users who list [cardId], then return their wishlist cards with profile info.
   Future<List<TradeMatch>> getTradeMatchesForWanted(
     String cardId,
     List<String> languages, {
@@ -291,8 +294,8 @@ class UserCardService extends ChangeNotifier {
         .toList();
   }
 
-  /// Find users who want [cardId], then return their owned cards with profile info.
-  Future<List<TradeMatch>> getTradeMatchesForOwned(
+  /// Find users who want [cardId], then return their listings with profile info.
+  Future<List<TradeMatch>> getTradeMatchesForListing(
     String cardId,
     List<String> languages, {
     bool fullartOnly = false,
@@ -302,7 +305,7 @@ class UserCardService extends ChangeNotifier {
     if (_client.auth.currentUser == null) return [];
 
     final rows =
-        await withTimeout(_client.rpc('get_trade_matches_for_owned', params: {
+        await withTimeout(_client.rpc('get_trade_matches_for_listing', params: {
       'p_card_id': cardId,
       'p_languages': languages,
       'p_fullart_only': fullartOnly,
@@ -382,7 +385,7 @@ class UserCardService extends ChangeNotifier {
     await withTimeout(
         _client.from('user_cards').delete().eq('user_id', user.id));
     _wishlist = {};
-    _owned = {};
+    _listings = {};
     _tradeConditions = {};
     await _persistCache();
     notifyListeners();
@@ -390,7 +393,7 @@ class UserCardService extends ChangeNotifier {
 
   Future<void> clearCache() async {
     _wishlist = {};
-    _owned = {};
+    _listings = {};
     _tradeConditions = {};
     _loaded = false;
     _loadedUserId = null;

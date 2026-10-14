@@ -43,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Sort
   bool _sortAscending = false; // false = descending (newest sets first)
   bool _showWishlistOnly = false;
-  bool _showOwnedOnly = false;
+  bool _showListingsOnly = false;
 
   // Pending edits for edit mode
   final Map<String, PendingCardEdit> _pendingEdits = {};
@@ -170,7 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return false;
         }
         if (_showWishlistOnly && !_effectiveWishlist(card.id)) return false;
-        if (_showOwnedOnly && !_effectiveOwned(card.id)) return false;
+        if (_showListingsOnly && !_effectiveListing(card.id)) return false;
         return true;
       }).toList()
         ..sort((a, b) {
@@ -231,15 +231,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onToggleWishlist() {
     setState(() {
       _showWishlistOnly = !_showWishlistOnly;
-      if (_showWishlistOnly) _showOwnedOnly = false;
+      if (_showWishlistOnly) _showListingsOnly = false;
     });
     _applyFilters();
   }
 
-  void _onToggleOwned() {
+  void _onToggleListings() {
     setState(() {
-      _showOwnedOnly = !_showOwnedOnly;
-      if (_showOwnedOnly) _showWishlistOnly = false;
+      _showListingsOnly = !_showListingsOnly;
+      if (_showListingsOnly) _showWishlistOnly = false;
     });
     _applyFilters();
   }
@@ -254,20 +254,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return _userCardService.isWishlisted(cardId);
   }
 
-  bool _effectiveOwned(String cardId) {
-    if (_pendingEdits.containsKey('$cardId:owned')) return true;
-    if (_pendingRemovals.contains('$cardId:owned')) return false;
-    return _userCardService.isOwned(cardId);
+  bool _effectiveListing(String cardId) {
+    if (_pendingEdits.containsKey('$cardId:listing')) return true;
+    if (_pendingRemovals.contains('$cardId:listing')) return false;
+    return _userCardService.isListed(cardId);
   }
 
   Set<String> _effectiveLanguages(String cardId) {
-    for (final type in ['wishlist', 'owned']) {
+    for (final type in ['wishlist', 'listing']) {
       final key = '$cardId:$type';
       if (_pendingEdits.containsKey(key)) {
         return _pendingEdits[key]!.languages;
       }
     }
-    for (final type in ['wishlist', 'owned']) {
+    for (final type in ['wishlist', 'listing']) {
       final langs = _userCardService.getLanguages(cardId, type);
       if (langs.isNotEmpty) return langs;
     }
@@ -277,12 +277,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void _togglePending(String cardId, String type, Set<String> languages) {
     setState(() {
       final key = '$cardId:$type';
-      final oppositeType = type == 'wishlist' ? 'owned' : 'wishlist';
+      final oppositeType = type == 'wishlist' ? 'listing' : 'wishlist';
       final oppositeKey = '$cardId:$oppositeType';
 
       final isExisting = type == 'wishlist'
           ? _userCardService.isWishlisted(cardId)
-          : _userCardService.isOwned(cardId);
+          : _userCardService.isListed(cardId);
 
       if (isExisting && !_pendingRemovals.contains(key)) {
         _pendingRemovals.add(key);
@@ -296,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _pendingEdits.remove(oppositeKey);
         final oppositeExists = oppositeType == 'wishlist'
             ? _userCardService.isWishlisted(cardId)
-            : _userCardService.isOwned(cardId);
+            : _userCardService.isListed(cardId);
         if (oppositeExists) {
           _pendingRemovals.add(oppositeKey);
         }
@@ -311,9 +311,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _updatePendingLanguages(String cardId, Set<String> languages) {
     setState(() {
-      for (final type in ['wishlist', 'owned']) {
+      for (final type in ['wishlist', 'listing']) {
         final key = '$cardId:$type';
-        final effectiveLangs = type == 'owned' && languages.length > 1
+        final effectiveLangs = type == 'listing' && languages.length > 1
             ? {languages.where((l) => l != 'ANY').firstOrNull ?? 'ENG'}
             : languages;
         if (_pendingEdits.containsKey(key)) {
@@ -323,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Card already exists in DB — create a pending edit to update languages
           final isExisting = type == 'wishlist'
               ? _userCardService.isWishlisted(cardId)
-              : _userCardService.isOwned(cardId);
+              : _userCardService.isListed(cardId);
           if (isExisting && !_pendingRemovals.contains(key)) {
             final currentLangs = _userCardService.getLanguages(cardId, type);
             if (!_setsEqual(currentLangs, effectiveLangs)) {
@@ -579,10 +579,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 SortSelector(
                   sortAscending: _sortAscending,
                   showWishlistOnly: _showWishlistOnly,
-                  showOwnedOnly: _showOwnedOnly,
+                  showListingsOnly: _showListingsOnly,
                   onSortAscendingChanged: _onSortAscendingChanged,
                   onToggleWishlist: _onToggleWishlist,
-                  onToggleOwned: _onToggleOwned,
+                  onToggleListings: _onToggleListings,
                 ),
                 if (_hasActiveFilters)
                   ActiveFilterChips(
@@ -704,17 +704,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               card: card,
                               mode: _currentMode,
                               isPendingWishlist: _effectiveWishlist(card.id),
-                              isPendingOwned: _effectiveOwned(card.id),
+                              isPendingListing: _effectiveListing(card.id),
                               isConditionTarget: _isConditionTarget(card.id),
                               pendingLanguages: _effectiveLanguages(card.id),
                               onWishlistToggle: _isSaving
                                   ? null
                                   : (langs) => _togglePending(
                                       card.id, 'wishlist', langs),
-                              onOwnedToggle: _isSaving
+                              onListingToggle: _isSaving
                                   ? null
                                   : (langs) =>
-                                      _togglePending(card.id, 'owned', langs),
+                                      _togglePending(card.id, 'listing', langs),
                               onLanguagesChanged:
                                   _isSaving ? null : _updatePendingLanguages,
                               tradeConditionCount:

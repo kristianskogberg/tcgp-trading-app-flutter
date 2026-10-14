@@ -147,12 +147,13 @@ class _ProfileScreenState extends State<ProfileScreen>
       await _userCardService.loadMyCards();
       final allCards = await CardService().getAllCards();
       final wishlistIds = _userCardService.wishlistCardIds;
-      final ownedIds = _userCardService.ownedCardIds;
+      final listingIds = _userCardService.listingCardIds;
       if (!mounted) return;
       setState(() {
         _wishlistCards =
             allCards.where((c) => wishlistIds.contains(c.id)).toList();
-        _listingCards = allCards.where((c) => ownedIds.contains(c.id)).toList();
+        _listingCards =
+            allCards.where((c) => listingIds.contains(c.id)).toList();
       });
     } catch (e) {
       debugPrint('Failed to load cards: $e');
@@ -195,12 +196,13 @@ class _ProfileScreenState extends State<ProfileScreen>
       final cardMap = await _profileService.getOtherUserCards(widget.userId!);
       final allCards = await CardService().getAllCards();
       final wishlistIds = cardMap['wishlist']?.toSet() ?? {};
-      final ownedIds = cardMap['owned']?.toSet() ?? {};
+      final listingIds = cardMap['listing']?.toSet() ?? {};
       if (!mounted) return;
       setState(() {
         _wishlistCards =
             allCards.where((c) => wishlistIds.contains(c.id)).toList();
-        _listingCards = allCards.where((c) => ownedIds.contains(c.id)).toList();
+        _listingCards =
+            allCards.where((c) => listingIds.contains(c.id)).toList();
         _loadingCards = false;
       });
     } catch (e) {
@@ -555,7 +557,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             final langs = widget.isOtherUser
                 ? <String>{}
                 : _userCardService.getLanguages(
-                    card.id, type == 'listings' ? 'owned' : 'wishlist');
+                    card.id, type == 'listings' ? 'listing' : 'wishlist');
             final langLabel = _langLabel(langs);
             return Stack(
               children: [
@@ -563,11 +565,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                   card: card,
                   mode: HomeMode.browse,
                   isPendingWishlist: false,
-                  isPendingOwned: false,
+                  isPendingListing: false,
                   pendingLanguages: const {},
                   heroTag: 'profile-card-hero-${card.id}',
                   onWishlistToggle: (_) {},
-                  onOwnedToggle: (_) {},
+                  onListingToggle: (_) {},
                   onLanguagesChanged: (_, __) {},
                 ),
                 if (langLabel.isNotEmpty)

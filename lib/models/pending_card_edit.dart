@@ -1,8 +1,9 @@
 class PendingCardEdit {
   final String cardId;
-  final String type; // 'wishlist' or 'owned'
+  final String type; // 'wishlist' or 'listing'
   final Set<String> languages;
-  final Map<String, String> tradeConditions; // cardId -> language code (empty = open to all)
+  final Map<String, String>
+      tradeConditions; // cardId -> language code (empty = open to all)
   PendingCardEdit({
     required this.cardId,
     required this.type,

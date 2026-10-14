@@ -15,11 +15,11 @@ class CardTile extends StatefulWidget {
   final PocketCard card;
   final HomeMode mode;
   final bool isPendingWishlist;
-  final bool isPendingOwned;
+  final bool isPendingListing;
   final bool isConditionTarget;
   final Set<String> pendingLanguages;
   final void Function(Set<String> languages)? onWishlistToggle;
-  final void Function(Set<String> languages)? onOwnedToggle;
+  final void Function(Set<String> languages)? onListingToggle;
   final void Function(String cardId, Set<String> languages)? onLanguagesChanged;
   final int tradeConditionCount;
   final VoidCallback? onConditionsPressed;
@@ -35,11 +35,11 @@ class CardTile extends StatefulWidget {
     required this.card,
     this.mode = HomeMode.browse,
     this.isPendingWishlist = false,
-    this.isPendingOwned = false,
+    this.isPendingListing = false,
     this.isConditionTarget = false,
     this.pendingLanguages = const {'ANY'},
     this.onWishlistToggle,
-    this.onOwnedToggle,
+    this.onListingToggle,
     this.onLanguagesChanged,
     this.tradeConditionCount = 0,
     this.onConditionsPressed,
@@ -87,7 +87,7 @@ class _CardTileState extends State<CardTile> {
     );
   }
 
-  bool get _hasPending => widget.isPendingWishlist || widget.isPendingOwned;
+  bool get _hasPending => widget.isPendingWishlist || widget.isPendingListing;
 
   Future<void> _showLanguagePicker() async {
     final result = await showModalBottomSheet<Set<String>>(
@@ -99,7 +99,7 @@ class _CardTileState extends State<CardTile> {
       builder: (context) => LanguagePickerSheet(
         selected: Set.from(_selectedLanguages),
         showAny: widget.isPendingWishlist,
-        multiSelect: !widget.isPendingOwned,
+        multiSelect: !widget.isPendingListing,
       ),
     );
     if (result != null && mounted) {
@@ -151,15 +151,15 @@ class _CardTileState extends State<CardTile> {
 
   Widget _buildBrowseTile(BuildContext context) {
     final icons = <Widget>[];
-    if (widget.isPendingOwned) {
-      icons.add(const CardBadge(type: CardBadgeType.owned));
+    if (widget.isPendingListing) {
+      icons.add(const CardBadge(type: CardBadgeType.listing));
     } else if (widget.isPendingWishlist) {
       icons.add(const CardBadge(type: CardBadgeType.wishlist));
     }
     if (widget.isConditionTarget) {
       icons.add(const CardBadge(type: CardBadgeType.conditionTarget));
     }
-    if (widget.isPendingOwned && widget.tradeConditionCount > 0) {
+    if (widget.isPendingListing && widget.tradeConditionCount > 0) {
       icons.add(CardBadge(
         type: CardBadgeType.listedWithConditions,
         count: widget.tradeConditionCount,
@@ -241,7 +241,7 @@ class _CardTileState extends State<CardTile> {
 
     final chipColor = widget.isPendingWishlist
         ? AppColors.primary
-        : widget.isPendingOwned
+        : widget.isPendingListing
             ? AppColors.secondary
             : Colors.white38;
 
@@ -277,7 +277,7 @@ class _CardTileState extends State<CardTile> {
               children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 4),
-                  child: widget.isPendingOwned
+                  child: widget.isPendingListing
                       ? Row(
                           children: [
                             Expanded(
@@ -369,7 +369,7 @@ class _CardTileState extends State<CardTile> {
                         icon:
                             PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
                         label: 'Have',
-                        isActive: widget.isPendingOwned,
+                        isActive: widget.isPendingListing,
                         activeColor: AppColors.secondary,
                         onTap: () {
                           if (_selectedLanguages.contains('ANY') ||
@@ -382,7 +382,7 @@ class _CardTileState extends State<CardTile> {
                             widget.onLanguagesChanged
                                 ?.call(widget.card.id, reset);
                           }
-                          widget.onOwnedToggle?.call(_selectedLanguages);
+                          widget.onListingToggle?.call(_selectedLanguages);
                         },
                       ),
                     ),

@@ -115,15 +115,15 @@ class ProfileService {
         .eq('user_id', userId));
 
     final wishlist = <String>[];
-    final owned = <String>[];
+    final listings = <String>[];
     for (final row in rows) {
       if (row['type'] == 'wishlist') {
         wishlist.add(row['card_id'] as String);
-      } else if (row['type'] == 'owned') {
-        owned.add(row['card_id'] as String);
+      } else if (row['type'] == 'listing') {
+        listings.add(row['card_id'] as String);
       }
     }
-    return {'wishlist': wishlist, 'owned': owned};
+    return {'wishlist': wishlist, 'listing': listings};
   }
 
   Future<void> clearProfileCache() async {

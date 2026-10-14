@@ -7,8 +7,8 @@ enum CardBadgeType {
   /// User has wishlisted this card. Black-translucent bg, teal heart icon.
   wishlist,
 
-  /// User owns/has listed this card. Black-translucent bg, blue check-circle icon.
-  owned,
+  /// User has listed this card. Black-translucent bg, blue check-circle icon.
+  listing,
 
   /// Card is a trade condition target. Black-translucent bg, cyan magnifying-glass icon.
   conditionTarget,
@@ -22,8 +22,8 @@ enum CardBadgeType {
   /// In a match list: user has this card on their wishlist. Black-translucent bg, teal heart icon.
   matchWishlisted,
 
-  /// In a match list: user owns/has listed this card. Black-translucent bg, teal check-circle icon.
-  matchOwned,
+  /// In a match list: user has listed this card. Black-translucent bg, teal check-circle icon.
+  matchListing,
 
   /// Listed card has specific trade conditions. Blue pill badge with count.
   listedWithConditions,
@@ -83,8 +83,8 @@ class CardBadge extends StatelessWidget {
         CardBadgeType.wishlist ||
         CardBadgeType.matchWishlisted =>
           PhosphorIcons.heartStraight(PhosphorIconsStyle.fill),
-        CardBadgeType.owned ||
-        CardBadgeType.matchOwned =>
+        CardBadgeType.listing ||
+        CardBadgeType.matchListing =>
           PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
         CardBadgeType.conditionTarget ||
         CardBadgeType.listedWithConditions =>
@@ -94,7 +94,7 @@ class CardBadge extends StatelessWidget {
       };
 
   Color get _iconColor => switch (type) {
-        CardBadgeType.owned ||
+        CardBadgeType.listing ||
         CardBadgeType.listedWithConditions =>
           AppColors.secondary,
         CardBadgeType.conditionTarget => AppColors.condition,
