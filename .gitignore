@@ -54,8 +54,5 @@ lib/firebase_options.dart
 **/GoogleService-Info.plist
 firebase.json
 
-.claude/
-.grepai/
-CLAUDE.md
-skills-lock.json
+.claude/settings.local.json
 supabase/.temp/
