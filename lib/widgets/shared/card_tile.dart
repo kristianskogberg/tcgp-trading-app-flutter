@@ -372,6 +372,7 @@ class _CardTileState extends State<CardTile> {
                         isActive: widget.isPendingListing,
                         activeColor: AppColors.secondary,
                         onTap: () {
+                          if (widget.onListingToggle == null) return;
                           if (_selectedLanguages.contains('ANY') ||
                               _selectedLanguages.length > 1) {
                             final firstValid = _selectedLanguages

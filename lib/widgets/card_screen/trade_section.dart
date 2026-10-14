@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
-import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/screens/chat_screen.dart';
-import 'package:tcgp_trading_app/screens/trade_condition_picker_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/collection/collection.dart';
+import 'package:tcgp_trading_app/collection/collection_draft.dart';
 import 'package:tcgp_trading_app/collection/collection_store.dart';
 import 'package:tcgp_trading_app/services/language_filter_service.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
@@ -16,8 +15,8 @@ import 'package:tcgp_trading_app/widgets/shared/card_badge.dart';
 import 'package:tcgp_trading_app/widgets/shared/optimized_card_image.dart';
 import 'package:tcgp_trading_app/widgets/shared/trade_card_pair.dart';
 import 'package:tcgp_trading_app/utils/languages.dart';
-import 'package:tcgp_trading_app/widgets/shared/card_tile.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
+import 'package:tcgp_trading_app/widgets/card_screen/edit_card_dialog.dart';
 
 class TradeSection extends StatefulWidget {
   final PocketCard card;
@@ -999,232 +998,38 @@ class TradeSectionState extends State<TradeSection> {
 
   Future<void> _showEditCardDialog(CollectionItemKind kind) async {
     final cardId = widget.card.id;
+    final saved = _collection.stateOf(cardId);
     final isWishlist = kind == CollectionItemKind.wishlist;
+    final isEditing = isWishlist ? saved is Wishlisted : saved is Listed;
 
-    // Only show the relevant type active based on which tab opened the dialog
-    bool pendingWishlist = isWishlist && _isWishlisted;
-    bool pendingListing = !isWishlist && _isListed;
-    Set<String> pendingLangs =
-        _collection.languagesOf(cardId, kind);
-    if (pendingLangs.isEmpty) {
-      pendingLangs = isWishlist ? {'ANY'} : {'ENG'};
-      pendingWishlist = isWishlist;
-      pendingListing = !isWishlist;
+    // The dialog opens with the card already turned on as [kind].
+    var draft = CollectionDraft(_collection);
+    if (!isEditing) {
+      draft = isWishlist
+          ? draft.toggleWishlist(cardId)
+          : draft.toggleListing(cardId);
     }
 
-    final isEditing = isWishlist ? _isWishlisted : _isListed;
-    final hasOppositeEntry = isWishlist ? _isListed : _isWishlisted;
+    final hasOppositeEntry = isWishlist ? saved is Listed : saved is Wishlisted;
     final warningText = hasOppositeEntry
         ? isWishlist
             ? 'You have already listed this card for trade. Adding it to your wishlist will remove your listing.'
             : 'You have already wishlisted this card. Creating a listing will remove it from your wishlist.'
         : null;
 
-    final initialConditions = kind == CollectionItemKind.listing
-        ? _tradeConditions
-        : <TradeCondition>[];
-
-    final result = await showDialog<
-        ({
-          bool wishlisted,
-          bool listed,
-          Set<String> languages,
-          List<TradeCondition> conditions,
-        })?>(
+    final savedChanges = await showDialog<bool>(
       context: context,
-      builder: (context) => _EditCardDialog(
+      builder: (context) => EditCardDialog(
         card: widget.card,
-        initialWishlist: pendingWishlist,
-        initialListing: pendingListing,
-        initialLanguages: pendingLangs,
-        initialConditions: initialConditions,
+        draft: draft,
         kind: kind,
         isEditing: isEditing,
         warningText: warningText,
+        save: _collectionStore.commit,
       ),
     );
 
-    if (result == null || !mounted) return;
-
-    try {
-      // Sync both kinds by comparing before/after
-      for (final k in CollectionItemKind.values) {
-        final isWishlistKind = k == CollectionItemKind.wishlist;
-        final wasActive = isWishlistKind ? _isWishlisted : _isListed;
-        final isNowActive =
-            isWishlistKind ? result.wishlisted : result.listed;
-        final oldLangs = _collection.languagesOf(cardId, k);
-
-        if (wasActive && !isNowActive) {
-          // Remove all entries for this kind
-          for (final lang in oldLangs) {
-            await _collectionStore.removeCard(cardId, k, lang);
-          }
-        } else if (isNowActive) {
-          // Remove languages no longer selected
-          for (final lang in oldLangs) {
-            if (!result.languages.contains(lang)) {
-              await _collectionStore.removeCard(cardId, k, lang);
-            }
-          }
-          // Add new languages
-          for (final lang in result.languages) {
-            if (!oldLangs.contains(lang)) {
-              await _collectionStore.addCard(cardId, k, lang);
-            }
-          }
-        }
-      }
-
-      // Sync trade conditions
-      if (kind == CollectionItemKind.listing &&
-          !sameTradeConditions(initialConditions, result.conditions)) {
-        await _collectionStore.setTradeConditions(cardId, result.conditions);
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update: $e')),
-      );
-    }
-
-    if (!mounted) return;
+    if (savedChanges != true || !mounted) return;
     _refreshState();
-  }
-}
-
-class _EditCardDialog extends StatefulWidget {
-  final PocketCard card;
-  final bool initialWishlist;
-  final bool initialListing;
-  final Set<String> initialLanguages;
-  final List<TradeCondition> initialConditions;
-  final CollectionItemKind kind;
-  final bool isEditing;
-  final String? warningText;
-
-  const _EditCardDialog({
-    required this.card,
-    required this.initialWishlist,
-    required this.initialListing,
-    required this.initialLanguages,
-    required this.initialConditions,
-    required this.kind,
-    required this.isEditing,
-    this.warningText,
-  });
-
-  @override
-  State<_EditCardDialog> createState() => _EditCardDialogState();
-}
-
-class _EditCardDialogState extends State<_EditCardDialog> {
-  late bool _wishlisted;
-  late bool _listed;
-  late Set<String> _languages;
-  late List<TradeCondition> _conditions;
-
-  @override
-  void initState() {
-    super.initState();
-    _wishlisted = widget.initialWishlist;
-    _listed = widget.initialListing;
-    _languages = Set.from(widget.initialLanguages);
-    _conditions = widget.initialConditions;
-  }
-
-  String get dialogTitle {
-    if (widget.kind == CollectionItemKind.wishlist) {
-      return widget.isEditing ? 'Edit Wishlist' : 'Add to Wishlist';
-    }
-    return widget.isEditing ? 'Edit Listing' : 'Create a Listing';
-  }
-
-  Future<void> _openConditionsPicker() async {
-    final result = await Navigator.push<List<TradeCondition>>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => TradeConditionPickerScreen(
-          listedCard: widget.card,
-          initialConditions: _conditions,
-        ),
-      ),
-    );
-    if (result == null || !mounted) return;
-    setState(() => _conditions = result);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppDialog(
-      centerContent: true,
-      title: dialogTitle,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 140,
-            height: 200,
-            child: CardTile(
-              card: widget.card,
-              mode: HomeMode.edit,
-              isPendingWishlist: _wishlisted,
-              isPendingListing: _listed,
-              pendingLanguages: _languages,
-              tradeConditionCount: _conditions.length,
-              onConditionsPressed: _openConditionsPicker,
-              onWishlistToggle: widget.kind == CollectionItemKind.wishlist
-                  ? (langs) {
-                      setState(() {
-                        _wishlisted = !_wishlisted;
-                        if (_wishlisted) {
-                          _listed = false;
-                          _languages = langs;
-                        }
-                      });
-                    }
-                  : null,
-              onListingToggle: widget.kind == CollectionItemKind.listing
-                  ? (langs) {
-                      setState(() {
-                        _listed = !_listed;
-                        if (_listed) {
-                          _wishlisted = false;
-                          _languages = langs;
-                        }
-                      });
-                    }
-                  : null,
-              onLanguagesChanged: (_, langs) {
-                setState(() => _languages = langs);
-              },
-            ),
-          ),
-          if (widget.warningText != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Row(
-                children: [
-                  PhosphorIcon(PhosphorIcons.warning(),
-                      size: 16, color: Colors.amber),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.warningText!,
-                      style: const TextStyle(fontSize: 12, color: Colors.amber),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-      onPrimaryPressed: () => (
-        wishlisted: _wishlisted,
-        listed: _listed,
-        languages: _languages,
-        conditions: _conditions,
-      ),
-    );
   }
 }

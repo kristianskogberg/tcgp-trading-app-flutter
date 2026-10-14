@@ -53,6 +53,32 @@ Collection collectionFromCache(Map<String, dynamic> json) {
   );
 }
 
+/// The `p_changes` argument of the `save_collection_changes` RPC: the desired
+/// state of each changed card. See supabase/save_collection_changes.sql.
+List<Map<String, dynamic>> changesToSavePayload(
+  Map<String, CardState> changes,
+) =>
+    [
+      for (final MapEntry(key: cardId, value: state) in changes.entries)
+        {
+          'card_id': cardId,
+          'wishlist': switch (state) {
+            Wishlisted(:final languages) => {'languages': languages.toList()},
+            _ => null,
+          },
+          'listing': switch (state) {
+            Listed(:final language, :final tradeConditions) => {
+                'languages': [language],
+                'trade_conditions': [
+                  for (final c in tradeConditions)
+                    {'card_id': c.cardId, 'languages': c.languages.toList()},
+                ],
+              },
+            _ => null,
+          },
+        },
+    ];
+
 /// Builds a [Collection] from `user_cards` and `trade_conditions` rows.
 ///
 /// This is the only place that knows how the collection is stored in

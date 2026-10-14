@@ -118,4 +118,38 @@ void main() {
     expect(listing.tradeConditions.single.cardId, 'A1-010');
     expect(listing.tradeConditions.single.languages, {'ANY'});
   });
+
+  test('changes become one save_collection_changes entry per card', () {
+    final payload = changesToSavePayload({
+      'A1-001': const NotInCollection(),
+      'A1-002': Wishlisted({'ENG', 'JPN'}),
+      'A1-003': Listed('FRA', tradeConditions: [
+        TradeCondition(cardId: 'A1-010', languages: {'ANY'}),
+      ]),
+    });
+
+    expect(jsonDecode(jsonEncode(payload)), [
+      {'card_id': 'A1-001', 'wishlist': null, 'listing': null},
+      {
+        'card_id': 'A1-002',
+        'wishlist': {
+          'languages': ['ENG', 'JPN'],
+        },
+        'listing': null,
+      },
+      {
+        'card_id': 'A1-003',
+        'wishlist': null,
+        'listing': {
+          'languages': ['FRA'],
+          'trade_conditions': [
+            {
+              'card_id': 'A1-010',
+              'languages': ['ANY'],
+            },
+          ],
+        },
+      },
+    ]);
+  });
 }

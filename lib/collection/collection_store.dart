@@ -118,6 +118,25 @@ class CollectionStore extends ChangeNotifier {
     return collectionFromRows(cardRows: cardRows, conditionRows: const []);
   }
 
+  /// Saves the [changes] of a Collection draft in one atomic call and, on
+  /// success, applies them to [collection] and the device cache without
+  /// reloading. Throws if the save fails; nothing is changed then.
+  Future<void> commit(Map<String, CardState> changes) async {
+    if (changes.isEmpty) return;
+    if (_client.auth.currentUser == null) {
+      throw Exception('No authenticated user');
+    }
+
+    // See supabase/save_collection_changes.sql.
+    await withTimeout(_client.rpc('save_collection_changes', params: {
+      'p_changes': changesToSavePayload(changes),
+    }));
+
+    _collection = _collection.withChanges(changes);
+    await _persistCache();
+    notifyListeners();
+  }
+
   // ---------------------------------------------------------------------------
   // Per-row writes. Deleted once every caller saves through the Collection
   // draft (see docs/adr/0001-collection-writes-via-atomic-rpc.md).

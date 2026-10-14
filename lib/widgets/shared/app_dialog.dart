@@ -36,6 +36,13 @@ class AppDialog<T> extends StatelessWidget {
   final String primaryText;
   final T Function()? onPrimaryPressed;
   final VoidCallback? onPrimaryAction;
+
+  /// Called on the primary button instead of closing the dialog; the caller
+  /// closes it when it is done.
+  final VoidCallback? onPrimaryTap;
+
+  /// Shows a spinner on the primary button and disables both buttons.
+  final bool primaryLoading;
   final Color? primaryButtonColor;
   final Color? primaryForegroundColor;
   final bool centerContent;
@@ -48,6 +55,8 @@ class AppDialog<T> extends StatelessWidget {
     this.primaryText = 'Save',
     this.onPrimaryPressed,
     this.onPrimaryAction,
+    this.onPrimaryTap,
+    this.primaryLoading = false,
     this.primaryButtonColor,
     this.primaryForegroundColor,
     this.centerContent = false,
@@ -104,7 +113,9 @@ class AppDialog<T> extends StatelessWidget {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: primaryLoading
+                            ? null
+                            : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.white24),
                           shape: RoundedRectangleBorder(
@@ -118,16 +129,20 @@ class AppDialog<T> extends StatelessWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton(
-                        onPressed: () {
-                          if (onPrimaryPressed != null) {
-                            Navigator.pop(context, onPrimaryPressed!());
-                          } else if (onPrimaryAction != null) {
-                            Navigator.pop(context);
-                            onPrimaryAction!();
-                          } else {
-                            Navigator.pop(context);
-                          }
-                        },
+                        onPressed: primaryLoading
+                            ? null
+                            : () {
+                                if (onPrimaryTap != null) {
+                                  onPrimaryTap!();
+                                } else if (onPrimaryPressed != null) {
+                                  Navigator.pop(context, onPrimaryPressed!());
+                                } else if (onPrimaryAction != null) {
+                                  Navigator.pop(context);
+                                  onPrimaryAction!();
+                                } else {
+                                  Navigator.pop(context);
+                                }
+                              },
                         style: FilledButton.styleFrom(
                           backgroundColor:
                               primaryButtonColor ?? AppColors.primary,
@@ -138,7 +153,16 @@ class AppDialog<T> extends StatelessWidget {
                           ),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: Text(primaryText),
+                        child: primaryLoading
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: primaryForegroundColor ?? Colors.black,
+                                ),
+                              )
+                            : Text(primaryText),
                       ),
                     ),
                   ],

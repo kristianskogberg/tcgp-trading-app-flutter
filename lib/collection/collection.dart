@@ -66,9 +66,57 @@ class Listing {
   }) : tradeConditions = List.unmodifiable(tradeConditions);
 }
 
+/// What one card is in a collection: not in it, a wishlist entry or a listing.
+/// Two states are equal when they describe the same card in the same
+/// languages with the same trade conditions.
+@immutable
+sealed class CardState {
+  const CardState();
+}
+
+final class NotInCollection extends CardState {
+  const NotInCollection();
+
+  @override
+  bool operator ==(Object other) => other is NotInCollection;
+
+  @override
+  int get hashCode => (NotInCollection).hashCode;
+}
+
+final class Wishlisted extends CardState {
+  final Set<String> languages;
+
+  Wishlisted(Set<String> languages) : languages = Set.unmodifiable(languages);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Wishlisted && setEquals(languages, other.languages);
+
+  @override
+  int get hashCode => Object.hashAllUnordered(languages);
+}
+
+final class Listed extends CardState {
+  final String language;
+  final List<TradeCondition> tradeConditions;
+
+  Listed(this.language, {List<TradeCondition> tradeConditions = const []})
+      : tradeConditions = List.unmodifiable(tradeConditions);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Listed &&
+      language == other.language &&
+      sameTradeConditions(tradeConditions, other.tradeConditions);
+
+  @override
+  int get hashCode => language.hashCode;
+}
+
 /// Everything one user has declared about cards: their wishlist entries and
 /// their listings. A card should be either a wishlist entry or a listing, never
-/// both; this value does not enforce that yet (the Collection draft will).
+/// both; the Collection draft enforces that for edits.
 @immutable
 class Collection {
   final Map<String, WishlistEntry> _wishlist;
@@ -188,6 +236,39 @@ class Collection {
         tradeConditions: tradeConditions,
       ),
     });
+  }
+
+  /// The state of [cardId]. A card stored as both a listing and a wishlist
+  /// entry reads as the listing.
+  CardState stateOf(String cardId) {
+    if (_listings[cardId] case final l?) {
+      return Listed(l.language, tradeConditions: l.tradeConditions);
+    }
+    if (_wishlist[cardId] case final e?) return Wishlisted(e.languages);
+    return const NotInCollection();
+  }
+
+  /// The collection with each card in [changes] replaced by its new state.
+  Collection withChanges(Map<String, CardState> changes) {
+    final wishlist = {..._wishlist};
+    final listings = {..._listings};
+    for (final MapEntry(key: cardId, value: state) in changes.entries) {
+      wishlist.remove(cardId);
+      listings.remove(cardId);
+      switch (state) {
+        case NotInCollection():
+          break;
+        case Wishlisted(:final languages):
+          wishlist[cardId] = WishlistEntry(cardId: cardId, languages: languages);
+        case Listed(:final language, :final tradeConditions):
+          listings[cardId] = Listing(
+            cardId: cardId,
+            language: language,
+            tradeConditions: tradeConditions,
+          );
+      }
+    }
+    return _copy(wishlist: wishlist, listings: listings);
   }
 
   Collection _copy({
