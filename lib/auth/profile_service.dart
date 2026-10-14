@@ -108,24 +108,6 @@ class ProfileService {
     return data;
   }
 
-  Future<Map<String, List<String>>> getOtherUserCards(String userId) async {
-    final rows = await withTimeout(_client
-        .from('user_cards')
-        .select('card_id, type')
-        .eq('user_id', userId));
-
-    final wishlist = <String>[];
-    final listings = <String>[];
-    for (final row in rows) {
-      if (row['type'] == 'wishlist') {
-        wishlist.add(row['card_id'] as String);
-      } else if (row['type'] == 'listing') {
-        listings.add(row['card_id'] as String);
-      }
-    }
-    return {'wishlist': wishlist, 'listing': listings};
-  }
-
   Future<void> clearProfileCache() async {
     _cachedProfile = null;
     _lastActiveUpdate = null;

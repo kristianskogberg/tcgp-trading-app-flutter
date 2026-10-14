@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/notification_service.dart';
-import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/collection/collection_store.dart';
 import 'package:tcgp_trading_app/utils/async_utils.dart';
 
 class AuthService {
@@ -85,7 +85,7 @@ class AuthService {
   }
 
   Future<void> _clearLocalCaches() async {
-    await UserCardService().clearCache();
+    await CollectionStore().clearCache();
     await ProfileService().clearProfileCache();
     await CardService().clearCache();
   }

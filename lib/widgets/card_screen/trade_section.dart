@@ -7,7 +7,8 @@ import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/screens/chat_screen.dart';
 import 'package:tcgp_trading_app/screens/trade_condition_picker_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
-import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/collection/collection.dart';
+import 'package:tcgp_trading_app/collection/collection_store.dart';
 import 'package:tcgp_trading_app/services/language_filter_service.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
@@ -31,7 +32,7 @@ class TradeSection extends StatefulWidget {
 class TradeSectionState extends State<TradeSection> {
   static const _pageSize = 30;
 
-  final _userCardService = UserCardService();
+  final _collectionStore = CollectionStore();
   final _langFilterService = LanguageFilterService();
   bool _isWishlisted = false;
   bool _isListed = false;
@@ -53,6 +54,11 @@ class TradeSectionState extends State<TradeSection> {
 
   int _fetchRequestId = 0;
   bool _navigatingToMatch = false;
+
+  Collection get _collection => _collectionStore.collection;
+
+  List<TradeCondition> get _tradeConditions =>
+      _collection.tradeConditionsOf(widget.card.id);
 
   bool get _isFullArtSupporter =>
       widget.card.rarity == '☆☆' &&
@@ -161,11 +167,11 @@ class TradeSectionState extends State<TradeSection> {
                                 ),
                                 TextSpan(
                                     text:
-                                        ' in ${_formatLanguages(card.id, 'wishlist')}. '),
+                                        ' in ${_formatLanguages(card.id, CollectionItemKind.wishlist)}. '),
                                 _actionSpan(
                                   'Edit',
                                   AppColors.primary,
-                                  () => _showEditCardDialog('wishlist'),
+                                  () => _showEditCardDialog(CollectionItemKind.wishlist),
                                 ),
                               ]
                             : [
@@ -197,17 +203,16 @@ class TradeSectionState extends State<TradeSection> {
                                 ),
                                 TextSpan(
                                     text:
-                                        ' for trade in ${_formatLanguages(card.id, 'listing')}. '),
-                                if (_userCardService
-                                    .hasTradeConditions(card.id))
+                                        ' for trade in ${_formatLanguages(card.id, CollectionItemKind.listing)}. '),
+                                if (_tradeConditions.isNotEmpty)
                                   TextSpan(
                                     text:
-                                        'Accepting ${_userCardService.getTradeConditionCount(card.id)} specific ${_userCardService.getTradeConditionCount(card.id) == 1 ? 'card' : 'cards'}. ',
+                                        'Accepting ${_tradeConditions.length} specific ${_tradeConditions.length == 1 ? 'card' : 'cards'}. ',
                                   ),
                                 _actionSpan(
                                   'Edit',
                                   AppColors.secondary,
-                                  () => _showEditCardDialog('listing'),
+                                  () => _showEditCardDialog(CollectionItemKind.listing),
                                 ),
                               ]
                             : [
@@ -469,10 +474,10 @@ class TradeSectionState extends State<TradeSection> {
     if (matches == null) return const SizedBox.shrink();
 
     // Apply trade conditions filter on "I have this card" tab
-    if (widget.activeTab == 1 &&
-        _userCardService.hasTradeConditions(widget.card.id)) {
-      final conditions = _userCardService.getTradeConditions(widget.card.id);
-      matches = matches.where((m) => conditions.containsKey(m.$1.id)).toList();
+    if (widget.activeTab == 1 && _tradeConditions.isNotEmpty) {
+      final conditionCardIds = {for (final c in _tradeConditions) c.cardId};
+      matches =
+          matches.where((m) => conditionCardIds.contains(m.$1.id)).toList();
     }
 
     // Apply client-side filter: "My listings only" / "My wishlist only"
@@ -480,12 +485,12 @@ class TradeSectionState extends State<TradeSection> {
     if (widget.activeTab == 0 && _myListedOnly) {
       matches = matches
           .where((m) =>
-              _userCardService.isListed(m.$1.id, language: m.$2.language))
+              _collection.isListed(m.$1.id, language: m.$2.language))
           .toList();
     } else if (widget.activeTab == 1 && _myWishlistedOnly) {
       matches = matches
           .where((m) =>
-              _userCardService.isWishlisted(m.$1.id, language: m.$2.language))
+              _collection.isWishlisted(m.$1.id, language: m.$2.language))
           .toList();
     }
 
@@ -596,11 +601,11 @@ class TradeSectionState extends State<TradeSection> {
                     ),
                   ),
                 ),
-                if (_userCardService.isWishlisted(
+                if (_collection.isWishlisted(
                       matchCard.id,
                       language: tradeMatch.language,
                     ) ||
-                    _userCardService.isListed(
+                    _collection.isListed(
                       matchCard.id,
                       language: tradeMatch.language,
                     ))
@@ -608,7 +613,7 @@ class TradeSectionState extends State<TradeSection> {
                     bottom: 4,
                     right: 4,
                     child: CardBadge(
-                      type: _userCardService.isListed(
+                      type: _collection.isListed(
                         matchCard.id,
                         language: tradeMatch.language,
                       )
@@ -642,12 +647,12 @@ class TradeSectionState extends State<TradeSection> {
       // "I want this card" tab: offerCard=matchCard, receiveCard=contextCard
       offerLanguage = tradeMatch.language;
       final contextLangs =
-          _userCardService.getLanguages(widget.card.id, 'wishlist');
+          _collection.languagesOf(widget.card.id, CollectionItemKind.wishlist);
       receiveLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
     } else {
       // "I have this card" tab: offerCard=contextCard, receiveCard=matchCard
       final contextLangs =
-          _userCardService.getLanguages(widget.card.id, 'listing');
+          _collection.languagesOf(widget.card.id, CollectionItemKind.listing);
       offerLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
       receiveLanguage = tradeMatch.language;
     }
@@ -668,7 +673,7 @@ class TradeSectionState extends State<TradeSection> {
       );
 
       if (!mounted) return;
-      final proposals = await _userCardService.getMyPendingProposals();
+      final proposals = await _collectionStore.getMyPendingProposals();
       if (!mounted) return;
       setState(() => _pendingProposals = proposals);
     } finally {
@@ -689,11 +694,11 @@ class TradeSectionState extends State<TradeSection> {
     }
 
     final needsWarning = widget.activeTab == 0
-        ? !_userCardService.isListed(
+        ? !_collection.isListed(
             matchCard.id,
             language: tradeMatch.language,
           )
-        : !_userCardService.isWishlisted(
+        : !_collection.isWishlisted(
             matchCard.id,
             language: tradeMatch.language,
           );
@@ -709,14 +714,14 @@ class TradeSectionState extends State<TradeSection> {
       receiveCard = widget.card;
       sendLanguage = tradeMatch.language;
       final contextLangs =
-          _userCardService.getLanguages(widget.card.id, 'wishlist');
+          _collection.languagesOf(widget.card.id, CollectionItemKind.wishlist);
       receiveLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
     } else {
       // "I have this card" → user sends contextCard, receives matchCard
       sendCard = widget.card;
       receiveCard = matchCard;
       final contextLangs =
-          _userCardService.getLanguages(widget.card.id, 'listing');
+          _collection.languagesOf(widget.card.id, CollectionItemKind.listing);
       sendLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
       receiveLanguage = tradeMatch.language;
     }
@@ -803,8 +808,8 @@ class TradeSectionState extends State<TradeSection> {
     );
   }
 
-  String _formatLanguages(String cardId, String type) {
-    final langs = _userCardService.getLanguages(cardId, type);
+  String _formatLanguages(String cardId, CollectionItemKind kind) {
+    final langs = _collection.languagesOf(cardId, kind);
 
     if (langs.isEmpty) return 'no languages';
 
@@ -823,11 +828,11 @@ class TradeSectionState extends State<TradeSection> {
   }
 
   void _loadState() {
-    _userCardService.loadMyCards().then((_) {
+    _collectionStore.load().then((_) {
       if (!mounted) return;
       setState(() {
-        _isWishlisted = _userCardService.isWishlisted(widget.card.id);
-        _isListed = _userCardService.isListed(widget.card.id);
+        _isWishlisted = _collection.isWishlisted(widget.card.id);
+        _isListed = _collection.isListed(widget.card.id);
       });
       _fetchMatches();
     }).catchError((e) {
@@ -837,8 +842,8 @@ class TradeSectionState extends State<TradeSection> {
 
   void _refreshState() {
     setState(() {
-      _isWishlisted = _userCardService.isWishlisted(widget.card.id);
-      _isListed = _userCardService.isListed(widget.card.id);
+      _isWishlisted = _collection.isWishlisted(widget.card.id);
+      _isListed = _collection.isListed(widget.card.id);
       _wantMatches = null;
       _listingMatches = null;
       _wantOffset = 0;
@@ -862,7 +867,7 @@ class TradeSectionState extends State<TradeSection> {
       final cardMap = CardService().getCardMap();
       final futures = <Future>[];
 
-      futures.add(_userCardService.getMyPendingProposals().then((proposals) {
+      futures.add(_collectionStore.getMyPendingProposals().then((proposals) {
         if (requestId != _fetchRequestId) return;
         _pendingProposals = proposals;
       }));
@@ -871,7 +876,7 @@ class TradeSectionState extends State<TradeSection> {
       final fullartOnly = _trainersOnly && _isFullArtSupporter;
 
       if (wantNeeded) {
-        futures.add(_userCardService
+        futures.add(_collectionStore
             .getTradeMatchesForWanted(cardId, langList,
                 fullartOnly: fullartOnly, limit: _pageSize, offset: 0)
             .then((matches) {
@@ -887,7 +892,7 @@ class TradeSectionState extends State<TradeSection> {
       }
 
       if (listingNeeded) {
-        futures.add(_userCardService
+        futures.add(_collectionStore
             .getTradeMatchesForListing(cardId, langList,
                 fullartOnly: fullartOnly, limit: _pageSize, offset: 0)
             .then((matches) {
@@ -934,7 +939,7 @@ class TradeSectionState extends State<TradeSection> {
 
       final List<TradeMatch> matches;
       if (widget.activeTab == 0) {
-        matches = await _userCardService.getTradeMatchesForWanted(
+        matches = await _collectionStore.getTradeMatchesForWanted(
           cardId,
           langList,
           fullartOnly: fullartOnly,
@@ -942,7 +947,7 @@ class TradeSectionState extends State<TradeSection> {
           offset: offset,
         );
       } else {
-        matches = await _userCardService.getTradeMatchesForListing(
+        matches = await _collectionStore.getTradeMatchesForListing(
           cardId,
           langList,
           fullartOnly: fullartOnly,
@@ -985,21 +990,22 @@ class TradeSectionState extends State<TradeSection> {
   }
 
   Future<void> _onWantPressed() async {
-    await _showEditCardDialog('wishlist');
+    await _showEditCardDialog(CollectionItemKind.wishlist);
   }
 
   Future<void> _onCanTradePressed() async {
-    await _showEditCardDialog('listing');
+    await _showEditCardDialog(CollectionItemKind.listing);
   }
 
-  Future<void> _showEditCardDialog(String type) async {
+  Future<void> _showEditCardDialog(CollectionItemKind kind) async {
     final cardId = widget.card.id;
-    final isWishlist = type == 'wishlist';
+    final isWishlist = kind == CollectionItemKind.wishlist;
 
     // Only show the relevant type active based on which tab opened the dialog
     bool pendingWishlist = isWishlist && _isWishlisted;
     bool pendingListing = !isWishlist && _isListed;
-    Set<String> pendingLangs = _userCardService.getLanguages(cardId, type);
+    Set<String> pendingLangs =
+        _collection.languagesOf(cardId, kind);
     if (pendingLangs.isEmpty) {
       pendingLangs = isWishlist ? {'ANY'} : {'ENG'};
       pendingWishlist = isWishlist;
@@ -1014,16 +1020,16 @@ class TradeSectionState extends State<TradeSection> {
             : 'You have already wishlisted this card. Creating a listing will remove it from your wishlist.'
         : null;
 
-    final initialConditions = type == 'listing'
-        ? _userCardService.getTradeConditions(cardId)
-        : <String, Set<String>>{};
+    final initialConditions = kind == CollectionItemKind.listing
+        ? _tradeConditions
+        : <TradeCondition>[];
 
     final result = await showDialog<
         ({
           bool wishlisted,
           bool listed,
           Set<String> languages,
-          Map<String, Set<String>> conditions,
+          List<TradeCondition> conditions,
         })?>(
       context: context,
       builder: (context) => _EditCardDialog(
@@ -1032,7 +1038,7 @@ class TradeSectionState extends State<TradeSection> {
         initialListing: pendingListing,
         initialLanguages: pendingLangs,
         initialConditions: initialConditions,
-        type: type,
+        kind: kind,
         isEditing: isEditing,
         warningText: warningText,
       ),
@@ -1041,42 +1047,39 @@ class TradeSectionState extends State<TradeSection> {
     if (result == null || !mounted) return;
 
     try {
-      // Sync both types by comparing before/after
-      for (final t in ['wishlist', 'listing']) {
-        final wasActive = t == 'wishlist' ? _isWishlisted : _isListed;
+      // Sync both kinds by comparing before/after
+      for (final k in CollectionItemKind.values) {
+        final isWishlistKind = k == CollectionItemKind.wishlist;
+        final wasActive = isWishlistKind ? _isWishlisted : _isListed;
         final isNowActive =
-            t == 'wishlist' ? result.wishlisted : result.listed;
-        final oldLangs = _userCardService.getLanguages(cardId, t);
+            isWishlistKind ? result.wishlisted : result.listed;
+        final oldLangs = _collection.languagesOf(cardId, k);
 
         if (wasActive && !isNowActive) {
-          // Remove all entries for this type
+          // Remove all entries for this kind
           for (final lang in oldLangs) {
-            await _userCardService.removeCard(cardId, t, lang);
+            await _collectionStore.removeCard(cardId, k, lang);
           }
         } else if (isNowActive) {
           // Remove languages no longer selected
           for (final lang in oldLangs) {
             if (!result.languages.contains(lang)) {
-              await _userCardService.removeCard(cardId, t, lang);
+              await _collectionStore.removeCard(cardId, k, lang);
             }
           }
           // Add new languages
           for (final lang in result.languages) {
             if (!oldLangs.contains(lang)) {
-              await _userCardService.addCard(cardId, t, lang);
+              await _collectionStore.addCard(cardId, k, lang);
             }
           }
         }
       }
 
       // Sync trade conditions
-      if (type == 'listing') {
-        final oldConditions = initialConditions;
-        final newConditions = result.conditions;
-        if (oldConditions.length != newConditions.length ||
-            oldConditions.toString() != newConditions.toString()) {
-          await _userCardService.setTradeConditions(cardId, newConditions);
-        }
+      if (kind == CollectionItemKind.listing &&
+          !sameTradeConditions(initialConditions, result.conditions)) {
+        await _collectionStore.setTradeConditions(cardId, result.conditions);
       }
     } catch (e) {
       if (!mounted) return;
@@ -1095,8 +1098,8 @@ class _EditCardDialog extends StatefulWidget {
   final bool initialWishlist;
   final bool initialListing;
   final Set<String> initialLanguages;
-  final Map<String, Set<String>> initialConditions;
-  final String type;
+  final List<TradeCondition> initialConditions;
+  final CollectionItemKind kind;
   final bool isEditing;
   final String? warningText;
 
@@ -1106,7 +1109,7 @@ class _EditCardDialog extends StatefulWidget {
     required this.initialListing,
     required this.initialLanguages,
     required this.initialConditions,
-    required this.type,
+    required this.kind,
     required this.isEditing,
     this.warningText,
   });
@@ -1119,7 +1122,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
   late bool _wishlisted;
   late bool _listed;
   late Set<String> _languages;
-  late Map<String, Set<String>> _conditions;
+  late List<TradeCondition> _conditions;
 
   @override
   void initState() {
@@ -1127,23 +1130,23 @@ class _EditCardDialogState extends State<_EditCardDialog> {
     _wishlisted = widget.initialWishlist;
     _listed = widget.initialListing;
     _languages = Set.from(widget.initialLanguages);
-    _conditions = Map.from(widget.initialConditions);
+    _conditions = widget.initialConditions;
   }
 
   String get dialogTitle {
-    if (widget.type == 'wishlist') {
+    if (widget.kind == CollectionItemKind.wishlist) {
       return widget.isEditing ? 'Edit Wishlist' : 'Add to Wishlist';
     }
     return widget.isEditing ? 'Edit Listing' : 'Create a Listing';
   }
 
   Future<void> _openConditionsPicker() async {
-    final result = await Navigator.push<Map<String, Set<String>>>(
+    final result = await Navigator.push<List<TradeCondition>>(
       context,
       MaterialPageRoute(
         builder: (_) => TradeConditionPickerScreen(
           listedCard: widget.card,
-          initialSelection: _conditions,
+          initialConditions: _conditions,
         ),
       ),
     );
@@ -1170,7 +1173,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
               pendingLanguages: _languages,
               tradeConditionCount: _conditions.length,
               onConditionsPressed: _openConditionsPicker,
-              onWishlistToggle: widget.type == 'wishlist'
+              onWishlistToggle: widget.kind == CollectionItemKind.wishlist
                   ? (langs) {
                       setState(() {
                         _wishlisted = !_wishlisted;
@@ -1181,7 +1184,7 @@ class _EditCardDialogState extends State<_EditCardDialog> {
                       });
                     }
                   : null,
-              onListingToggle: widget.type == 'listing'
+              onListingToggle: widget.kind == CollectionItemKind.listing
                   ? (langs) {
                       setState(() {
                         _listed = !_listed;

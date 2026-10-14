@@ -10,7 +10,7 @@ import 'package:tcgp_trading_app/screens/change_credentials_screen.dart';
 import 'package:tcgp_trading_app/screens/optional_link_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/notification_service.dart';
-import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/collection/collection_store.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -34,7 +34,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _clearAllCaches() async {
-    await UserCardService().clearCache();
+    await CollectionStore().clearCache();
     await ProfileService().clearProfileCache();
     await CardService().clearCache();
   }
@@ -73,7 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           accentColor: Colors.redAccent,
           showWarningBadge: true,
           onConfirm: () async {
-            await UserCardService().deleteAllUserCards();
+            await CollectionStore().deleteAll();
             await ProfileService().deleteProfile();
             await NotificationService().removeToken();
             await _clearAllCaches();

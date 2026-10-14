@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:tcgp_trading_app/collection/collection.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
@@ -22,12 +23,12 @@ const int maxSelectedCards = 10;
 
 class TradeConditionPickerScreen extends StatefulWidget {
   final PocketCard listedCard;
-  final Map<String, Set<String>> initialSelection;
+  final List<TradeCondition> initialConditions;
 
   const TradeConditionPickerScreen({
     super.key,
     required this.listedCard,
-    required this.initialSelection,
+    required this.initialConditions,
   });
 
   @override
@@ -64,9 +65,9 @@ class _TradeConditionPickerScreenState
   @override
   void initState() {
     super.initState();
-    _selected = widget.initialSelection.map(
-      (k, v) => MapEntry(k, Set<String>.from(v)),
-    );
+    _selected = {
+      for (final c in widget.initialConditions) c.cardId: {...c.languages},
+    };
     _loadCards();
   }
 
@@ -255,8 +256,10 @@ class _TradeConditionPickerScreenState
               ),
             ),
           TextButton(
-            onPressed: () => Navigator.pop(
-                context, Map<String, Set<String>>.from(_selected)),
+            onPressed: () => Navigator.pop(context, [
+              for (final e in _selected.entries)
+                TradeCondition(cardId: e.key, languages: e.value),
+            ]),
             child: const Text(
               'Save',
               style: TextStyle(

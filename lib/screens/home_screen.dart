@@ -1,11 +1,13 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/models/pending_card_edit.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
-import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/collection/collection.dart';
+import 'package:tcgp_trading_app/collection/collection_store.dart';
 import 'package:tcgp_trading_app/widgets/shared/active_filter_chips.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/widgets/shared/card_grid.dart';
@@ -16,6 +18,9 @@ import 'package:tcgp_trading_app/widgets/shared/sort_selector.dart';
 import 'package:tcgp_trading_app/screens/trade_condition_picker_screen.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
+/// Identifies one pending wishlist entry or listing edit for a card.
+typedef _ItemKey = (String cardId, CollectionItemKind kind);
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -25,7 +30,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late Future<List<PocketCard>> _cardsFuture;
-  final _userCardService = UserCardService();
+  final _collectionStore = CollectionStore();
 
   // All cards from the data source
   List<PocketCard> _allCards = [];
@@ -46,9 +51,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showListingsOnly = false;
 
   // Pending edits for edit mode
-  final Map<String, PendingCardEdit> _pendingEdits = {};
-  final Set<String> _pendingRemovals = {};
-  final Map<String, Map<String, Set<String>>> _pendingConditions = {};
+  final Map<_ItemKey, PendingCardEdit> _pendingEdits = {};
+  final Set<_ItemKey> _pendingRemovals = {};
+  final Map<String, List<TradeCondition>> _pendingConditions = {};
 
   // Available filter options (extracted from data)
   List<String> _availableSets = [];
@@ -82,8 +87,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _cardsFuture = CardService().getAllCards();
-    _userCardService
-        .loadMyCards()
+    _collectionStore
+        .load()
         .catchError((e) => debugPrint('Failed to load user cards: $e'));
   }
 
@@ -249,40 +254,42 @@ class _HomeScreenState extends State<HomeScreen> {
   // ---------------------------------------------------------------------------
 
   bool _effectiveWishlist(String cardId) {
-    if (_pendingEdits.containsKey('$cardId:wishlist')) return true;
-    if (_pendingRemovals.contains('$cardId:wishlist')) return false;
-    return _userCardService.isWishlisted(cardId);
+    final key = (cardId, CollectionItemKind.wishlist);
+    if (_pendingEdits.containsKey(key)) return true;
+    if (_pendingRemovals.contains(key)) return false;
+    return _collectionStore.collection.isWishlisted(cardId);
   }
 
   bool _effectiveListing(String cardId) {
-    if (_pendingEdits.containsKey('$cardId:listing')) return true;
-    if (_pendingRemovals.contains('$cardId:listing')) return false;
-    return _userCardService.isListed(cardId);
+    final key = (cardId, CollectionItemKind.listing);
+    if (_pendingEdits.containsKey(key)) return true;
+    if (_pendingRemovals.contains(key)) return false;
+    return _collectionStore.collection.isListed(cardId);
   }
 
   Set<String> _effectiveLanguages(String cardId) {
-    for (final type in ['wishlist', 'listing']) {
-      final key = '$cardId:$type';
-      if (_pendingEdits.containsKey(key)) {
-        return _pendingEdits[key]!.languages;
-      }
+    for (final kind in CollectionItemKind.values) {
+      final edit = _pendingEdits[(cardId, kind)];
+      if (edit != null) return edit.languages;
     }
-    for (final type in ['wishlist', 'listing']) {
-      final langs = _userCardService.getLanguages(cardId, type);
+    for (final kind in CollectionItemKind.values) {
+      final langs = _collectionStore.collection.languagesOf(cardId, kind);
       if (langs.isNotEmpty) return langs;
     }
     return {'ENG'};
   }
 
-  void _togglePending(String cardId, String type, Set<String> languages) {
+  void _togglePending(
+    String cardId,
+    CollectionItemKind kind,
+    Set<String> languages,
+  ) {
     setState(() {
-      final key = '$cardId:$type';
-      final oppositeType = type == 'wishlist' ? 'listing' : 'wishlist';
-      final oppositeKey = '$cardId:$oppositeType';
+      final key = (cardId, kind);
+      final oppositeKind = kind.opposite;
+      final oppositeKey = (cardId, oppositeKind);
 
-      final isExisting = type == 'wishlist'
-          ? _userCardService.isWishlisted(cardId)
-          : _userCardService.isListed(cardId);
+      final isExisting = _collectionStore.collection.has(cardId, kind);
 
       if (isExisting && !_pendingRemovals.contains(key)) {
         _pendingRemovals.add(key);
@@ -294,15 +301,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _pendingEdits.remove(key);
       } else {
         _pendingEdits.remove(oppositeKey);
-        final oppositeExists = oppositeType == 'wishlist'
-            ? _userCardService.isWishlisted(cardId)
-            : _userCardService.isListed(cardId);
-        if (oppositeExists) {
+        if (_collectionStore.collection.has(cardId, oppositeKind)) {
           _pendingRemovals.add(oppositeKey);
         }
         _pendingEdits[key] = PendingCardEdit(
           cardId: cardId,
-          type: type,
+          kind: kind,
           languages: languages,
         );
       }
@@ -311,26 +315,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _updatePendingLanguages(String cardId, Set<String> languages) {
     setState(() {
-      for (final type in ['wishlist', 'listing']) {
-        final key = '$cardId:$type';
-        final effectiveLangs = type == 'listing' && languages.length > 1
-            ? {languages.where((l) => l != 'ANY').firstOrNull ?? 'ENG'}
-            : languages;
+      for (final kind in CollectionItemKind.values) {
+        final key = (cardId, kind);
+        final effectiveLangs =
+            kind == CollectionItemKind.listing && languages.length > 1
+                ? {
+                    languages.where((l) => l != anyLanguage).firstOrNull ??
+                        'ENG'
+                  }
+                : languages;
         if (_pendingEdits.containsKey(key)) {
           _pendingEdits[key] =
               _pendingEdits[key]!.copyWith(languages: effectiveLangs);
         } else {
           // Card already exists in DB — create a pending edit to update languages
-          final isExisting = type == 'wishlist'
-              ? _userCardService.isWishlisted(cardId)
-              : _userCardService.isListed(cardId);
-          if (isExisting && !_pendingRemovals.contains(key)) {
-            final currentLangs = _userCardService.getLanguages(cardId, type);
-            if (!_setsEqual(currentLangs, effectiveLangs)) {
+          if (_collectionStore.collection.has(cardId, kind) && !_pendingRemovals.contains(key)) {
+            final currentLangs =
+                _collectionStore.collection.languagesOf(cardId, kind);
+            if (!setEquals(currentLangs, effectiveLangs)) {
               _pendingRemovals.add(key);
               _pendingEdits[key] = PendingCardEdit(
                 cardId: cardId,
-                type: type,
+                kind: kind,
                 languages: effectiveLangs,
               );
             }
@@ -340,44 +346,31 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  bool _setsEqual(Set<String> a, Set<String> b) =>
-      a.length == b.length && a.containsAll(b);
+  List<TradeCondition> _storedTradeConditions(String cardId) =>
+      _collectionStore.collection.tradeConditionsOf(cardId);
 
-  bool _mapsEqual(Map<String, Set<String>> a, Map<String, Set<String>> b) {
-    if (a.length != b.length) return false;
-    for (final entry in a.entries) {
-      final bVal = b[entry.key];
-      if (bVal == null || !_setsEqual(entry.value, bVal)) return false;
-    }
-    return true;
-  }
-
-  int _effectiveConditionCount(String cardId) {
-    if (_pendingConditions.containsKey(cardId)) {
-      return _pendingConditions[cardId]!.length;
-    }
-    return _userCardService.getTradeConditionCount(cardId);
-  }
+  int _effectiveConditionCount(String cardId) =>
+      (_pendingConditions[cardId] ?? _storedTradeConditions(cardId)).length;
 
   bool _isConditionTarget(String cardId) {
     // Check pending conditions first
     for (final conditions in _pendingConditions.values) {
-      if (conditions.containsKey(cardId)) return true;
+      if (conditions.any((c) => c.cardId == cardId)) return true;
     }
-    return _userCardService.isConditionTarget(cardId);
+    return _collectionStore.collection.isTradeConditionTarget(cardId);
   }
 
   Future<void> _openConditionsPicker(String cardId) async {
     final card = _allCards.firstWhere((c) => c.id == cardId);
-    final currentConditions = _pendingConditions[cardId] ??
-        _userCardService.getTradeConditions(cardId);
+    final currentConditions =
+        _pendingConditions[cardId] ?? _storedTradeConditions(cardId);
 
-    final result = await Navigator.push<Map<String, Set<String>>>(
+    final result = await Navigator.push<List<TradeCondition>>(
       context,
       MaterialPageRoute(
         builder: (_) => TradeConditionPickerScreen(
           listedCard: card,
-          initialSelection: currentConditions,
+          initialConditions: currentConditions,
         ),
       ),
     );
@@ -385,8 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (result == null || !mounted) return;
 
     setState(() {
-      final existing = _userCardService.getTradeConditions(cardId);
-      if (_mapsEqual(result, existing)) {
+      if (sameTradeConditions(result, _storedTradeConditions(cardId))) {
         _pendingConditions.remove(cardId);
       } else {
         _pendingConditions[cardId] = result;
@@ -396,34 +388,29 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _submitPendingEdits() async {
     setState(() => _isSaving = true);
-    final additions = Map<String, PendingCardEdit>.from(_pendingEdits);
-    final removals = Set<String>.from(_pendingRemovals);
+    final additions = Map<_ItemKey, PendingCardEdit>.from(_pendingEdits);
+    final removals = Set<_ItemKey>.from(_pendingRemovals);
     final conditions =
-        Map<String, Map<String, Set<String>>>.from(_pendingConditions);
+        Map<String, List<TradeCondition>>.from(_pendingConditions);
 
     // Track which edits failed so we can keep them in the pending set for retry
-    final failedAdditions = <String>{};
-    final failedRemovals = <String>{};
+    final failedAdditions = <_ItemKey>{};
+    final failedRemovals = <_ItemKey>{};
     final failedConditions = <String>{};
 
     // Capture languages to remove BEFORE mutating the cache
-    final removalLangs = <String, Set<String>>{};
-    for (final key in removals) {
-      final lastColon = key.lastIndexOf(':');
-      final cardId = key.substring(0, lastColon);
-      final type = key.substring(lastColon + 1);
-      removalLangs[key] = _userCardService.getLanguages(cardId, type);
-    }
+    final removalLangs = {
+      for (final key in removals)
+        key: _collectionStore.collection.languagesOf(key.$1, key.$2),
+    };
 
     for (final key in removals) {
-      final lastColon = key.lastIndexOf(':');
-      final cardId = key.substring(0, lastColon);
-      final type = key.substring(lastColon + 1);
+      final (cardId, kind) = key;
       for (final lang in removalLangs[key]!) {
         try {
-          await _userCardService.removeCard(cardId, type, lang);
+          await _collectionStore.removeCard(cardId, kind, lang);
         } catch (e) {
-          debugPrint('Failed to remove $cardId ($type, $lang): $e');
+          debugPrint('Failed to remove $cardId (${kind.name}, $lang): $e');
           failedRemovals.add(key);
         }
       }
@@ -432,10 +419,11 @@ class _HomeScreenState extends State<HomeScreen> {
     for (final edit in additions.values) {
       for (final lang in edit.languages) {
         try {
-          await _userCardService.addCard(edit.cardId, edit.type, lang);
+          await _collectionStore.addCard(edit.cardId, edit.kind, lang);
         } catch (e) {
-          debugPrint('Failed to add ${edit.cardId} (${edit.type}, $lang): $e');
-          failedAdditions.add('${edit.cardId}:${edit.type}');
+          debugPrint(
+              'Failed to add ${edit.cardId} (${edit.kind.name}, $lang): $e');
+          failedAdditions.add((edit.cardId, edit.kind));
         }
       }
     }
@@ -443,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Persist trade conditions
     for (final entry in conditions.entries) {
       try {
-        await _userCardService.setTradeConditions(entry.key, entry.value);
+        await _collectionStore.setTradeConditions(entry.key, entry.value);
       } catch (e) {
         debugPrint('Failed to set conditions for ${entry.key}: $e');
         failedConditions.add(entry.key);
@@ -710,11 +698,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               onWishlistToggle: _isSaving
                                   ? null
                                   : (langs) => _togglePending(
-                                      card.id, 'wishlist', langs),
+                                      card.id, CollectionItemKind.wishlist, langs),
                               onListingToggle: _isSaving
                                   ? null
                                   : (langs) =>
-                                      _togglePending(card.id, 'listing', langs),
+                                      _togglePending(
+                                          card.id, CollectionItemKind.listing, langs),
                               onLanguagesChanged:
                                   _isSaving ? null : _updatePendingLanguages,
                               tradeConditionCount:

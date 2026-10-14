@@ -1,25 +1,19 @@
+import 'package:tcgp_trading_app/collection/collection.dart';
+
 class PendingCardEdit {
   final String cardId;
-  final String type; // 'wishlist' or 'listing'
+  final CollectionItemKind kind;
   final Set<String> languages;
-  final Map<String, String>
-      tradeConditions; // cardId -> language code (empty = open to all)
+
   PendingCardEdit({
     required this.cardId,
-    required this.type,
+    required this.kind,
     Set<String>? languages,
-    Map<String, String>? tradeConditions,
-  })  : languages = languages ?? {'ANY'},
-        tradeConditions = tradeConditions ?? {};
+  }) : languages = languages ?? {anyLanguage};
 
-  PendingCardEdit copyWith({
-    Set<String>? languages,
-    Map<String, String>? tradeConditions,
-  }) =>
-      PendingCardEdit(
+  PendingCardEdit copyWith({Set<String>? languages}) => PendingCardEdit(
         cardId: cardId,
-        type: type,
+        kind: kind,
         languages: languages ?? this.languages,
-        tradeConditions: tradeConditions ?? this.tradeConditions,
       );
 }

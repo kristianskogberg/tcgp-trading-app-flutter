@@ -9,7 +9,8 @@ import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/utils/input_fields.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
-import 'package:tcgp_trading_app/services/user_card_service.dart';
+import 'package:tcgp_trading_app/collection/collection.dart';
+import 'package:tcgp_trading_app/collection/collection_store.dart';
 import 'package:tcgp_trading_app/widgets/shared/card_tile.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -43,7 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   final _usernameController = TextEditingController();
   final _friendIdController = TextEditingController();
   final _profileService = ProfileService();
-  final _userCardService = UserCardService();
+  final _collectionStore = CollectionStore();
 
   String? _usernameErrorMessage;
   String? _friendIdErrorMessage;
@@ -100,7 +101,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       _usernameController.addListener(_onFieldChanged);
       _friendIdController.addListener(_onFieldChanged);
       _loadProfile();
-      _userCardService.addListener(_onCardsChanged);
+      _collectionStore.addListener(_onCardsChanged);
     }
   }
 
@@ -144,17 +145,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) return;
     setState(() => _loadingCards = true);
     try {
-      await _userCardService.loadMyCards();
+      await _collectionStore.load();
       final allCards = await CardService().getAllCards();
-      final wishlistIds = _userCardService.wishlistCardIds;
-      final listingIds = _userCardService.listingCardIds;
       if (!mounted) return;
-      setState(() {
-        _wishlistCards =
-            allCards.where((c) => wishlistIds.contains(c.id)).toList();
-        _listingCards =
-            allCards.where((c) => listingIds.contains(c.id)).toList();
-      });
+      setState(() => _setCollectionCards(_collectionStore.collection, allCards));
     } catch (e) {
       debugPrint('Failed to load cards: $e');
       if (mounted) {
@@ -193,16 +187,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     if (!mounted) return;
     setState(() => _loadingCards = true);
     try {
-      final cardMap = await _profileService.getOtherUserCards(widget.userId!);
+      final collection =
+          await _collectionStore.fetchCollectionOf(widget.userId!);
       final allCards = await CardService().getAllCards();
-      final wishlistIds = cardMap['wishlist']?.toSet() ?? {};
-      final listingIds = cardMap['listing']?.toSet() ?? {};
       if (!mounted) return;
       setState(() {
-        _wishlistCards =
-            allCards.where((c) => wishlistIds.contains(c.id)).toList();
-        _listingCards =
-            allCards.where((c) => listingIds.contains(c.id)).toList();
+        _setCollectionCards(collection, allCards);
         _loadingCards = false;
       });
     } catch (e) {
@@ -210,10 +200,16 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  void _setCollectionCards(Collection collection, List<PocketCard> allCards) {
+    _wishlistCards =
+        allCards.where((c) => collection.isWishlisted(c.id)).toList();
+    _listingCards = allCards.where((c) => collection.isListed(c.id)).toList();
+  }
+
   @override
   void dispose() {
     if (!widget.isOtherUser) {
-      _userCardService.removeListener(_onCardsChanged);
+      _collectionStore.removeListener(_onCardsChanged);
       _usernameController.removeListener(_onFieldChanged);
       _friendIdController.removeListener(_onFieldChanged);
     }
@@ -512,8 +508,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                 : TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildCardGrid(_wishlistCards, 'wishlist'),
-                      _buildCardGrid(_listingCards, 'listings'),
+                      _buildCardGrid(_wishlistCards, CollectionItemKind.wishlist),
+                      _buildCardGrid(_listingCards, CollectionItemKind.listing),
                     ],
                   ),
           ),
@@ -531,11 +527,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     return '${list[0]}, +${list.length - 1}';
   }
 
-  Widget _buildCardGrid(List<PocketCard> cards, String type) {
+  Widget _buildCardGrid(List<PocketCard> cards, CollectionItemKind kind) {
     if (cards.isEmpty) {
       return Center(
         child: Text(
-          type == 'wishlist' ? 'No wishlisted cards' : 'No listed cards',
+          kind == CollectionItemKind.wishlist
+              ? 'No wishlisted cards'
+              : 'No listed cards',
           style: const TextStyle(color: Colors.white38),
         ),
       );
@@ -556,8 +554,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             final card = cards[index];
             final langs = widget.isOtherUser
                 ? <String>{}
-                : _userCardService.getLanguages(
-                    card.id, type == 'listings' ? 'listing' : 'wishlist');
+                : _collectionStore.collection.languagesOf(card.id, kind);
             final langLabel = _langLabel(langs);
             return Stack(
               children: [
