@@ -18,9 +18,9 @@
 -- 3. Open supabase/save_collection_changes_verify.sql, put your own user id
 --    in it as the file says, and run it. It saves and rejects test edits as
 --    you, checks every result, and rolls everything back at the end, so your
---    collection is left exactly as it was. Expect it to finish with
+--    collection is left exactly as it was. Expect one result row reading
 --    "save_collection_changes: all checks passed". Any failed check stops it
---    with an error naming the check.
+--    with an error naming the check instead.
 -- 4. Ship the app build that saves card-screen edits through this function.
 --
 -- Payload (p_changes): the desired state of each changed card. A card's

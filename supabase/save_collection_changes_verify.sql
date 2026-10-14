@@ -1,13 +1,17 @@
 -- Verifies save_collection_changes (see save_collection_changes.sql, step 3).
 --
--- 1. Find your user id: Dashboard → Authentication → Users, or
---      SELECT id, email FROM auth.users ORDER BY created_at;
--- 2. Replace PUT-YOUR-USER-ID-HERE below with it.
+-- 1. Find a user id. Users who signed in anonymously have no email, so look
+--    one up by player name:
+--      SELECT user_id, player_name FROM public.profiles
+--      WHERE player_name = 'YourPlayerName';
+--    or list them all with
+--      SELECT id, is_anonymous, created_at FROM auth.users ORDER BY created_at;
+-- 2. Replace PUT-YOUR-USER-ID-HERE below with it. Don't commit the id.
 -- 3. Run this whole file in the SQL editor. It acts as that user, saves and
---    rejects test edits, checks each result and ROLLS BACK at the end: your
---    collection is not changed. Expect the notice
---    "save_collection_changes: all checks passed". A failed check stops with
---    an error starting "Check failed:".
+--    rejects test edits, checks each result and ROLLS BACK at the end: the
+--    user's collection is not changed. Expect one result row reading
+--    "save_collection_changes: all checks passed". A failed check shows an
+--    error starting "Check failed:" instead.
 
 BEGIN;
 
@@ -195,8 +199,11 @@ BEGIN
     RAISE EXCEPTION 'Check failed: listing to wishlist kept trade conditions';
   END IF;
 
-  RAISE NOTICE 'save_collection_changes: all checks passed';
 END;
 $$;
+
+-- Only reached when every check above passed. The SQL editor shows this row
+-- as the result; it does not show notices.
+SELECT 'save_collection_changes: all checks passed' AS result;
 
 ROLLBACK;
