@@ -3,13 +3,13 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
-import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/screens/chat_screen.dart';
-import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/collection/collection.dart';
 import 'package:tcgp_trading_app/collection/collection_draft.dart';
 import 'package:tcgp_trading_app/collection/collection_store.dart';
 import 'package:tcgp_trading_app/services/language_filter_service.dart';
+import 'package:tcgp_trading_app/trading/trade_match.dart';
+import 'package:tcgp_trading_app/trading/trade_match_feed.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
 import 'package:tcgp_trading_app/utils/constants.dart';
 import 'package:tcgp_trading_app/widgets/shared/card_badge.dart';
@@ -19,100 +19,105 @@ import 'package:tcgp_trading_app/utils/languages.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 import 'package:tcgp_trading_app/widgets/card_screen/edit_card_dialog.dart';
 
-class TradeSection extends StatefulWidget {
-  final PocketCard card;
-  final int activeTab;
+/// The copy that differs between the two directions of a card's trade
+/// matches.
+class _DirectionText {
+  /// What the viewed card is in the user's collection for this direction to
+  /// be a perfect match: a wishlist entry when receiving it, a listing when
+  /// sending it.
+  final CollectionItemKind viewedKind;
+  final String intro;
+  final String onlyMineLabel;
+  final String emptyHint;
 
-  const TradeSection({super.key, required this.card, required this.activeTab});
+  const _DirectionText({
+    required this.viewedKind,
+    required this.intro,
+    required this.onlyMineLabel,
+    required this.emptyHint,
+  });
 
-  @override
-  TradeSectionState createState() => TradeSectionState();
+  static _DirectionText of(TradeDirection direction) => switch (direction) {
+        TradeDirection.receiving => const _DirectionText(
+            viewedKind: CollectionItemKind.wishlist,
+            intro: 'If you want {card}, these are the cards you could offer '
+                'for it.',
+            onlyMineLabel: 'Show only cards I have listed',
+            emptyHint: 'Nobody has listed this card in your selected '
+                'languages yet. Try All languages, or wishlist it so other '
+                'players can find you.',
+          ),
+        TradeDirection.sending => const _DirectionText(
+            viewedKind: CollectionItemKind.listing,
+            intro: 'If you trade away {card}, these are the cards you could '
+                'ask for in return.',
+            onlyMineLabel: 'Show only cards I have wishlisted',
+            emptyHint: 'Nobody has wishlisted this card in your selected '
+                'languages yet. Try All languages, or list it so other '
+                'players can find you.',
+          ),
+      };
 }
 
-class TradeSectionState extends State<TradeSection> {
-  static const _pageSize = 30;
+/// A view of one [TradeMatchFeed]: the viewed card's collection state, the
+/// filters and the grid of trade matches.
+class TradeSection extends StatefulWidget {
+  final PocketCard card;
+  final TradeMatchFeed feed;
 
+  /// Applies a filter change shared by both directions (card languages,
+  /// full-art only) to every feed on the screen.
+  final void Function(TradeMatchFilter Function(TradeMatchFilter) update)
+      onSharedFilterChanged;
+
+  /// Called after the user saved a change to their collection, which can
+  /// change the matches of every feed.
+  final VoidCallback onCollectionSaved;
+
+  const TradeSection({
+    super.key,
+    required this.card,
+    required this.feed,
+    required this.onSharedFilterChanged,
+    required this.onCollectionSaved,
+  });
+
+  @override
+  State<TradeSection> createState() => _TradeSectionState();
+}
+
+class _TradeSectionState extends State<TradeSection> {
   final _collectionStore = CollectionStore();
   final _langFilterService = LanguageFilterService();
-  bool _isWishlisted = false;
-  bool _isListed = false;
-  List<(PocketCard, TradeMatch)>? _wantMatches;
-  List<(PocketCard, TradeMatch)>? _listingMatches;
-  bool _loadingMatches = false;
-  bool _loadingMore = false;
-  int _wantOffset = 0;
-  int _listingOffset = 0;
-  bool _wantHasMore = true;
-  bool _listingHasMore = true;
-  bool _trainersOnly = false;
-  bool _myListedOnly = false;
-  bool _myWishlistedOnly = false;
-  Set<String> _pendingProposals = {};
   final Set<String> _languages = languages.keys.toSet();
-  Set<String> _selectedLanguages = {...languages.keys};
-  Set<String> _appliedLanguages = {...languages.keys};
 
-  int _fetchRequestId = 0;
+  /// The language chips selected, applied to the feeds on "Apply".
+  late Set<String> _selectedLanguages = {...widget.feed.filter.languages};
+
   bool _navigatingToMatch = false;
 
   Collection get _collection => _collectionStore.collection;
 
-  List<TradeCondition> get _tradeConditions =>
-      _collection.tradeConditionsOf(widget.card.id);
+  TradeMatchFeed get _feed => widget.feed;
+
+  _DirectionText get _text => _DirectionText.of(_feed.direction);
 
   bool get _isFullArtSupporter =>
       widget.card.rarity == '☆☆' &&
       widget.card.cardType.toLowerCase() == 'supporter';
 
-  /// Check if the current user has a pending trade proposal for this match.
-  bool _hasProposal(PocketCard matchCard, TradeMatch tradeMatch) {
-    final String offerCardId;
-    final String receiveCardId;
-    if (widget.activeTab == 0) {
-      // "I want this card" → user offers matchCard, receives contextCard
-      offerCardId = matchCard.id;
-      receiveCardId = widget.card.id;
-    } else {
-      // "I have this card" → user offers contextCard, receives matchCard
-      offerCardId = widget.card.id;
-      receiveCardId = matchCard.id;
-    }
-    return _pendingProposals
-        .contains('${tradeMatch.userId}:$offerCardId:$receiveCardId');
-  }
-
   @override
   void initState() {
     super.initState();
-    _loadLanguageFilter();
-    _loadState();
-  }
-
-  Future<void> _loadLanguageFilter() async {
-    final saved = await _langFilterService.getSelectedLanguages();
-    if (!mounted) return;
-    setState(() {
-      _selectedLanguages = saved;
-      _appliedLanguages = {...saved};
+    _collectionStore.load().catchError((Object e) {
+      debugPrint('Failed to load user cards in trade section: $e');
     });
-  }
-
-  void _updateLanguageFilter(Set<String> selected) {
-    setState(() => _selectedLanguages = selected);
   }
 
   void _applyLanguageFilter() {
-    setState(() {
-      _appliedLanguages = {..._selectedLanguages};
-      _wantMatches = null;
-      _listingMatches = null;
-      _wantOffset = 0;
-      _listingOffset = 0;
-      _wantHasMore = true;
-      _listingHasMore = true;
-    });
-    _langFilterService.setSelectedLanguages(_selectedLanguages);
-    _fetchMatches();
+    final selected = {..._selectedLanguages};
+    _langFilterService.setSelectedLanguages(selected);
+    widget.onSharedFilterChanged((f) => f.copyWith(languages: selected));
   }
 
   InlineSpan _actionSpan(String text, Color color, VoidCallback onTap) {
@@ -132,159 +137,33 @@ class TradeSectionState extends State<TradeSection> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([_feed, _collectionStore]),
+      builder: (context, _) => _buildSection(),
+    );
+  }
+
+  Widget _buildSection() {
     final card = widget.card;
+    final cardName = TextSpan(
+      text: card.name,
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        color: Colors.white70,
+      ),
+    );
+    final introParts = _text.intro.split('{card}');
+    final appliedLanguages = _feed.filter.languages;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.fromLTRB(6, 10, 6, 4),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1E24),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              PhosphorIcon(PhosphorIcons.info(),
-                  size: 16, color: Colors.white38),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    style: const TextStyle(fontSize: 12, color: Colors.white54),
-                    children: widget.activeTab == 0
-                        ? (_isWishlisted
-                            ? [
-                                const TextSpan(text: 'You have wishlisted '),
-                                TextSpan(
-                                  text: card.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                TextSpan(
-                                    text:
-                                        ' in ${_formatLanguages(card.id, CollectionItemKind.wishlist)}. '),
-                                _actionSpan(
-                                  'Edit',
-                                  AppColors.primary,
-                                  () => _showEditCardDialog(CollectionItemKind.wishlist),
-                                ),
-                              ]
-                            : [
-                                const TextSpan(
-                                    text: 'You have not wishlisted '),
-                                TextSpan(
-                                  text: card.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                const TextSpan(text: ' yet. '),
-                                _actionSpan(
-                                  'Wishlist now',
-                                  AppColors.primary,
-                                  _onWantPressed,
-                                ),
-                              ])
-                        : (_isListed
-                            ? [
-                                const TextSpan(text: 'You have listed '),
-                                TextSpan(
-                                  text: card.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                TextSpan(
-                                    text:
-                                        ' for trade in ${_formatLanguages(card.id, CollectionItemKind.listing)}. '),
-                                if (_tradeConditions.isNotEmpty)
-                                  TextSpan(
-                                    text:
-                                        'Accepting ${_tradeConditions.length} specific ${_tradeConditions.length == 1 ? 'card' : 'cards'}. ',
-                                  ),
-                                _actionSpan(
-                                  'Edit',
-                                  AppColors.secondary,
-                                  () => _showEditCardDialog(CollectionItemKind.listing),
-                                ),
-                              ]
-                            : [
-                                const TextSpan(text: 'You have not listed '),
-                                TextSpan(
-                                  text: card.name,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white70,
-                                  ),
-                                ),
-                                const TextSpan(text: ' for trade yet. '),
-                                _actionSpan(
-                                  'List now',
-                                  AppColors.secondary,
-                                  _onCanTradePressed,
-                                ),
-                              ]),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.fromLTRB(6, 10, 6, 4),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E1E24),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              PhosphorIcon(PhosphorIcons.info(),
-                  size: 16, color: Colors.white38),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    style: const TextStyle(fontSize: 12, color: Colors.white54),
-                    children: widget.activeTab == 0
-                        ? [
-                            const TextSpan(text: 'If you want '),
-                            TextSpan(
-                              text: card.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white70),
-                            ),
-                            const TextSpan(
-                                text:
-                                    ', these are the cards you could offer for it.'),
-                          ]
-                        : [
-                            const TextSpan(text: 'If you list '),
-                            TextSpan(
-                              text: card.name,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white70),
-                            ),
-                            const TextSpan(
-                                text:
-                                    ' and you are willing to trade it, these are the cards you could ask for in return.'),
-                          ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+        _infoBanner(_collectionStateSpans(cardName)),
+        _infoBanner([
+          TextSpan(text: introParts.first),
+          cardName,
+          TextSpan(text: introParts.last),
+        ]),
         Padding(
           padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
           child: Row(
@@ -299,9 +178,8 @@ class TradeSectionState extends State<TradeSection> {
                         selected:
                             _selectedLanguages.length == _languages.length,
                         onSelected: (selected) {
-                          _updateLanguageFilter(
-                            selected ? {..._languages} : {},
-                          );
+                          setState(() => _selectedLanguages =
+                              selected ? {..._languages} : {});
                         },
                         selectedColor: const Color(0xFF1E1E24),
                         checkmarkColor: AppColors.primary,
@@ -333,7 +211,7 @@ class TradeSectionState extends State<TradeSection> {
                               } else {
                                 updated.remove(lang);
                               }
-                              _updateLanguageFilter(updated);
+                              setState(() => _selectedLanguages = updated);
                             },
                             selectedColor: const Color(0xFF1E1E24),
                             checkmarkColor: AppColors.primary,
@@ -356,8 +234,8 @@ class TradeSectionState extends State<TradeSection> {
                   ),
                 ),
               ),
-              if (_selectedLanguages.length != _appliedLanguages.length ||
-                  !_selectedLanguages.containsAll(_appliedLanguages))
+              if (_selectedLanguages.length != appliedLanguages.length ||
+                  !_selectedLanguages.containsAll(appliedLanguages))
                 Padding(
                   padding: const EdgeInsets.only(left: 6),
                   child: SizedBox(
@@ -383,76 +261,17 @@ class TradeSectionState extends State<TradeSection> {
           ),
         ),
         if (_isFullArtSupporter)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 4, 6, 0),
-            child: Row(
-              children: [
-                const Text(
-                  'Full Art Supporters only',
-                  style: TextStyle(fontSize: 13, color: Colors.white70),
-                ),
-                SizedBox(width: 6),
-                SizedBox(
-                  height: 32,
-                  child: FittedBox(
-                    child: Switch(
-                      value: _trainersOnly,
-                      onChanged: (value) {
-                        setState(() {
-                          _trainersOnly = value;
-                          _wantMatches = null;
-                          _listingMatches = null;
-                          _wantOffset = 0;
-                          _listingOffset = 0;
-                          _wantHasMore = true;
-                          _listingHasMore = true;
-                        });
-                        _fetchMatches();
-                      },
-                      activeColor: AppColors.primary,
-                      activeTrackColor: AppColors.primary.withOpacity(0.4),
-                      inactiveThumbColor: Colors.white38,
-                      inactiveTrackColor: Colors.white10,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          _toggle(
+            label: 'Full Art Supporters only',
+            value: _feed.filter.fullArtOnly,
+            onChanged: (value) => widget.onSharedFilterChanged(
+                (f) => f.copyWith(fullArtOnly: value)),
           ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(10, 4, 6, 0),
-          child: Row(
-            children: [
-              Text(
-                widget.activeTab == 0 ? 'My listings only' : 'My wishlist only',
-                style: const TextStyle(fontSize: 13, color: Colors.white70),
-              ),
-              const SizedBox(width: 6),
-              SizedBox(
-                height: 32,
-                child: FittedBox(
-                  child: Switch(
-                    value: widget.activeTab == 0
-                        ? _myListedOnly
-                        : _myWishlistedOnly,
-                    onChanged: (value) {
-                      setState(() {
-                        if (widget.activeTab == 0) {
-                          _myListedOnly = value;
-                        } else {
-                          _myWishlistedOnly = value;
-                        }
-                      });
-                    },
-                    activeColor: AppColors.primary,
-                    activeTrackColor: AppColors.primary.withOpacity(0.4),
-                    inactiveThumbColor: Colors.white38,
-                    inactiveTrackColor: Colors.white10,
-                  ),
-                ),
-              ),
-            ],
-          ),
+        _toggle(
+          label: _text.onlyMineLabel,
+          value: _feed.filter.onlyMine,
+          onChanged: (value) =>
+              _feed.setFilter(_feed.filter.copyWith(onlyMine: value)),
         ),
         _buildMatchGrid(),
         const SizedBox(height: 16),
@@ -460,45 +279,122 @@ class TradeSectionState extends State<TradeSection> {
     );
   }
 
-  Widget _buildMatchGrid() {
-    var matches = widget.activeTab == 0 ? _wantMatches : _listingMatches;
-    final hasMore = widget.activeTab == 0 ? _wantHasMore : _listingHasMore;
+  Widget _infoBanner(List<InlineSpan> spans) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(6, 10, 6, 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E24),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          PhosphorIcon(PhosphorIcons.info(), size: 16, color: Colors.white38),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: const TextStyle(fontSize: 12, color: Colors.white54),
+                children: spans,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-    if (_loadingMatches) {
+  /// Whether the user wishlisted (receiving) or listed (sending) the viewed
+  /// card, with a shortcut to change it.
+  List<InlineSpan> _collectionStateSpans(InlineSpan cardName) {
+    final kind = _text.viewedKind;
+    final cardId = widget.card.id;
+    final conditions = _collection.tradeConditionsOf(cardId);
+    void edit() => _showEditCardDialog(kind);
+    return switch (kind) {
+      CollectionItemKind.wishlist => _collection.isWishlisted(cardId)
+          ? [
+              const TextSpan(text: 'You have wishlisted '),
+              cardName,
+              TextSpan(text: ' in ${_formatLanguages(cardId, kind)}. '),
+              _actionSpan('Edit', AppColors.primary, edit),
+            ]
+          : [
+              const TextSpan(text: 'You have not wishlisted '),
+              cardName,
+              const TextSpan(text: ' yet. '),
+              _actionSpan('Wishlist now', AppColors.primary, edit),
+            ],
+      CollectionItemKind.listing => _collection.isListed(cardId)
+          ? [
+              const TextSpan(text: 'You have listed '),
+              cardName,
+              TextSpan(
+                  text: ' for trade in ${_formatLanguages(cardId, kind)}. '),
+              if (conditions.isNotEmpty)
+                TextSpan(
+                  text: 'Accepting ${conditions.length} specific '
+                      '${conditions.length == 1 ? 'card' : 'cards'}. ',
+                ),
+              _actionSpan('Edit', AppColors.secondary, edit),
+            ]
+          : [
+              const TextSpan(text: 'You have not listed '),
+              cardName,
+              const TextSpan(text: ' for trade yet. '),
+              _actionSpan('List now', AppColors.secondary, edit),
+            ],
+    };
+  }
+
+  Widget _toggle({
+    required String label,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 4, 6, 0),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: Colors.white70),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            height: 32,
+            child: FittedBox(
+              child: Switch(
+                value: value,
+                onChanged: onChanged,
+                activeColor: AppColors.primary,
+                activeTrackColor: AppColors.primary.withOpacity(0.4),
+                inactiveThumbColor: Colors.white38,
+                inactiveTrackColor: Colors.white10,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMatchGrid() {
+    final state = _feed.state;
+
+    if (state.isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (matches == null) return const SizedBox.shrink();
-
-    // Apply trade conditions filter on "I have this card" tab
-    if (widget.activeTab == 1 && _tradeConditions.isNotEmpty) {
-      final conditionCardIds = {for (final c in _tradeConditions) c.cardId};
-      matches =
-          matches.where((m) => conditionCardIds.contains(m.$1.id)).toList();
+    if (state.matches.isEmpty && state.error != null) {
+      return _RetryRow(onRetry: _feed.load);
     }
 
-    // Apply client-side filter: "My listings only" / "My wishlist only"
-    // Uses language-aware check (same logic as the checkmark icon overlay).
-    if (widget.activeTab == 0 && _myListedOnly) {
-      matches = matches
-          .where((m) =>
-              _collection.isListed(m.$1.id, language: m.$2.language))
-          .toList();
-    } else if (widget.activeTab == 1 && _myWishlistedOnly) {
-      matches = matches
-          .where((m) =>
-              _collection.isWishlisted(m.$1.id, language: m.$2.language))
-          .toList();
-    }
-
-    if (matches.isEmpty && !hasMore) {
-      final hintText = widget.activeTab == 0
-          ? 'Try wishlisting this card in more languages or using the All languages filter above for more trade options.'
-          : 'Try listing this card for trade or using the All languages filter above for more trade options.';
-
+    if (state.matches.isEmpty && !state.hasMore) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 6),
         child: Center(
@@ -513,7 +409,7 @@ class TradeSectionState extends State<TradeSection> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  hintText,
+                  _text.emptyHint,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     color: Colors.white30,
@@ -528,162 +424,115 @@ class TradeSectionState extends State<TradeSection> {
       );
     }
 
-    // Hoist to a non-nullable local so the itemBuilder closure doesn't
-    // lose null-promotion across the capture boundary.
-    final List<(PocketCard, TradeMatch)> visibleMatches = matches;
-    final itemCount = visibleMatches.length + (_loadingMore ? 1 : 0);
+    final matches = state.matches;
+    final itemCount = matches.length + (state.isLoadingMore ? 1 : 0);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 0.72,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.72,
+            ),
+            itemCount: itemCount,
+            itemBuilder: (context, index) {
+              if (index >= matches.length) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
+              return _buildMatchTile(matches[index]);
+            },
+          ),
         ),
-        itemCount: itemCount,
-        itemBuilder: (context, index) {
-          if (index >= visibleMatches.length) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(8),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+        if (state.error != null) _RetryRow(onRetry: _feed.loadMore),
+      ],
+    );
+  }
+
+  Widget _buildMatchTile(TradeMatch match) {
+    final other = match.other;
+    final isListed =
+        _collection.isListed(other.card.id, language: other.language);
+    final isWishlisted =
+        _collection.isWishlisted(other.card.id, language: other.language);
+    return GestureDetector(
+      onTap: () => _onMatchTapped(match),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: OptimizedCardImage(
+              imageUrl: other.card.imageUrl,
+              isThumbnail: true,
+              placeholder: (context, url) => Container(
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            );
-          }
-
-          final (matchCard, tradeMatch) = visibleMatches[index];
-          return GestureDetector(
-            onTap: () => _onMatchTapped(matchCard, tradeMatch),
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: OptimizedCardImage(
-                    imageUrl: matchCard.imageUrl,
-                    isThumbnail: true,
-                    placeholder: (context, url) => Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white10,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => PhosphorIcon(
-                        PhosphorIcons.imageBroken(),
-                        color: Colors.white24),
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                    decoration: BoxDecoration(
-                      color:
-                          Colors.black.withOpacity(UIConstants.buttonOpacity),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                    child: Text(
-                      tradeMatch.language,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ),
-                ),
-                if (_collection.isWishlisted(
-                      matchCard.id,
-                      language: tradeMatch.language,
-                    ) ||
-                    _collection.isListed(
-                      matchCard.id,
-                      language: tradeMatch.language,
-                    ))
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: CardBadge(
-                      type: _collection.isListed(
-                        matchCard.id,
-                        language: tradeMatch.language,
-                      )
-                          ? CardBadgeType.matchListing
-                          : CardBadgeType.matchWishlisted,
-                    ),
-                  ),
-                if (_hasProposal(matchCard, tradeMatch))
-                  const Positioned(
-                    bottom: 4,
-                    left: 4,
-                    child: CardBadge(type: CardBadgeType.pendingTrade),
-                  ),
-              ],
+              errorWidget: (context, url, error) => PhosphorIcon(
+                  PhosphorIcons.imageBroken(),
+                  color: Colors.white24),
             ),
-          );
-        },
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: _LanguageTag(other.language),
+          ),
+          if (isListed || isWishlisted)
+            Positioned(
+              bottom: 4,
+              right: 4,
+              child: CardBadge(
+                type: isListed
+                    ? CardBadgeType.matchListing
+                    : CardBadgeType.matchWishlisted,
+              ),
+            ),
+          if (match.hasPendingProposal)
+            const Positioned(
+              bottom: 4,
+              left: 4,
+              child: CardBadge(type: CardBadgeType.pendingTrade),
+            ),
+        ],
       ),
     );
   }
 
-  Future<void> _navigateToChat(
-      PocketCard matchCard, TradeMatch tradeMatch) async {
+  Future<void> _navigateToChat(TradeMatch match) async {
     if (_navigatingToMatch) return;
     _navigatingToMatch = true;
-
-    // Determine languages for the trade message
-    final String offerLanguage;
-    final String receiveLanguage;
-    if (widget.activeTab == 0) {
-      // "I want this card" tab: offerCard=matchCard, receiveCard=contextCard
-      offerLanguage = tradeMatch.language;
-      final contextLangs =
-          _collection.languagesOf(widget.card.id, CollectionItemKind.wishlist);
-      receiveLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
-    } else {
-      // "I have this card" tab: offerCard=contextCard, receiveCard=matchCard
-      final contextLangs =
-          _collection.languagesOf(widget.card.id, CollectionItemKind.listing);
-      offerLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
-      receiveLanguage = tradeMatch.language;
-    }
-
     try {
       await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => ChatScreen(
-            contextCard: widget.card,
-            matchCard: matchCard,
-            tradeMatch: tradeMatch,
-            isWantTab: widget.activeTab == 0,
-            offerLanguage: offerLanguage,
-            receiveLanguage: receiveLanguage,
-          ),
-        ),
+        MaterialPageRoute(builder: (_) => ChatScreen.forTradeMatch(match)),
       );
-
       if (!mounted) return;
-      final proposals = await _collectionStore.getMyPendingProposals();
-      if (!mounted) return;
-      setState(() => _pendingProposals = proposals);
+      await _feed.refreshProposals();
     } finally {
       _navigatingToMatch = false;
     }
   }
 
-  void _onMatchTapped(PocketCard matchCard, TradeMatch tradeMatch) {
+  void _onMatchTapped(TradeMatch match) {
     if (_navigatingToMatch) return;
-    if (_hasProposal(matchCard, tradeMatch)) {
+    if (match.hasPendingProposal) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -693,40 +542,8 @@ class TradeSectionState extends State<TradeSection> {
       return;
     }
 
-    final needsWarning = widget.activeTab == 0
-        ? !_collection.isListed(
-            matchCard.id,
-            language: tradeMatch.language,
-          )
-        : !_collection.isWishlisted(
-            matchCard.id,
-            language: tradeMatch.language,
-          );
-
-    // Determine which card the user sends vs receives, and their languages
-    final PocketCard sendCard;
-    final PocketCard receiveCard;
-    final String sendLanguage;
-    final String receiveLanguage;
-    if (widget.activeTab == 0) {
-      // "I want this card" → user sends matchCard, receives contextCard
-      sendCard = matchCard;
-      receiveCard = widget.card;
-      sendLanguage = tradeMatch.language;
-      final contextLangs =
-          _collection.languagesOf(widget.card.id, CollectionItemKind.wishlist);
-      receiveLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
-    } else {
-      // "I have this card" → user sends contextCard, receives matchCard
-      sendCard = widget.card;
-      receiveCard = matchCard;
-      final contextLangs =
-          _collection.languagesOf(widget.card.id, CollectionItemKind.listing);
-      sendLanguage = contextLangs.isNotEmpty ? contextLangs.first : '';
-      receiveLanguage = tradeMatch.language;
-    }
-
-    final bool showWarning = needsWarning;
+    final send = match.send;
+    final receive = match.receive;
 
     showAppDialog<void>(
       context: context,
@@ -736,75 +553,34 @@ class TradeSectionState extends State<TradeSection> {
         mainAxisSize: MainAxisSize.min,
         children: [
           TradeCardPair(
-            leftCard: sendCard,
-            rightCard: receiveCard,
+            leftCard: send.card,
+            rightCard: receive.card,
             leftTopLabel: 'You send',
-            rightTopLabel: '${tradeMatch.playerName} sends',
-            leftBottomLabel: sendCard.name,
-            rightBottomLabel: receiveCard.name,
-            leftLanguage: sendLanguage,
-            rightLanguage: receiveLanguage,
-            rightActivityColor: activityColor(tradeMatch.lastActiveAt),
+            rightTopLabel: '${match.playerName} sends',
+            leftBottomLabel: send.card.name,
+            rightBottomLabel: receive.card.name,
+            leftLanguage: send.language,
+            rightLanguage: receive.language,
+            rightActivityColor: activityColor(match.lastActiveAt),
           ),
-          if (showWarning)
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Row(
-                children: [
-                  PhosphorIcon(PhosphorIcons.warning(),
-                      size: 16, color: Colors.amber),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        style:
-                            const TextStyle(fontSize: 12, color: Colors.amber),
-                        children: [
-                          TextSpan(
-                            text: widget.activeTab == 0
-                                ? 'You have not listed '
-                                : 'You have not added ',
-                          ),
-                          TextSpan(
-                            text: '${matchCard.name} ',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          WidgetSpan(
-                            alignment: PlaceholderAlignment.middle,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.black
-                                    .withOpacity(UIConstants.buttonOpacity),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                              child: Text(
-                                tradeMatch.language,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ),
-                          ),
-                          TextSpan(
-                            text: widget.activeTab == 0
-                                ? ' for trade'
-                                : ' to your wishlist',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          // A partial match: say what the user's collection is missing.
+          if (!_collection.isListed(send.card.id, language: send.language))
+            _PartialMatchWarning(
+              before: 'You have not listed ',
+              side: send,
+              after: ' for trade',
+            ),
+          if (!_collection.isWishlisted(receive.card.id,
+              language: receive.language))
+            _PartialMatchWarning(
+              before: 'You have not added ',
+              side: receive,
+              after: ' to your wishlist',
             ),
         ],
       ),
       primaryText: 'Continue',
-      onPrimaryAction: () => _navigateToChat(matchCard, tradeMatch),
+      onPrimaryAction: () => _navigateToChat(match),
     );
   }
 
@@ -825,176 +601,6 @@ class TradeSectionState extends State<TradeSection> {
     } else {
       return '${formatted.sublist(0, formatted.length - 1).join(', ')} and ${formatted.last}';
     }
-  }
-
-  void _loadState() {
-    _collectionStore.load().then((_) {
-      if (!mounted) return;
-      setState(() {
-        _isWishlisted = _collection.isWishlisted(widget.card.id);
-        _isListed = _collection.isListed(widget.card.id);
-      });
-      _fetchMatches();
-    }).catchError((e) {
-      debugPrint('Failed to load user cards in trade section: $e');
-    });
-  }
-
-  void _refreshState() {
-    setState(() {
-      _isWishlisted = _collection.isWishlisted(widget.card.id);
-      _isListed = _collection.isListed(widget.card.id);
-      _wantMatches = null;
-      _listingMatches = null;
-      _wantOffset = 0;
-      _listingOffset = 0;
-      _wantHasMore = true;
-      _listingHasMore = true;
-    });
-    _fetchMatches();
-  }
-
-  Future<void> _fetchMatches() async {
-    final cardId = widget.card.id;
-    final wantNeeded = _wantMatches == null;
-    final listingNeeded = _listingMatches == null;
-    if (!wantNeeded && !listingNeeded) return;
-
-    final requestId = ++_fetchRequestId;
-    setState(() => _loadingMatches = true);
-
-    try {
-      final cardMap = CardService().getCardMap();
-      final futures = <Future>[];
-
-      futures.add(_collectionStore.getMyPendingProposals().then((proposals) {
-        if (requestId != _fetchRequestId) return;
-        _pendingProposals = proposals;
-      }));
-
-      final langList = _appliedLanguages.toList();
-      final fullartOnly = _trainersOnly && _isFullArtSupporter;
-
-      if (wantNeeded) {
-        futures.add(_collectionStore
-            .getTradeMatchesForWanted(cardId, langList,
-                fullartOnly: fullartOnly, limit: _pageSize, offset: 0)
-            .then((matches) {
-          if (requestId != _fetchRequestId) return;
-          final mapped = matches
-              .where((m) => cardMap.containsKey(m.cardId))
-              .map((m) => (cardMap[m.cardId]!, m))
-              .toList();
-          _wantMatches = mapped;
-          _wantOffset = _pageSize;
-          _wantHasMore = matches.length >= _pageSize;
-        }));
-      }
-
-      if (listingNeeded) {
-        futures.add(_collectionStore
-            .getTradeMatchesForListing(cardId, langList,
-                fullartOnly: fullartOnly, limit: _pageSize, offset: 0)
-            .then((matches) {
-          if (requestId != _fetchRequestId) return;
-          final mapped = matches
-              .where((m) => cardMap.containsKey(m.cardId))
-              .map((m) => (cardMap[m.cardId]!, m))
-              .toList();
-          _listingMatches = mapped;
-          _listingOffset = _pageSize;
-          _listingHasMore = matches.length >= _pageSize;
-        }));
-      }
-
-      await Future.wait(futures);
-    } catch (e) {
-      debugPrint('Failed to fetch trade matches: $e');
-      _wantMatches ??= [];
-      _listingMatches ??= [];
-    }
-
-    if (!mounted || requestId != _fetchRequestId) return;
-    setState(() => _loadingMatches = false);
-  }
-
-  void loadMore() {
-    if (_loadingMatches || _loadingMore) return;
-    final hasMore = widget.activeTab == 0 ? _wantHasMore : _listingHasMore;
-    final matches = widget.activeTab == 0 ? _wantMatches : _listingMatches;
-    if (!hasMore || matches == null) return;
-    _loadMoreMatches();
-  }
-
-  Future<void> _loadMoreMatches() async {
-    if (_loadingMore || _navigatingToMatch) return;
-    setState(() => _loadingMore = true);
-
-    try {
-      final cardId = widget.card.id;
-      final cardMap = CardService().getCardMap();
-      final langList = _appliedLanguages.toList();
-      final fullartOnly = _trainersOnly && _isFullArtSupporter;
-      final offset = widget.activeTab == 0 ? _wantOffset : _listingOffset;
-
-      final List<TradeMatch> matches;
-      if (widget.activeTab == 0) {
-        matches = await _collectionStore.getTradeMatchesForWanted(
-          cardId,
-          langList,
-          fullartOnly: fullartOnly,
-          limit: _pageSize,
-          offset: offset,
-        );
-      } else {
-        matches = await _collectionStore.getTradeMatchesForListing(
-          cardId,
-          langList,
-          fullartOnly: fullartOnly,
-          limit: _pageSize,
-          offset: offset,
-        );
-      }
-
-      final mapped = matches
-          .where((m) => cardMap.containsKey(m.cardId))
-          .map((m) => (cardMap[m.cardId]!, m))
-          .toList();
-
-      if (!mounted) return;
-      setState(() {
-        if (widget.activeTab == 0) {
-          if (_wantMatches == null) {
-            _wantMatches = mapped;
-          } else {
-            _wantMatches!.addAll(mapped);
-          }
-          _wantOffset += _pageSize;
-          _wantHasMore = matches.length >= _pageSize;
-        } else {
-          if (_listingMatches == null) {
-            _listingMatches = mapped;
-          } else {
-            _listingMatches!.addAll(mapped);
-          }
-          _listingOffset += _pageSize;
-          _listingHasMore = matches.length >= _pageSize;
-        }
-        _loadingMore = false;
-      });
-    } catch (e) {
-      debugPrint('Failed to load more trade matches: $e');
-      if (!mounted) return;
-      setState(() => _loadingMore = false);
-    }
-  }
-
-  Future<void> _onWantPressed() async {
-    await _showEditCardDialog(CollectionItemKind.wishlist);
-  }
-
-  Future<void> _onCanTradePressed() async {
-    await _showEditCardDialog(CollectionItemKind.listing);
   }
 
   bool _openingEditCardDialog = false;
@@ -1048,6 +654,125 @@ class TradeSectionState extends State<TradeSection> {
     );
 
     if (savedChanges != true || !mounted) return;
-    _refreshState();
+    widget.onCollectionSaved();
+  }
+}
+
+/// A card language code on a dark tag, as on card thumbnails.
+class _LanguageTag extends StatelessWidget {
+  final String language;
+
+  const _LanguageTag(this.language);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(UIConstants.buttonOpacity),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Text(
+        language,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: Colors.white70,
+        ),
+      ),
+    );
+  }
+}
+
+/// One thing the user's collection doesn't allow yet in a partial match,
+/// e.g. "You have not listed Pikachu [ENG] for trade".
+class _PartialMatchWarning extends StatelessWidget {
+  final String before;
+  final TradeSide side;
+  final String after;
+
+  const _PartialMatchWarning({
+    required this.before,
+    required this.side,
+    required this.after,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Row(
+        children: [
+          PhosphorIcon(PhosphorIcons.warning(), size: 16, color: Colors.amber),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                style: const TextStyle(fontSize: 12, color: Colors.amber),
+                children: [
+                  TextSpan(text: before),
+                  TextSpan(
+                    text: '${side.card.name} ',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: _LanguageTag(side.language),
+                  ),
+                  TextSpan(text: after),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown in place of, or below, the matches when a fetch failed.
+class _RetryRow extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _RetryRow({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.fromLTRB(6, 16, 6, 0),
+        padding: const EdgeInsets.only(left: 12, right: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E24),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            PhosphorIcon(PhosphorIcons.warningCircle(),
+                size: 16, color: Colors.white54),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                "Couldn't load trade options",
+                style: TextStyle(fontSize: 13, color: Colors.white70),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: PhosphorIcon(PhosphorIcons.arrowClockwise(),
+                  size: 14, color: AppColors.primary),
+              label: const Text('Retry'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                minimumSize: const Size(44, 44),
+                textStyle: const TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

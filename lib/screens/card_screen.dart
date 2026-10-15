@@ -5,7 +5,12 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/feedback_submission.dart';
+import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/feedback_service.dart';
+import 'package:tcgp_trading_app/services/language_filter_service.dart';
+import 'package:tcgp_trading_app/trading/supabase_trade_match_source.dart';
+import 'package:tcgp_trading_app/trading/trade_match.dart';
+import 'package:tcgp_trading_app/trading/trade_match_feed.dart';
 import 'package:tcgp_trading_app/utils/rarity_utils.dart';
 import 'package:tcgp_trading_app/widgets/card_screen/card_detail_header.dart';
 import 'package:tcgp_trading_app/widgets/card_screen/sticky_tab_bar_delegate.dart';
@@ -24,9 +29,15 @@ class CardScreen extends StatefulWidget {
 class _CardScreenState extends State<CardScreen>
     with SingleTickerProviderStateMixin {
   final _scrollController = ScrollController();
-  final _tradeSectionKey = GlobalKey<TradeSectionState>();
   late final TabController _tabController;
   int _activeTab = 0;
+
+  /// The receiving and sending feeds, in tab order. Empty until the saved
+  /// language filter is read.
+  List<TradeMatchFeed> _feeds = const [];
+
+  TradeMatchFeed? get _activeFeed =>
+      _feeds.isEmpty ? null : _feeds[_activeTab];
 
   @override
   void initState() {
@@ -38,10 +49,57 @@ class _CardScreenState extends State<CardScreen>
       }
     });
     _scrollController.addListener(_onScroll);
+    if (!isCardUntradable(widget.card.rarity, widget.card.pack)) {
+      _createFeeds();
+    }
+  }
+
+  Future<void> _createFeeds() async {
+    final languages = await LanguageFilterService().getSelectedLanguages();
+    if (!mounted) return;
+    final source = SupabaseTradeMatchSource();
+    final feeds = [
+      for (final direction in [
+        TradeDirection.receiving,
+        TradeDirection.sending,
+      ])
+        TradeMatchFeed(
+          card: widget.card,
+          direction: direction,
+          source: source,
+          catalog: _cardCatalog,
+          filter: TradeMatchFilter(languages: languages),
+        ),
+    ];
+    for (final feed in feeds) {
+      feed.load();
+    }
+    setState(() => _feeds = feeds);
+  }
+
+  static Future<Map<String, PocketCard>> _cardCatalog() async {
+    await CardService().getAllCards();
+    return CardService().getCardMap();
+  }
+
+  void _updateSharedFilter(
+      TradeMatchFilter Function(TradeMatchFilter) update) {
+    for (final feed in _feeds) {
+      feed.setFilter(update(feed.filter));
+    }
+  }
+
+  void _reloadFeeds() {
+    for (final feed in _feeds) {
+      feed.load();
+    }
   }
 
   @override
   void dispose() {
+    for (final feed in _feeds) {
+      feed.dispose();
+    }
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _tabController.dispose();
@@ -49,9 +107,12 @@ class _CardScreenState extends State<CardScreen>
   }
 
   void _onScroll() {
+    final feed = _activeFeed;
+    // After a failed page the retry row retries; scrolling doesn't.
+    if (feed == null || feed.state.error != null) return;
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      _tradeSectionKey.currentState?.loadMore();
+      feed.loadMore();
     }
   }
 
@@ -239,11 +300,18 @@ class _CardScreenState extends State<CardScreen>
               ),
             ),
             SliverToBoxAdapter(
-              child: TradeSection(
-                key: _tradeSectionKey,
-                card: widget.card,
-                activeTab: _activeTab,
-              ),
+              child: switch (_activeFeed) {
+                final feed? => TradeSection(
+                    card: widget.card,
+                    feed: feed,
+                    onSharedFilterChanged: _updateSharedFilter,
+                    onCollectionSaved: _reloadFeeds,
+                  ),
+                null => const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+              },
             ),
           ],
         ],

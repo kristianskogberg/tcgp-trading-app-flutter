@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/collection/collection.dart';
 import 'package:tcgp_trading_app/collection/collection_rows.dart';
-import 'package:tcgp_trading_app/models/trade_match.dart';
 import 'package:tcgp_trading_app/utils/async_utils.dart';
 
 /// Holds the signed-in user's [Collection], keeps it cached on the device and
@@ -139,68 +138,6 @@ class CollectionStore extends ChangeNotifier {
     _collection = _collection.withChanges(changes);
     await _persistCache();
     notifyListeners();
-  }
-
-  // ---------------------------------------------------------------------------
-  // Trade matches
-  // ---------------------------------------------------------------------------
-
-  /// Find users who list [cardId], then return their wishlist cards with profile info.
-  Future<List<TradeMatch>> getTradeMatchesForWanted(
-    String cardId,
-    List<String> languages, {
-    bool fullartOnly = false,
-    required int limit,
-    required int offset,
-  }) async {
-    if (_client.auth.currentUser == null) return [];
-
-    final rows =
-        await withTimeout(_client.rpc('get_trade_matches_for_wanted', params: {
-      'p_card_id': cardId,
-      'p_languages': languages,
-      'p_fullart_only': fullartOnly,
-      'p_limit': limit,
-      'p_offset': offset,
-    }));
-
-    return (rows as List)
-        .map((r) => TradeMatch.fromJson(r as Map<String, dynamic>))
-        .toList();
-  }
-
-  /// Find users who want [cardId], then return their listings with profile info.
-  Future<List<TradeMatch>> getTradeMatchesForListing(
-    String cardId,
-    List<String> languages, {
-    bool fullartOnly = false,
-    required int limit,
-    required int offset,
-  }) async {
-    if (_client.auth.currentUser == null) return [];
-
-    final rows =
-        await withTimeout(_client.rpc('get_trade_matches_for_listing', params: {
-      'p_card_id': cardId,
-      'p_languages': languages,
-      'p_fullart_only': fullartOnly,
-      'p_limit': limit,
-      'p_offset': offset,
-    }));
-
-    return (rows as List)
-        .map((r) => TradeMatch.fromJson(r as Map<String, dynamic>))
-        .toList();
-  }
-
-  /// Returns a set of "userId:offerCardId:receiveCardId" keys for all
-  /// pending trade proposals sent by the current user.
-  Future<Set<String>> getMyPendingProposals() async {
-    final rows = await withTimeout(_client.rpc('get_my_pending_proposals'));
-    return (rows as List).map((r) {
-      final m = r as Map<String, dynamic>;
-      return '${m['other_user_id']}:${m['offer_card_id']}:${m['receive_card_id']}';
-    }).toSet();
   }
 
   // ---------------------------------------------------------------------------

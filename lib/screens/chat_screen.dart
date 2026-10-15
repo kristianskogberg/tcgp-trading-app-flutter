@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/message.dart';
-import 'package:tcgp_trading_app/models/trade_match.dart';
+import 'package:tcgp_trading_app/trading/trade_match.dart';
 import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/chat_service.dart';
@@ -20,12 +20,9 @@ import 'package:tcgp_trading_app/utils/constants.dart';
 import 'package:tcgp_trading_app/screens/profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
-  final PocketCard? contextCard;
-  final PocketCard? matchCard;
+  /// The trade match the chat was opened from; its trade proposal is sent
+  /// when the chat opens.
   final TradeMatch? tradeMatch;
-  final bool isWantTab;
-  final String? offerLanguage;
-  final String? receiveLanguage;
 
   // For opening from conversations list (no TradeMatch needed)
   final String? conversationId;
@@ -33,15 +30,8 @@ class ChatScreen extends StatefulWidget {
   final String? otherPlayerName;
   final String? otherIcon;
 
-  const ChatScreen({
-    super.key,
-    required this.contextCard,
-    required this.matchCard,
-    required this.tradeMatch,
-    required this.isWantTab,
-    this.offerLanguage,
-    this.receiveLanguage,
-  })  : conversationId = null,
+  const ChatScreen.forTradeMatch(TradeMatch this.tradeMatch, {super.key})
+      : conversationId = null,
         otherUserId = null,
         otherPlayerName = null,
         otherIcon = null;
@@ -52,12 +42,7 @@ class ChatScreen extends StatefulWidget {
     required String this.otherUserId,
     required String this.otherPlayerName,
     this.otherIcon,
-  })  : contextCard = null,
-        matchCard = null,
-        tradeMatch = null,
-        isWantTab = false,
-        offerLanguage = null,
-        receiveLanguage = null;
+  }) : tradeMatch = null;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -173,16 +158,12 @@ class _ChatScreenState extends State<ChatScreen> {
           (e) => debugPrint('Failed to mark conversation as read: $e'));
 
       // Auto-send trade message when opened from trade section
-      if (widget.conversationId == null) {
-        final offerCard =
-            widget.isWantTab ? widget.matchCard! : widget.contextCard!;
-        final receiveCard =
-            widget.isWantTab ? widget.contextCard! : widget.matchCard!;
+      if (widget.tradeMatch case final match?) {
         await _sendTradeMessage(
-          offerCard.id,
-          widget.offerLanguage ?? '',
-          receiveCard.id,
-          widget.receiveLanguage ?? '',
+          match.send.card.id,
+          match.send.language,
+          match.receive.card.id,
+          match.receive.language,
         );
       }
     } catch (e) {
