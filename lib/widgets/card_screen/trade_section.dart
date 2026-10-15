@@ -8,6 +8,7 @@ import 'package:tcgp_trading_app/collection/collection.dart';
 import 'package:tcgp_trading_app/collection/collection_draft.dart';
 import 'package:tcgp_trading_app/collection/collection_store.dart';
 import 'package:tcgp_trading_app/services/language_filter_service.dart';
+import 'package:tcgp_trading_app/trading/match_completion.dart';
 import 'package:tcgp_trading_app/trading/trade_match.dart';
 import 'package:tcgp_trading_app/trading/trade_match_feed.dart';
 import 'package:tcgp_trading_app/utils/activity_utils.dart';
@@ -95,6 +96,7 @@ class _TradeSectionState extends State<TradeSection> {
   late Set<String> _selectedLanguages = {...widget.feed.filter.languages};
 
   bool _navigatingToMatch = false;
+  bool _openingTradePreview = false;
 
   Collection get _collection => _collectionStore.collection;
 
@@ -530,8 +532,8 @@ class _TradeSectionState extends State<TradeSection> {
     }
   }
 
-  void _onMatchTapped(TradeMatch match) {
-    if (_navigatingToMatch) return;
+  Future<void> _onMatchTapped(TradeMatch match) async {
+    if (_navigatingToMatch || _openingTradePreview) return;
     if (match.hasPendingProposal) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -542,46 +544,35 @@ class _TradeSectionState extends State<TradeSection> {
       return;
     }
 
-    final send = match.send;
-    final receive = match.receive;
-
-    showAppDialog<void>(
-      context: context,
-      title: 'Trade Preview',
-      centerContent: true,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TradeCardPair(
-            leftCard: send.card,
-            rightCard: receive.card,
-            leftTopLabel: 'You send',
-            rightTopLabel: '${match.playerName} sends',
-            leftBottomLabel: send.card.name,
-            rightBottomLabel: receive.card.name,
-            leftLanguage: send.language,
-            rightLanguage: receive.language,
-            rightActivityColor: activityColor(match.lastActiveAt),
+    _openingTradePreview = true;
+    final TradeMatch? proposal;
+    try {
+      final preferredLanguage = await ProfileService().getPreferredLanguage();
+      if (!mounted) return;
+      final collection = _collection;
+      proposal = await showDialog<TradeMatch>(
+        context: context,
+        // Closed only by its buttons, which are disabled while saving.
+        barrierDismissible: false,
+        builder: (_) => _TradePreviewDialog(
+          match: match,
+          collection: collection,
+          completion: MatchCompletion.of(
+            match,
+            collection,
+            preferredLanguage: preferredLanguage ?? fallbackPreferredLanguage,
           ),
-          // A partial match: say what the user's collection is missing.
-          if (!_collection.isListed(send.card.id, language: send.language))
-            _PartialMatchWarning(
-              before: 'You have not listed ',
-              side: send,
-              after: ' for trade',
-            ),
-          if (!_collection.isWishlisted(receive.card.id,
-              language: receive.language))
-            _PartialMatchWarning(
-              before: 'You have not added ',
-              side: receive,
-              after: ' to your wishlist',
-            ),
-        ],
-      ),
-      primaryText: 'Continue',
-      onPrimaryAction: () => _navigateToChat(match),
-    );
+          preferredLanguage: preferredLanguage,
+          currentCollection: () => _collectionStore.collection,
+          save: _collectionStore.commit,
+          onCollectionSaved: widget.onCollectionSaved,
+        ),
+      );
+    } finally {
+      _openingTradePreview = false;
+    }
+    if (proposal == null || !mounted) return;
+    await _navigateToChat(proposal);
   }
 
   String _formatLanguages(String cardId, CollectionItemKind kind) {
@@ -678,6 +669,228 @@ class _LanguageTag extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w500,
           color: Colors.white70,
+        ),
+      ),
+    );
+  }
+}
+
+/// Previews a trade match before proposing it. For a partial match it offers
+/// to add what the user's collection is missing, checked by default, and
+/// saves the checked additions on "Continue". The proposal is sent even if
+/// that save fails. Pops with the trade match to propose, or null.
+class _TradePreviewDialog extends StatefulWidget {
+  final TradeMatch match;
+  final Collection collection;
+  final MatchCompletion completion;
+  final String? preferredLanguage;
+
+  /// The saved collection now, which may have changed since [collection]
+  /// was read.
+  final Collection Function() currentCollection;
+  final Future<void> Function(Map<String, CardState>) save;
+  final VoidCallback onCollectionSaved;
+
+  const _TradePreviewDialog({
+    required this.match,
+    required this.collection,
+    required this.completion,
+    required this.preferredLanguage,
+    required this.currentCollection,
+    required this.save,
+    required this.onCollectionSaved,
+  });
+
+  @override
+  State<_TradePreviewDialog> createState() => _TradePreviewDialogState();
+}
+
+class _TradePreviewDialogState extends State<_TradePreviewDialog> {
+  bool _addListing = true;
+  bool _addWishlistEntry = true;
+  bool _saving = false;
+
+  MatchCompletion get _completion => widget.completion;
+
+  Future<void> _continue() async {
+    final addListing = _addListing && _completion.listing != null;
+    final addWishlistEntry =
+        _addWishlistEntry && _completion.wishlistEntry != null;
+    var listingAdded = false;
+
+    if (addListing || addWishlistEntry) {
+      setState(() => _saving = true);
+      // Rebased so an addition made against an outdated collection is
+      // dropped rather than overwriting a card the user never saw.
+      final changes = _completion
+          .addTo(
+            CollectionDraft(widget.collection,
+                preferredLanguage: widget.preferredLanguage),
+            addListing: addListing,
+            addWishlistEntry: addWishlistEntry,
+          )
+          .rebasedOn(widget.currentCollection())
+          .changes;
+      try {
+        await widget.save(changes);
+        listingAdded =
+            addListing && changes.containsKey(widget.match.send.card.id);
+        if (changes.isNotEmpty) widget.onCollectionSaved();
+      } catch (e) {
+        debugPrint('Failed to save collection from trade preview: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Couldn't update your collection. Your trade "
+                  'proposal will still be sent.'),
+            ),
+          );
+        }
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context, _completion.proposal(listingAdded: listingAdded));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final match = widget.match;
+    final send = match.send;
+    final receive = match.receive;
+    final collection = widget.collection;
+    final listing = _completion.listing;
+    final wishlistEntry = _completion.wishlistEntry;
+
+    // No back navigation while saving: a save that finishes after the dialog
+    // closed would change the collection without sending the proposal.
+    return PopScope(
+      canPop: !_saving,
+      child: AppDialog<TradeMatch>(
+        title: 'Trade Preview',
+        centerContent: true,
+        primaryText: 'Continue',
+        primaryLoading: _saving,
+        onPrimaryTap: _continue,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TradeCardPair(
+              leftCard: send.card,
+              rightCard: receive.card,
+              leftTopLabel: 'You send',
+              rightTopLabel: '${match.playerName} sends',
+              leftBottomLabel: send.card.name,
+              rightBottomLabel: receive.card.name,
+              leftLanguage: send.language,
+              rightLanguage: receive.language,
+              rightActivityColor: activityColor(match.lastActiveAt),
+            ),
+            // A partial match: offer to add what the user's collection is
+            // missing, or say what it is when adding it would remove something.
+            if (listing != null)
+              _CollectionAdditionRow(
+                value: _addListing,
+                onChanged:
+                    _saving ? null : (v) => setState(() => _addListing = v),
+                before: 'Also list ',
+                side: listing,
+                after: ' for trade',
+              )
+            else if (!collection.isListed(send.card.id,
+                language: send.language))
+              _PartialMatchWarning(
+                before: 'You have not listed ',
+                side: send,
+                after: ' for trade',
+              ),
+            if (wishlistEntry != null)
+              _CollectionAdditionRow(
+                value: _addWishlistEntry,
+                onChanged: _saving
+                    ? null
+                    : (v) => setState(() => _addWishlistEntry = v),
+                before: 'Also add ',
+                side: wishlistEntry,
+                after: ' to your wishlist',
+              )
+            else if (!collection.isWishlisted(receive.card.id,
+                language: receive.language))
+              _PartialMatchWarning(
+                before: 'You have not added ',
+                side: receive,
+                after: ' to your wishlist',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// An opt-out checkbox in the trade preview that adds a card to the user's
+/// collection, e.g. "Also list Pikachu [JPN] for trade". The whole row is
+/// tappable.
+class _CollectionAdditionRow extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+  final String before;
+  final TradeSide side;
+  final String after;
+
+  const _CollectionAdditionRow({
+    required this.value,
+    required this.onChanged,
+    required this.before,
+    required this.side,
+    required this.after,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final onChanged = this.onChanged;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: MergeSemantics(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onChanged == null ? null : () => onChanged(!value),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: value,
+                  onChanged:
+                      onChanged == null ? null : (v) => onChanged(v ?? false),
+                  activeColor: AppColors.primary,
+                  checkColor: Colors.black,
+                  side: const BorderSide(color: Colors.white54, width: 1.5),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      style: const TextStyle(fontSize: 13, color: Colors.white),
+                      children: [
+                        TextSpan(text: before),
+                        TextSpan(
+                          text: '${side.card.name} ',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: _LanguageTag(side.language),
+                        ),
+                        TextSpan(text: after),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
