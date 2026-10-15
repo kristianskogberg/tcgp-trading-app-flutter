@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/config/app_colors.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/trade_match.dart';
@@ -996,14 +997,31 @@ class TradeSectionState extends State<TradeSection> {
     await _showEditCardDialog(CollectionItemKind.listing);
   }
 
+  bool _openingEditCardDialog = false;
+
   Future<void> _showEditCardDialog(CollectionItemKind kind) async {
+    // One dialog at a time, even when tapped again while the preferred
+    // language loads.
+    if (_openingEditCardDialog) return;
+    _openingEditCardDialog = true;
+    try {
+      await _openEditCardDialog(kind);
+    } finally {
+      _openingEditCardDialog = false;
+    }
+  }
+
+  Future<void> _openEditCardDialog(CollectionItemKind kind) async {
+    final preferredLanguage = await ProfileService().getPreferredLanguage();
+    if (!mounted) return;
     final cardId = widget.card.id;
     final saved = _collection.stateOf(cardId);
     final isWishlist = kind == CollectionItemKind.wishlist;
     final isEditing = isWishlist ? saved is Wishlisted : saved is Listed;
 
     // The dialog opens with the card already turned on as [kind].
-    var draft = CollectionDraft(_collection);
+    var draft =
+        CollectionDraft(_collection, preferredLanguage: preferredLanguage);
     if (!isEditing) {
       draft = isWishlist
           ? draft.toggleWishlist(cardId)

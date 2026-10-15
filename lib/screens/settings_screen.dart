@@ -11,6 +11,7 @@ import 'package:tcgp_trading_app/screens/optional_link_screen.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
 import 'package:tcgp_trading_app/services/notification_service.dart';
 import 'package:tcgp_trading_app/collection/collection_store.dart';
+import 'package:tcgp_trading_app/widgets/settings_screen/preferred_language_tile.dart';
 import 'package:tcgp_trading_app/widgets/shared/app_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -21,6 +22,37 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  String? _preferredLanguage;
+  bool _preferredLanguageLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferredLanguage();
+  }
+
+  /// Fetches it fresh so a change made on another device shows, falling
+  /// back to the cached profile when offline.
+  Future<void> _loadPreferredLanguage() async {
+    final language =
+        await ProfileService().getPreferredLanguage(forceRefresh: true);
+    // A save made meanwhile is newer than what was fetched.
+    if (!mounted || _preferredLanguageLoaded) return;
+    setState(() {
+      _preferredLanguage = language;
+      _preferredLanguageLoaded = true;
+    });
+  }
+
+  Future<void> _savePreferredLanguage(String language) async {
+    await ProfileService().savePreferredLanguage(language);
+    if (!mounted) return;
+    setState(() {
+      _preferredLanguage = language;
+      _preferredLanguageLoaded = true;
+    });
+  }
+
   Future<void> _openFeedback() async {
     final submitted = await Navigator.push<bool>(
       context,
@@ -159,6 +191,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: const Text('Delete Account',
                 style: TextStyle(color: Colors.redAccent)),
             onTap: _deleteAccount,
+          ),
+          const _SectionHeader('Trading'),
+          PreferredLanguageTile(
+            preferredLanguage: _preferredLanguage,
+            loading: !_preferredLanguageLoaded,
+            save: _savePreferredLanguage,
           ),
           const _SectionHeader('Support'),
           ListTile(

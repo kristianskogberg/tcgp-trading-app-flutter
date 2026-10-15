@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:tcgp_trading_app/auth/profile_service.dart';
 import 'package:tcgp_trading_app/models/card.dart';
 import 'package:tcgp_trading_app/models/home_mode.dart';
 import 'package:tcgp_trading_app/services/card_service.dart';
@@ -329,16 +330,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _toggleEditMode() async {
-    if (_currentMode == HomeMode.edit && _hasUnsavedChanges) {
-      if (!await _confirmDiscardEdits()) return;
+    if (_currentMode == HomeMode.edit) {
+      if (_hasUnsavedChanges && !await _confirmDiscardEdits()) return;
+      setState(_exitEditMode);
+      return;
     }
+    final modeBefore = _currentMode;
+    final preferredLanguage = await ProfileService().getPreferredLanguage();
+    // The user moved on (or tapped twice) while it loaded.
+    if (!mounted || _currentMode != modeBefore) return;
     setState(() {
-      if (_currentMode == HomeMode.edit) {
-        _exitEditMode();
-      } else {
-        _currentMode = HomeMode.edit;
-        _draft = CollectionDraft(_collectionStore.collection);
-      }
+      _currentMode = HomeMode.edit;
+      _draft = CollectionDraft(
+        _collectionStore.collection,
+        preferredLanguage: preferredLanguage,
+      );
     });
   }
 
