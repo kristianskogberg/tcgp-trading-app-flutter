@@ -33,3 +33,21 @@ _Avoid_: pending edits
 **Preferred language**:
 The specific card language a user lists cards in unless they choose another.
 _Avoid_: default language, main language
+
+### Trading
+
+**Trade match**:
+Another player the user could trade with: the user sends one card and receives another, each in a card language (the sent card may be in any language when the other player accepts any). The other player's collection always allows the swap (their listing, their wishlist entry, their trade conditions); the user's own collection may not yet.
+_Avoid_: trade option, match card
+
+**Perfect match**:
+A trade match the user's own collection also allows: they list the card they send and wishlist the card they receive.
+_Avoid_: full match
+
+**Partial match**:
+A trade match the user's own collection does not fully allow yet: they have not listed the card they send, or not wishlisted the card they receive.
+_Avoid_: imperfect match, weak match
+
+**Direction**:
+Which side of a trade match the viewed card is on: **receiving** (the user would receive it) or **sending** (the user would send it).
+_Avoid_: want tab, have tab, listing tab
