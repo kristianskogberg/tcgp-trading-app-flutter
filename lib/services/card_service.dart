@@ -22,6 +22,9 @@ class CardService {
   Map<String, PocketCard>? _cardMap;
   DateTime? _cachedAt;
 
+  /// The load in progress, shared by every caller until it finishes.
+  Future<List<PocketCard>>? _inFlight;
+
   /// Load cards from Supabase. Falls back to cache if offline.
   ///
   /// Uses a 6-hour TTL. On refresh, performs an incremental sync
@@ -32,6 +35,12 @@ class CardService {
         _cachedAt != null && DateTime.now().difference(_cachedAt!) > _cacheTtl;
     if (_cards != null && !forceRefresh && !isExpired) return _cards!;
 
+    // Screens ask for the cards at the same time on start-up; each starting
+    // its own download of every card stalls the app.
+    return _inFlight ??= _load().whenComplete(() => _inFlight = null);
+  }
+
+  Future<List<PocketCard>> _load() async {
     final prefs = await SharedPreferences.getInstance();
 
     try {

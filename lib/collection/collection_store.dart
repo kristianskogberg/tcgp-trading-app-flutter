@@ -81,10 +81,13 @@ class CollectionStore extends ChangeNotifier {
     final user = _client.auth.currentUser;
     if (user == null) return;
 
+    final before = _collection;
     await _loadCache();
     if (!forceRefresh &&
         (_collection.wishlist.isNotEmpty || _collection.listings.isNotEmpty)) {
-      notifyListeners();
+      // Only when the cache changed it: listeners call load() themselves, so
+      // notifying on every call loops.
+      if (!identical(_collection, before)) notifyListeners();
       return;
     }
 
